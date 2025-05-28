@@ -1,0 +1,45 @@
+id: accessibility-service
+when: editing
+includePaths:
+  - "**/service/**"
+  - "**/accessibility/**"
+return: |
+  # 辅助功能服务开发约束
+  
+  ## 🔧 AccessibilityService 实现：
+  ★ 服务配置：
+    - 在 res/xml/ 中定义 accessibility_service_config.xml
+    - 必须声明 android:canRetrieveWindowContent="true"
+    - 设置合适的 eventTypes 和 feedbackType
+  ★ 生命周期：
+    - onServiceConnected() 中初始化核心功能
+    - onInterrupt() 和 onDestroy() 中清理资源
+    - 使用 Handler + Looper 处理异步操作
+  
+  ## 📋 剪贴板监听：
+  ★ 文本获取策略：
+    - 优先使用 ClipboardManager 监听复制事件
+    - 备用方案：AccessibilityNodeInfo 遍历可见文本
+    - 特殊处理 PDF 阅读器的文本选择事件
+  ★ 性能优化：
+    - 避免频繁遍历整个 UI 树
+    - 缓存常用的 AccessibilityNodeInfo
+    - 及时回收不用的 NodeInfo 防止内存泄漏
+  
+  ## 📸 截屏文字识别（备用方案）：
+  ★ 触发条件：
+    - 剪贴板无内容但用户点击了悬浮按钮
+    - 检测到阅读器内容更新但无复制事件
+  ★ OCR 实现：
+    - 优先使用 Google ML Kit Text Recognition
+    - 仅对用户操作区域截屏（减少计算量）
+    - 文字识别结果要去重和排序
+  
+  ## ⚠️ 错误处理：
+  ★ 权限检查：每次操作前验证辅助功能权限
+  ★ 异常捕获：所有 AccessibilityEvent 处理都要 try-catch
+  ★ 降级策略：辅助功能失效时提示用户手动输入
+  
+  ## 🎯 兼容性：
+  ★ 适配不同阅读器：Supernote 内置、Adobe Reader、WPS
+  ★ 测试不同 Android 版本的 AccessibilityService 行为差异 

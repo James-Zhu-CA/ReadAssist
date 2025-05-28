@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 聊天界面相关尺寸 -->
+    <dimen name="chat_margin_end">16dp</dimen>
+    <dimen name="chat_user_margin_start">48dp</dimen>
+    <dimen name="chat_ai_margin_end">48dp</dimen>
+    
+    <!-- 通用间距 -->
+    <dimen name="default_padding">16dp</dimen>
+    <dimen name="small_padding">8dp</dimen>
+    <dimen name="large_padding">24dp</dimen>
+    
+    <!-- 按钮尺寸 -->
+    <dimen name="button_height">48dp</dimen>
+    <dimen name="small_button_height">32dp</dimen>
+</resources> 

@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFFFFF">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/default_padding">
+
+        <!-- AI平台配置 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="AI平台配置"
+            android:textSize="18sp"
+            android:textColor="#000000"
+            android:textStyle="bold"
+            android:paddingBottom="8dp" />
+
+        <!-- 当前配置状态 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingBottom="12dp"
+            android:background="#F8F8F8"
+            android:padding="12dp">
+
+            <TextView
+                android:id="@+id/tvCurrentConfig"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="未配置"
+                android:textSize="14sp"
+                android:textColor="#333333" />
+
+            <TextView
+                android:id="@+id/tvConfigStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="❌"
+                android:textSize="16sp"
+                android:background="#FFEBEE"
+                android:padding="4dp"
+                android:minWidth="32dp"
+                android:gravity="center" />
+
+        </LinearLayout>
+
+        <!-- AI平台选择 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="AI平台"
+            android:textSize="16sp"
+            android:textColor="#000000"
+            android:textStyle="bold"
+            android:paddingTop="8dp"
+            android:paddingBottom="4dp" />
+
+        <Spinner
+            android:id="@+id/platformSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:background="#F5F5F5"
+            android:layout_marginBottom="8dp" />
+
+        <!-- AI模型选择 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="AI模型"
+            android:textSize="16sp"
+            android:textColor="#000000"
+            android:textStyle="bold"
+            android:paddingBottom="4dp" />
+
+        <Spinner
+            android:id="@+id/modelSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:background="#F5F5F5"
+            android:layout_marginBottom="8dp" />
+
+        <!-- API Key配置 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="API Key"
+                android:textSize="16sp"
+                android:textColor="#000000"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnConfigureApiKey"
+                android:layout_width="80dp"
+                android:layout_height="32dp"
+                android:text="配置"
+                android:textSize="12sp"
+                android:textColor="#000000"
+                android:background="#E8F4FD"
+                android:layout_marginEnd="4dp" />
+
+            <Button
+                android:id="@+id/btnClearApiKey"
+                android:layout_width="60dp"
+                android:layout_height="32dp"
+                android:text="清除"
+                android:textSize="12sp"
+                android:textColor="#666666"
+                android:background="#F0F0F0" />
+
+        </LinearLayout>
+
+        <!-- API Key状态显示 -->
+        <TextView
+            android:id="@+id/tvApiKeyStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="未设置"
+            android:textSize="12sp"
+            android:textColor="#666666"
+            android:paddingBottom="16dp" />
+
+        <!-- 分隔线 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#000000"
+            android:layout_marginBottom="16dp" />
+
+        <!-- 提示模板设置 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/prompt_template_title"
+            android:textSize="18sp"
+            android:textColor="#000000"
+            android:textStyle="bold"
+            android:paddingBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="使用 [TEXT] 作为选中文本的占位符"
+            android:textSize="12sp"
+            android:textColor="#666666"
+            android:paddingBottom="8dp" />
+
+        <EditText
+            android:id="@+id/etPromptTemplate"
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:hint="@string/prompt_template_hint"
+            android:textSize="14sp"
+            android:textColor="#000000"
+            android:textColorHint="#666666"
+            android:background="#F5F5F5"
+            android:padding="12dp"
+            android:gravity="top"
+            android:inputType="textMultiLine"
+            android:maxLines="6" />
+
+        <Button
+            android:id="@+id/btnSaveTemplate"
+            android:layout_width="100dp"
+            android:layout_height="36dp"
+            android:text="@string/save"
+            android:textSize="14sp"
+            android:textColor="#000000"
+            android:background="#F0F0F0"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- 分隔线 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#000000"
+            android:layout_marginBottom="16dp" />
+
+        <!-- 自动分析设置 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingBottom="8dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/auto_analyze_title"
+                    android:textSize="16sp"
+                    android:textColor="#000000"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/auto_analyze_summary"
+                    android:textSize="12sp"
+                    android:textColor="#666666" />
+
+            </LinearLayout>
+
+            <Switch
+                android:id="@+id/switchAutoAnalyze"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+        </LinearLayout>
+
+        <!-- 分隔线 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#000000"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- 重置设置 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="数据管理"
+            android:textSize="18sp"
+            android:textColor="#000000"
+            android:textStyle="bold"
+            android:paddingBottom="12dp" />
+
+        <Button
+            android:id="@+id/btnResetSettings"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/button_height"
+            android:text="重置设置"
+            android:textSize="16sp"
+            android:textColor="#666666"
+            android:background="#F0F0F0"
+            android:layout_marginBottom="16dp" />
+
+        <!-- 关于信息 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#000000"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/about_title"
+            android:textSize="18sp"
+            android:textColor="#000000"
+            android:textStyle="bold"
+            android:paddingBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/app_description"
+            android:textSize="14sp"
+            android:textColor="#666666"
+            android:lineSpacingMultiplier="1.2" />
+
+    </LinearLayout>
+
+</ScrollView>
+ 

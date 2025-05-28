@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 应用名称 -->
+    <string name="app_name">ReadAssist</string>
+    <string name="app_description">Supernote A5X 智能阅读助手</string>
+    
+    <!-- 主界面 -->
+    <string name="main_title">ReadAssist</string>
+    <string name="main_subtitle">智能阅读助手</string>
+    <string name="start_service">启动服务</string>
+    <string name="stop_service">停止服务</string>
+    <string name="settings">设置</string>
+    <string name="history">历史记录</string>
+    
+    <!-- 权限相关 -->
+    <string name="permission_required">需要权限</string>
+    <string name="overlay_permission_required">需要悬浮窗权限以显示AI助手</string>
+    <string name="accessibility_permission_required">需要辅助功能权限以获取文本内容</string>
+    <string name="grant_permission">授予权限</string>
+    <string name="permission_denied">权限被拒绝</string>
+    <string name="permissions_granted">所有权限已授予</string>
+    
+    <!-- 设置页面 -->
+    <string name="settings_title">设置</string>
+    <string name="api_key_title">Gemini API Key</string>
+    <string name="api_key_hint">请输入您的 Google Gemini API Key</string>
+    <string name="api_key_empty">请设置 API Key</string>
+    <string name="prompt_template_title">提示模板</string>
+    <string name="prompt_template_hint">自定义AI解析提示词，使用[TEXT]代表选中文本</string>
+    <string name="auto_analyze_title">自动分析</string>
+    <string name="auto_analyze_summary">复制文本时自动调用AI分析</string>
+    <string name="clear_data_title">清除数据</string>
+    <string name="clear_data_summary">删除所有聊天记录和设置</string>
+    <string name="about_title">关于</string>
+    
+    <!-- 悬浮窗 -->
+    <string name="floating_window_title">AI 阅读助手</string>
+    <string name="minimize">最小化</string>
+    <string name="close">关闭</string>
+    <string name="send">发送</string>
+    <string name="input_hint">输入问题或点击分析选中文本</string>
+    <string name="analyze_text">分析文本</string>
+    
+    <!-- 聊天相关 -->
+    <string name="ai_thinking">AI 正在思考中...</string>
+    <string name="ai_response_error">AI 响应出错，请重试</string>
+    <string name="network_error">网络连接失败</string>
+    <string name="api_key_invalid">API Key 无效，请检查设置</string>
+    <string name="rate_limit_exceeded">请求频率超限，请稍后重试</string>
+    <string name="bookmark_added">已收藏</string>
+    <string name="bookmark_removed">取消收藏</string>
+    
+    <!-- 历史记录 -->
+    <string name="history_title">历史记录</string>
+    <string name="search_history">搜索历史记录</string>
+    <string name="no_history">暂无聊天记录</string>
+    <string name="delete_session">删除会话</string>
+    <string name="export_history">导出记录</string>
+    <string name="session_from">来自：%s</string>
+    <string name="messages_count">%d 条消息</string>
+    
+    <!-- 错误信息 -->
+    <string name="error_unknown">未知错误</string>
+    <string name="error_no_text">未检测到文本内容</string>
+    <string name="error_text_too_long">文本过长，请选择较短内容</string>
+    <string name="error_service_not_running">服务未运行</string>
+    
+    <!-- 文本选择相关 -->
+    <string name="text_imported">选中文本已导入到输入框</string>
+    <string name="text_selection_detected">检测到文本选择</string>
+    <string name="analyze_selected_text">分析选中文本</string>
+    
+    <!-- 通用 -->
+    <string name="ok">确定</string>
+    <string name="cancel">取消</string>
+    <string name="save">保存</string>
+    <string name="delete">删除</string>
+    <string name="edit">编辑</string>
+    <string name="share">分享</string>
+    <string name="copy">复制</string>
+    <string name="retry">重试</string>
+</resources> 

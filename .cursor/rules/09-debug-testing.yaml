@@ -1,0 +1,32 @@
+name: "调试和测试规范"
+description: "ReadAssist 项目的调试和测试脚本管理规范"
+
+rules:
+  script_management:
+    - "保持脚本文件简洁，避免重复创建相似功能的脚本"
+    - "使用统一的脚本命名规范：功能_用途.sh"
+    - "将构建、安装、监听等功能分离到不同脚本中"
+    - "脚本应该有清晰的用途说明和使用方法"
+
+  debugging_scripts:
+    build_install: "build_and_install.sh - 专门用于构建和安装应用"
+    monitor: "monitor_logs.sh - 统一的日志监听脚本，支持不同监听模式"
+    test: "test_*.sh - 特定功能测试脚本"
+
+  logging_standards:
+    - "使用统一的日志标识符和emoji进行分类"
+    - "重要事件使用三重emoji突出显示"
+    - "包含时间戳便于追踪事件顺序"
+    - "支持不同详细程度的日志输出"
+
+  file_organization:
+    - "所有测试脚本放在项目根目录"
+    - "给所有脚本添加执行权限"
+    - "删除过时或重复的脚本文件"
+    - "在README中说明各脚本的用途"
+
+  text_extraction_debugging:
+    - "显示原始文本候选和过滤后的候选"
+    - "记录文本长度和内容预览"
+    - "监听所有可能的文本选择事件"
+    - "支持调试模式下的宽松过滤条件" 

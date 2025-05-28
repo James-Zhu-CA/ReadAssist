@@ -1,0 +1,51 @@
+id: project-specs
+when: always
+return: |
+  # ReadAssist 项目需求规格 - 代码生成指导
+  
+  ## 📋 核心功能需求：
+  ★ 悬浮按钮系统：
+    - 屏幕侧边显示可拖拽的悬浮图标
+    - 点击展开 AI 对话窗口，支持最小化/关闭
+    - 记住用户设置的位置偏好
+    - 适配墨水屏刷新，避免残影
+  
+  ★ 智能文本获取：
+    - 监听剪贴板变化，自动获取复制的文字
+    - AccessibilityService 获取当前页面文本
+    - 备用方案：截屏 + OCR 文字识别
+    - 过滤无效内容（URL、纯数字等）
+  
+  ★ AI 对话功能：
+    - 集成 Google Gemini API 进行文本解读
+    - 支持多轮对话，维护上下文
+    - 用户可自定义提示模板
+    - 支持中英文混合输入和回答
+  
+  ★ 历史记录管理：
+    - 按书名/应用分组保存对话
+    - 支持搜索、收藏、删除操作
+    - 数据本地存储，支持导出
+  
+  ## 🎯 目标用户场景：
+  ★ 主要使用场景：
+    - Supernote A5X 用户阅读 PDF/EPUB 时遇到难词
+    - 需要快速理解专业术语或复杂句子
+    - 学习过程中需要 AI 辅助解释
+  ★ 设备约束：
+    - 7 寸墨水屏，1GB RAM，Android 8.1
+    - 无 Google Play 服务，网络可能有限制
+    - 用户习惯：手写笔操作，偏好简洁界面
+  
+  ## 📱 技术架构要求：
+  ★ 开发技术栈：
+    - Kotlin + Android Architecture Components
+    - MVVM 模式 + Repository 层
+    - Room 数据库 + Retrofit 网络层
+    - 无动画，纯静态 UI 设计
+  ★ 核心模块：
+    - FloatingWindowService（悬浮窗管理）
+    - TextAccessibilityService（文本获取）
+    - GeminiRepository（API 调用）
+    - ChatViewModel（对话状态管理）
+    - HistoryDatabase（数据持久化） 

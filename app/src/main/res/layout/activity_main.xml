@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFFFFF">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/default_padding">
+
+        <!-- 应用标题 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/main_title"
+            android:textSize="24sp"
+            android:textColor="#000000"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:paddingBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/main_subtitle"
+            android:textSize="14sp"
+            android:textColor="#666666"
+            android:gravity="center"
+            android:paddingBottom="24dp" />
+
+        <!-- 分隔线 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#000000"
+            android:layout_marginBottom="16dp" />
+
+        <!-- 状态信息 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="系统状态"
+            android:textSize="18sp"
+            android:textColor="#000000"
+            android:textStyle="bold"
+            android:paddingBottom="12dp" />
+
+        <!-- 权限状态 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingBottom="8dp">
+
+            <TextView
+                android:id="@+id/tvPermissionStatus"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="权限状态检查中..."
+                android:textSize="14sp"
+                android:textColor="#333333" />
+
+            <Button
+                android:id="@+id/btnPermissions"
+                android:layout_width="100dp"
+                android:layout_height="32dp"
+                android:text="授予权限"
+                android:textSize="12sp"
+                android:textColor="#000000"
+                android:background="#F0F0F0" />
+
+        </LinearLayout>
+
+        <!-- 服务状态 -->
+        <TextView
+            android:id="@+id/tvServiceStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="服务状态检查中..."
+            android:textSize="14sp"
+            android:textColor="#333333"
+            android:paddingBottom="8dp" />
+
+        <!-- API Key 状态 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingBottom="16dp">
+
+            <TextView
+                android:id="@+id/tvApiKeyStatus"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="API Key 状态检查中..."
+                android:textSize="14sp"
+                android:textColor="#333333" />
+
+            <Button
+                android:id="@+id/btnApiKey"
+                android:layout_width="120dp"
+                android:layout_height="32dp"
+                android:text="设置 API Key"
+                android:textSize="12sp"
+                android:textColor="#000000"
+                android:background="#F0F0F0" />
+
+        </LinearLayout>
+
+        <!-- 分隔线 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#000000"
+            android:layout_marginBottom="16dp" />
+
+        <!-- 统计信息 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="使用统计"
+            android:textSize="18sp"
+            android:textColor="#000000"
+            android:textStyle="bold"
+            android:paddingBottom="12dp" />
+
+        <TextView
+            android:id="@+id/tvStatistics"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="加载中..."
+            android:textSize="14sp"
+            android:textColor="#333333"
+            android:paddingBottom="16dp" />
+
+        <!-- 分隔线 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#000000"
+            android:layout_marginBottom="16dp" />
+
+        <!-- 功能按钮 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="功能菜单"
+            android:textSize="18sp"
+            android:textColor="#000000"
+            android:textStyle="bold"
+            android:paddingBottom="12dp" />
+
+        <!-- 悬浮窗服务管理 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingBottom="8dp">
+
+            <TextView
+                android:id="@+id/tvFloatingWindowStatus"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="悬浮窗服务状态检查中..."
+                android:textSize="14sp"
+                android:textColor="#333333" />
+
+            <Button
+                android:id="@+id/btnFloatingWindow"
+                android:layout_width="100dp"
+                android:layout_height="32dp"
+                android:text="启动悬浮窗"
+                android:textSize="12sp"
+                android:textColor="#000000"
+                android:background="#F0F0F0" />
+
+        </LinearLayout>
+
+        <!-- 截屏权限管理 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingBottom="16dp">
+
+            <TextView
+                android:id="@+id/tvScreenshotStatus"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="截屏权限状态检查中..."
+                android:textSize="14sp"
+                android:textColor="#333333" />
+
+            <Button
+                android:id="@+id/btnScreenshotPermission"
+                android:layout_width="120dp"
+                android:layout_height="32dp"
+                android:text="授予截屏权限"
+                android:textSize="12sp"
+                android:textColor="#000000"
+                android:background="#F0F0F0" />
+
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnSettings"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/button_height"
+            android:text="@string/settings"
+            android:textSize="16sp"
+            android:textColor="#000000"
+            android:background="#F5F5F5"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btnHistory"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/button_height"
+            android:text="@string/history"
+            android:textSize="16sp"
+            android:textColor="#000000"
+            android:background="#F5F5F5"
+            android:layout_marginBottom="8dp" />
+
+        <!-- 危险操作区域 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#000000"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="数据管理"
+            android:textSize="18sp"
+            android:textColor="#000000"
+            android:textStyle="bold"
+            android:paddingBottom="12dp" />
+
+        <Button
+            android:id="@+id/btnClearData"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/button_height"
+            android:text="@string/clear_data_title"
+            android:textSize="16sp"
+            android:textColor="#666666"
+            android:background="#F0F0F0"
+            android:layout_marginBottom="16dp" />
+
+    </LinearLayout>
+
+</ScrollView> 

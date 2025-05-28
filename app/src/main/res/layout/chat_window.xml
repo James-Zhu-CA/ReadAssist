@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/window_border"
+    android:padding="16dp">
+
+    <!-- 标题栏 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/floating_window_title"
+            android:textSize="18sp"
+            android:textColor="#000000"
+            android:textStyle="bold" />
+
+        <!-- 新对话按钮 -->
+        <Button
+            android:id="@+id/newChatButton"
+            android:layout_width="56dp"
+            android:layout_height="32dp"
+            android:text="新对话"
+            android:textSize="10sp"
+            android:textColor="#000000"
+            android:background="#E8F4FD"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/minimizeButton"
+            android:layout_width="48dp"
+            android:layout_height="32dp"
+            android:text="@string/minimize"
+            android:textSize="12sp"
+            android:textColor="#000000"
+            android:background="#F0F0F0"
+            android:layout_marginEnd="8dp" />
+
+        <Button
+            android:id="@+id/closeButton"
+            android:layout_width="48dp"
+            android:layout_height="32dp"
+            android:text="@string/close"
+            android:textSize="12sp"
+            android:textColor="#000000"
+            android:background="#F0F0F0" />
+
+    </LinearLayout>
+
+    <!-- 分隔线 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#000000"
+        android:layout_marginBottom="8dp" />
+
+    <!-- 聊天列表 -->
+    <ListView
+        android:id="@+id/chatListView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:divider="@null"
+        android:dividerHeight="0dp"
+        android:listSelector="@android:color/transparent"
+        android:cacheColorHint="@android:color/transparent" />
+
+    <!-- 功能按钮区域 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
+
+        <!-- 分析文本按钮 -->
+        <Button
+            android:id="@+id/analyzeButton"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="@string/analyze_text"
+            android:textSize="12sp"
+            android:textColor="#000000"
+            android:background="#F5F5F5"
+            android:visibility="gone"
+            android:layout_marginEnd="4dp" />
+
+        <!-- 截屏分析按钮 -->
+        <Button
+            android:id="@+id/screenshotButton"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="截屏分析"
+            android:textSize="12sp"
+            android:textColor="#000000"
+            android:background="#E8F4FD"
+            android:layout_marginStart="4dp" />
+
+    </LinearLayout>
+
+    <!-- AI平台和模型选择器 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
+        android:background="#F8F8F8">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="AI:"
+            android:textSize="12sp"
+            android:textColor="#666666"
+            android:layout_marginEnd="4dp" />
+
+        <!-- AI平台选择器 -->
+        <Spinner
+            android:id="@+id/platformSpinner"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:background="#FFFFFF"
+            android:layout_marginEnd="4dp" />
+
+        <!-- AI模型选择器 -->
+        <Spinner
+            android:id="@+id/modelSpinner"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1.5"
+            android:background="#FFFFFF"
+            android:layout_marginEnd="4dp" />
+
+        <!-- 配置状态指示器 -->
+        <TextView
+            android:id="@+id/configStatusIndicator"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="✓"
+            android:textSize="14sp"
+            android:textColor="#4CAF50"
+            android:background="#E8F5E8"
+            android:padding="4dp"
+            android:minWidth="24dp"
+            android:gravity="center" />
+
+    </LinearLayout>
+
+    <!-- 输入区域 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingTop="8dp">
+
+        <EditText
+            android:id="@+id/inputEditText"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:hint="@string/input_hint"
+            android:textSize="14sp"
+            android:textColor="#000000"
+            android:textColorHint="#666666"
+            android:background="#F5F5F5"
+            android:padding="8dp"
+            android:maxLines="2" />
+
+        <Button
+            android:id="@+id/sendButton"
+            android:layout_width="60dp"
+            android:layout_height="40dp"
+            android:text="@string/send"
+            android:textSize="14sp"
+            android:textColor="#000000"
+            android:background="#F0F0F0"
+            android:layout_marginStart="8dp" />
+
+    </LinearLayout>
+
+</LinearLayout> 

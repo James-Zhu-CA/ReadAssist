@@ -1,0 +1,33 @@
+id: arch-design
+when: editing
+includePaths:
+  - "**/*.kt"
+  - "**/*.java"
+return: |
+  # ReadAssist 架构设计约束
+  
+  ## 📁 目录结构约束：
+  ★ 严格按层次组织：
+    - /ui/          - Activity、Fragment、Dialog
+    - /viewmodel/   - ViewModel 类
+    - /repository/  - 数据仓库层
+    - /database/    - Room 数据库
+    - /network/     - API 接口与 Retrofit
+    - /service/     - AccessibilityService、悬浮窗服务
+    - /utils/       - 工具类与扩展函数
+  
+  ## 🏗️ 架构模式：
+  ★ 强制 MVVM：UI 不直接访问 Repository
+  ★ ViewModel 持有 Repository，Repository 协调 Database + Network
+  ★ 数据流：View ← ViewModel ← Repository ← (Room + Retrofit)
+  
+  ## 🔒 权限处理：
+  ★ 悬浮窗权限检查必须在 Service 启动前完成
+  ★ 辅助功能权限使用 AccessibilityService 标准生命周期
+  ★ 所有权限请求都要有用户友好的说明对话框
+  
+  ## 📱 墨水屏适配：
+  ★ 所有 View 背景色：#FFFFFF 或 #000000
+  ★ 文字颜色：#000000 或 #333333
+  ★ 禁用：过渡动画、阴影、透明度、渐变
+  ★ 布局：LinearLayout 优于 ConstraintLayout（简化渲染） 

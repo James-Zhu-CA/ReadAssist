@@ -1,0 +1,21 @@
+id: deps-guard
+when: editing
+includePaths:
+  - build.gradle
+return: |
+  # 依赖版本锁定 - ReadAssist 项目专用
+  ★ 不得改动已确认的依赖版本，除非同时修改 'CHANGELOG.md'
+  ★ 所有新依赖必须 ≤ 200 KB (aar) 并支持 minSdk 21
+  ★ 核心依赖版本锁定：
+    - Kotlin: 1.8.x（稳定版）
+    - AndroidX: 只使用 LTS 版本
+    - Room: 2.4.x 系列
+    - Retrofit: 2.9.x
+    - OkHttp: 4.10.x
+    - Coroutines: 1.6.x
+  ★ 禁止引入：
+    - Jetpack Compose（墨水屏不适配）
+    - 任何动画库（Performance/UX 考虑）
+    - 图片加载库（项目无需图片处理）
+    - WebView 相关（安全与性能）
+  ★ 新增依赖前必须评估：文件大小、方法数、minSdk 兼容性 

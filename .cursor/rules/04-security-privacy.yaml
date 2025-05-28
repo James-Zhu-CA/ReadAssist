@@ -1,0 +1,42 @@
+id: security-privacy
+when: editing
+includePaths:
+  - "**/*.kt"
+  - "**/*.java"
+  - "**/*.xml"
+return: |
+  # 安全与隐私保护约束
+  
+  ## 🔐 API Key 安全：
+  ★ Gemini API Key 必须加密存储：
+    - 使用 Android Keystore（推荐）或 AES 加密
+    - 禁止硬编码在代码中
+    - SharedPreferences 存储前必须加密
+  ★ 网络请求：
+    - 强制 HTTPS
+    - 添加证书固定（Certificate Pinning）
+    - 超时设置：连接 10s，读取 30s
+  
+  ## 📊 用户数据保护：
+  ★ 对话记录仅本地存储：
+    - Room 数据库文件权限：MODE_PRIVATE
+    - 支持用户手动清除所有数据
+    - 卸载时自动删除数据库
+  ★ 无用户追踪：
+    - 禁止收集设备指纹
+    - 禁止上传使用统计
+    - 禁止网络分析 SDK
+  
+  ## 🛡️ 权限最小化：
+  ★ 只申请必需权限：
+    - SYSTEM_ALERT_WINDOW（悬浮窗）
+    - BIND_ACCESSIBILITY_SERVICE（辅助功能）
+    - INTERNET（API 调用）
+  ★ 动态权限检查：
+    - 权限被拒绝时提供清晰说明
+    - 提供手动跳转系统设置的选项
+  
+  ## 🔍 代码安全：
+  ★ 输入验证：所有用户输入都要验证和清理
+  ★ 异常处理：避免泄露敏感信息到日志
+  ★ ProGuard：启用混淆保护核心逻辑 

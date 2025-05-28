@@ -1,0 +1,13 @@
+id: eink-hw-constraints
+when: always
+return: |
+  # 墨水屏硬件约束 - Supernote A5X 专项规则
+  ★ 目标设备：7" E-ink，1 GB RAM，Android 8.1（无 Google Play）
+  ★ 禁止引入：Google Play Services 与 FCM  
+  ★ APK ≤ 20 MB；方法数 < 64 K
+  ★ 只用静态 UI（禁动画）：深色底色，避免组件闪烁
+  ★ 允许依赖：okhttp3、kotlinx-coroutines、Room
+  ★ 禁止依赖：Glide、Compose、ExoPlayer
+  ★ 框架：MVVM + Repository；所有业务逻辑在 ViewModel
+
+  光标每次生成代码前都会把这段文本当作"系统提示"，从而给出符合条件的方案。 
