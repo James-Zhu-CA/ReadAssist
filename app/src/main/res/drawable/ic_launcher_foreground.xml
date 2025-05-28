@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- 书本外框 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#000000"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M25,30 L83,30 L83,78 L25,78 Z"/>
+    
+    <!-- 书本内页 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#000000"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M20,25 L78,25 L78,73 L20,73 Z"/>
+    
+    <!-- 书本装订线 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#000000"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M54,25 L54,73"/>
+    
+    <!-- AI灯泡 -->
+    <group android:translateX="54" android:translateY="49">
+        <!-- 灯泡外圈 -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#000000"
+            android:strokeWidth="2.5"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M-8,-8 C-8,-12 -4,-16 0,-16 C4,-16 8,-12 8,-8 C8,-4 6,-1 4,2 L-4,2 C-6,-1 -8,-4 -8,-8 Z"/>
+        
+        <!-- 灯泡底座 -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#000000"
+            android:strokeWidth="2"
+            android:strokeLineCap="round"
+            android:pathData="M-4,2 L4,2 M-3,4 L3,4"/>
+        
+        <!-- AI文字 -->
+        <path
+            android:fillColor="#000000"
+            android:pathData="M-3,-6 L-1,-6 L0,-3 L1,-6 L3,-6 L1,0 L-1,0 Z"/>
+        <path
+            android:fillColor="#000000"
+            android:pathData="M-3,-2 L-1,-2 L-1,0 L-3,0 Z"/>
+    </group>
+</vector> 
