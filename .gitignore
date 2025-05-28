@@ -93,6 +93,10 @@ lint/tmp/
 # Gradle Wrapper
 gradle-wrapper.jar
 
+# Gradle distribution files
+gradle-*.zip
+gradle-*/
+
 # Temporary files
 *.tmp
 *.temp
