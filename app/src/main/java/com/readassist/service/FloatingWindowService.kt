@@ -203,6 +203,28 @@ class FloatingWindowService : Service(), ScreenshotService.ScreenshotCallback {
         app = application as ReadAssistApplication
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         
+        // 创建通知渠道和前台服务通知
+        val channelId = "read_assist_foreground_channel"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = android.app.NotificationChannel(
+                channelId,
+                "ReadAssist前台服务",
+                android.app.NotificationManager.IMPORTANCE_LOW
+            )
+            val notificationManager = getSystemService(android.app.NotificationManager::class.java)
+            notificationManager.createNotificationChannel(channel)
+        }
+        
+        val notification = android.app.Notification.Builder(this, channelId)
+            .setContentTitle("ReadAssist正在运行")
+            .setContentText("点击管理应用")
+            .setSmallIcon(R.drawable.ic_launcher)
+            .setOngoing(true)
+            .build()
+            
+        // 启动前台服务，防止系统杀死
+        startForeground(1001, notification)
+        
         // 注册广播接收器
         val filter = IntentFilter().apply {
             addAction(TextAccessibilityService.ACTION_TEXT_DETECTED)

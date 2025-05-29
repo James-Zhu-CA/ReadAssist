@@ -119,6 +119,11 @@ debug/
 api_keys.properties
 secrets.properties
 
+# Keystore files (keep these secret!)
+*.jks
+*.keystore
+readassist-release.jks
+
 # Local test results
 test-results/
 test-outputs/ 

@@ -20,4 +20,10 @@
     <color name="eink_border">#FF666666</color>
     <color name="eink_button">#FFE0E0E0</color>
     <color name="ic_launcher_background">#FFB3D9FF</color>
+
+    <!-- Custom colors for status text -->
+    <color name="text_success">#4CAF50</color> <!-- Green -->
+    <color name="text_error">#F44336</color>   <!-- Red -->
+    <color name="text_warning">#FF9800</color> <!-- Orange -->
+    <color name="text_default">#333333</color> <!-- Dark Gray -->
 </resources> 

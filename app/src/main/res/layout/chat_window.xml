@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/chatWindowRootLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -104,7 +105,8 @@
             android:textSize="12sp"
             android:textColor="#000000"
             android:background="#E8F4FD"
-            android:layout_marginStart="4dp" />
+            android:layout_marginStart="4dp"
+            android:visibility="gone" />
 
     </LinearLayout>
 
@@ -170,7 +172,8 @@
         <EditText
             android:id="@+id/inputEditText"
             android:layout_width="0dp"
-            android:layout_height="40dp"
+            android:layout_height="wrap_content"
+            android:minLines="3"
             android:layout_weight="1"
             android:hint="@string/input_hint"
             android:textSize="14sp"
@@ -178,7 +181,20 @@
             android:textColorHint="#666666"
             android:background="#F5F5F5"
             android:padding="8dp"
-            android:maxLines="2" />
+            android:inputType="textMultiLine"
+            android:maxLines="5"
+            android:scrollHorizontally="false" />
+
+        <CheckBox
+            android:id="@+id/sendScreenshotCheckBox"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="附带截屏"
+            android:textSize="12sp"
+            android:textColor="#000000"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:visibility="gone" />
 
         <Button
             android:id="@+id/sendButton"

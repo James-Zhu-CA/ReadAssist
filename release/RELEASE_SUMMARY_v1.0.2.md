@@ -98,3 +98,5 @@
 ---
 
 **发布总结创建时间**: 2024年5月28日 08:10 CST 
+
+private var sendScreenshotCheckBox: CheckBox? = null 

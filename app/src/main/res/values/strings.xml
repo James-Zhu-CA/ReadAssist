@@ -79,4 +79,22 @@
     <string name="share">分享</string>
     <string name="copy">复制</string>
     <string name="retry">重试</string>
+
+    <string name="chat_message_copied">已复制到剪贴板</string>
+
+    <!-- Storage Permissions -->
+    <string name="storage_permission_status_unknown">存储权限：未知</string>
+    <string name="storage_permission_status_granted">存储权限：已授予</string>
+    <string name="storage_permission_status_denied">存储权限：未授予</string>
+    <string name="request_storage_permission">授予存储权限</string>
+
+    <!-- Generic Permission Status -->
+    <string name="status_unknown">未知</string>
+    <string name="status_granted">已授予</string>
+    <string name="status_not_granted">未授予</string>
+
+    <!-- Screenshot Permission Status -->
+    <string name="screenshot_permission_status">截屏权限：%s</string>
+
+    <!-- Accessibility Service -->
 </resources> 

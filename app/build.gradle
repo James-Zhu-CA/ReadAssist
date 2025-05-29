@@ -22,11 +22,21 @@ android {
         multiDexEnabled false
     }
 
+    signingConfigs {
+        release {
+            storeFile file('../readassist-release.jks')
+            storePassword 'readassist123'
+            keyAlias 'readassist'
+            keyPassword 'readassist123'
+        }
+    }
+
     buildTypes {
         release {
-            minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            shrinkResources true
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            shrinkResources false
+            signingConfig signingConfigs.release
         }
         debug {
             minifyEnabled false

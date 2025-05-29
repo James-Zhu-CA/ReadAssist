@@ -1,5 +1,6 @@
 package com.readassist.viewmodel
 
+import android.app.Activity
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
@@ -9,15 +10,25 @@ import com.readassist.ReadAssistApplication
 import com.readassist.repository.ChatStatistics
 import com.readassist.utils.PermissionUtils
 import kotlinx.coroutines.launch
+import android.util.Log
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
+    
+    // Define PermissionStates enum class
+    enum class PermissionStates {
+        AllGranted,
+        MissingOverlay,
+        MissingAccessibility,
+        MissingStorage,
+        MissingMultiple
+    }
     
     private val app = application as ReadAssistApplication
     private val repository = app.chatRepository
     
-    // 权限状态
-    private val _permissionStatus = MutableLiveData<PermissionUtils.PermissionStatus>()
-    val permissionStatus: LiveData<PermissionUtils.PermissionStatus> = _permissionStatus
+    // 权限状态 - Changed to use the new PermissionStates enum
+    private val _permissionStatus = MutableLiveData<PermissionStates>()
+    val permissionStatus: LiveData<PermissionStates> = _permissionStatus
     
     // 服务运行状态
     private val _isServiceRunning = MutableLiveData<Boolean>()
@@ -50,14 +61,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * 检查权限状态
      */
     fun checkPermissions() {
-        viewModelScope.launch {
-            try {
-                val status = PermissionUtils.checkAllPermissions(getApplication())
-                _permissionStatus.value = status
-            } catch (e: Exception) {
-                _errorMessage.value = "权限检查失败：${e.message}"
-            }
+        val context = getApplication<Application>().applicationContext
+        val hasOverlay = PermissionUtils.hasOverlayPermission(context)
+        val hasAccessibility = PermissionUtils.hasAccessibilityPermission(context)
+        val storageStatus = PermissionUtils.hasStoragePermissions(context)
+        val hasStorage = storageStatus.allGranted
+
+        _permissionStatus.value = when {
+            hasOverlay && hasAccessibility && hasStorage -> PermissionStates.AllGranted
+            !hasOverlay && hasAccessibility && hasStorage -> PermissionStates.MissingOverlay
+            hasOverlay && !hasAccessibility && hasStorage -> PermissionStates.MissingAccessibility
+            hasOverlay && hasAccessibility && !hasStorage -> PermissionStates.MissingStorage
+            else -> PermissionStates.MissingMultiple
         }
+        Log.d("MainViewModel", "Permission check: Overlay=$hasOverlay, Accessibility=$hasAccessibility, Storage=$hasStorage, State=${_permissionStatus.value}")
     }
     
     /**
@@ -66,7 +83,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun checkServiceStatus() {
         viewModelScope.launch {
             try {
-                val isRunning = PermissionUtils.hasAccessibilityPermission(getApplication())
+                // Changed to use isSpecificServiceRunning for TextAccessibilityService
+                val isRunning = PermissionUtils.isSpecificServiceRunning(
+                    getApplication(), 
+                    com.readassist.service.TextAccessibilityService::class.java
+                )
                 _isServiceRunning.value = isRunning
             } catch (e: Exception) {
                 _errorMessage.value = "服务状态检查失败：${e.message}"
@@ -200,5 +221,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun clearErrorMessage() {
         _errorMessage.value = ""
+    }
+
+    // Function to request storage permissions
+    fun requestStoragePermissions(activity: Activity) {
+        PermissionUtils.requestStoragePermissions(activity)
     }
 } 

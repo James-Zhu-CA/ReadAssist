@@ -1,85 +1,62 @@
-# Add project specific ProGuard rules here.
-# By default, the flags in this file are appended to flags specified
-# in ${sdk.dir}/tools/proguard/proguard-android.txt
+# ===============================================
+# ReadAssist 最保守 ProGuard 配置
+# 版本: v1.2 - 彻底解决反射问题
+# ===============================================
 
-# 基本配置
--optimizationpasses 5
+# 基本配置（关闭激进优化）
+-dontoptimize
+-dontobfuscate
 -dontusemixedcaseclassnames
 -dontskipnonpubliclibraryclasses
 -dontpreverify
 -verbose
 
-# 保留注解
--keepattributes *Annotation*
--keepattributes Signature
--keepattributes InnerClasses
--keepattributes EnclosingMethod
--keepattributes SourceFile,LineNumberTable
+# ===============================================
+# 保留所有关键属性
+# ===============================================
+-keepattributes *
 
-# 保留 Room 数据库相关
--keep class * extends androidx.room.RoomDatabase
--keep @androidx.room.Entity class *
--keep @androidx.room.Dao class *
--keep class androidx.room.** { *; }
-
-# 保留 Retrofit 相关
--keepattributes Signature
--keepclassmembernames,allowobfuscation interface * {
-    @retrofit2.http.* <methods>;
-}
--keep class retrofit2.** { *; }
--dontwarn retrofit2.**
-
-# 保留 Gson 相关
+# ===============================================
+# 全面保护 Gson 和反射
+# ===============================================
 -keep class com.google.gson.** { *; }
--keepclassmembers class * {
-    @com.google.gson.annotations.SerializedName <fields>;
-}
--dontwarn com.google.gson.**
+-keep class * implements com.google.gson.** { *; }
+-keep class * extends com.google.gson.** { *; }
 
-# 保留 OkHttp 相关
+# 保留所有反射相关类
+-keep class java.lang.reflect.** { *; }
+-keep class sun.misc.** { *; }
+
+# 保留所有类型相关的类
+-keep class java.lang.reflect.Type { *; }
+-keep class java.lang.reflect.ParameterizedType { *; }
+-keep class java.lang.reflect.GenericArrayType { *; }
+-keep class java.lang.reflect.WildcardType { *; }
+-keep class java.lang.reflect.TypeVariable { *; }
+
+# ===============================================
+# 保护项目所有类
+# ===============================================
+-keep class com.readassist.** { *; }
+
+# ===============================================
+# 保护第三方库
+# ===============================================
+-keep class retrofit2.** { *; }
 -keep class okhttp3.** { *; }
--keep interface okhttp3.** { *; }
--dontwarn okhttp3.**
--dontwarn okio.**
+-keep class okio.** { *; }
+-keep class androidx.** { *; }
+-keep class kotlinx.** { *; }
 
-# 保留数据类
--keep class com.readassist.database.** { *; }
--keep class com.readassist.network.** { *; }
-
-# 保留 Kotlin 协程
--keep class kotlinx.coroutines.** { *; }
--dontwarn kotlinx.coroutines.**
-
-# 保留应用特定类
--keep class com.readassist.ReadAssistApplication { *; }
--keep class com.readassist.service.** { *; }
--keep class com.readassist.ui.** { *; }
-
-# 保留 Android 组件
--keep public class * extends android.app.Activity
--keep public class * extends android.app.Service
--keep public class * extends android.content.BroadcastReceiver
--keep public class * extends android.content.ContentProvider
-
-# 保留 Accessibility Service
+# ===============================================
+# 保护 Android 组件
+# ===============================================
+-keep class * extends android.app.Activity { *; }
+-keep class * extends android.app.Service { *; }
+-keep class * extends android.content.BroadcastReceiver { *; }
 -keep class * extends android.accessibilityservice.AccessibilityService { *; }
 
-# 移除日志
--assumenosideeffects class android.util.Log {
-    public static *** d(...);
-    public static *** v(...);
-    public static *** i(...);
-}
-
-# 保留原生方法
--keepclasseswithmembernames class * {
-    native <methods>;
-}
-
+# ===============================================
 # 忽略警告
--dontwarn java.lang.invoke.**
--dontwarn javax.annotation.**
--dontwarn org.conscrypt.**
--dontwarn org.bouncycastle.**
--dontwarn org.openjsse.** 
+# ===============================================
+-dontwarn ** 

@@ -75,6 +75,28 @@
 
         </LinearLayout>
 
+        <!-- Storage Permission Status -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="8dp">
+            <TextView
+                android:id="@+id/tvStoragePermissionStatus"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="存储权限：未知"
+                android:textSize="16sp"/>
+            <Button
+                android:id="@+id/btnRequestStoragePermission"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="授予存储权限"
+                android:visibility="gone"/>
+        </LinearLayout>
+
         <!-- 服务状态 -->
         <TextView
             android:id="@+id/tvServiceStatus"
@@ -107,6 +129,34 @@
                 android:layout_width="120dp"
                 android:layout_height="32dp"
                 android:text="设置 API Key"
+                android:textSize="12sp"
+                android:textColor="#000000"
+                android:background="#F0F0F0" />
+
+        </LinearLayout>
+
+        <!-- 截屏权限管理 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingBottom="8dp">
+
+            <TextView
+                android:id="@+id/tvScreenshotStatus"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="截屏权限状态检查中..."
+                android:textSize="14sp"
+                android:textColor="#333333" />
+
+            <Button
+                android:id="@+id/btnScreenshotPermission"
+                android:layout_width="120dp"
+                android:layout_height="32dp"
+                android:text="授予截屏权限"
                 android:textSize="12sp"
                 android:textColor="#000000"
                 android:background="#F0F0F0" />
@@ -178,34 +228,6 @@
                 android:layout_width="100dp"
                 android:layout_height="32dp"
                 android:text="启动悬浮窗"
-                android:textSize="12sp"
-                android:textColor="#000000"
-                android:background="#F0F0F0" />
-
-        </LinearLayout>
-
-        <!-- 截屏权限管理 -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingBottom="16dp">
-
-            <TextView
-                android:id="@+id/tvScreenshotStatus"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="截屏权限状态检查中..."
-                android:textSize="14sp"
-                android:textColor="#333333" />
-
-            <Button
-                android:id="@+id/btnScreenshotPermission"
-                android:layout_width="120dp"
-                android:layout_height="32dp"
-                android:text="授予截屏权限"
                 android:textSize="12sp"
                 android:textColor="#000000"
                 android:background="#F0F0F0" />
