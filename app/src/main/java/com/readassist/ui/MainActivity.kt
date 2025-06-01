@@ -15,7 +15,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Observer
 import com.readassist.R
 import com.readassist.databinding.ActivityMainBinding
-import com.readassist.service.FloatingWindowService
+import com.readassist.service.FloatingWindowServiceNew
 import com.readassist.service.ScreenshotService
 import com.readassist.utils.ApiKeyHelper
 import com.readassist.utils.PermissionUtils
@@ -182,8 +182,7 @@ class MainActivity : AppCompatActivity() {
         
         // 历史记录按钮
         binding.btnHistory.setOnClickListener {
-            // TODO: 实现历史记录界面
-            showMessage("历史记录功能即将推出")
+            startActivity(Intent(this, com.readassist.ui.HistoryActivity::class.java))
         }
         
         // 清除数据按钮
@@ -697,7 +696,7 @@ class MainActivity : AppCompatActivity() {
     private fun toggleFloatingWindowService() {
         if (isFloatingWindowServiceRunning()) {
             // 停止悬浮窗服务
-            stopService(Intent(this, FloatingWindowService::class.java))
+            stopService(Intent(this, FloatingWindowServiceNew::class.java))
             showMessage("悬浮窗服务已停止")
         } else {
             // 检查权限后启动悬浮窗服务
@@ -717,7 +716,7 @@ class MainActivity : AppCompatActivity() {
      * 启动悬浮窗服务
      */
     private fun startFloatingWindowService() {
-        val intent = Intent(this, FloatingWindowService::class.java)
+        val intent = Intent(this, FloatingWindowServiceNew::class.java)
         startForegroundService(intent)
         showMessage("悬浮窗服务已启动")
     }
@@ -728,7 +727,7 @@ class MainActivity : AppCompatActivity() {
     private fun isFloatingWindowServiceRunning(): Boolean {
         val manager = getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager
         for (service in manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (FloatingWindowService::class.java.name == service.service.className) {
+            if (FloatingWindowServiceNew::class.java.name == service.service.className) {
                 return true
             }
         }

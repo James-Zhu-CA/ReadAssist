@@ -36,7 +36,7 @@ class PreferenceManager(private val context: Context) {
         private const val KEY_AI_SETUP_COMPLETED = "ai_setup_completed"
         
         // 默认值
-        private const val DEFAULT_PROMPT = "请用中文解释以下文字：\n\n[TEXT]"
+        private const val DEFAULT_PROMPT = "请用用户提问的语言回答问题：\n\n[TEXT]"
     }
     
     // 普通偏好设置
@@ -277,11 +277,28 @@ class PreferenceManager(private val context: Context) {
         return normalPrefs.getBoolean(KEY_SCREENSHOT_PERMISSION_GRANTED, false)
     }
     
+    /**
+     * 设置截屏权限数据（同时设置resultCode和resultDataUri）
+     */
     fun setScreenshotPermissionData(resultCode: Int, resultDataUri: String?) {
         normalPrefs.edit()
             .putInt(KEY_SCREENSHOT_RESULT_CODE, resultCode)
             .putString(KEY_SCREENSHOT_RESULT_DATA, resultDataUri)
             .apply()
+    }
+    
+    /**
+     * 设置截屏权限的结果代码
+     */
+    fun setScreenshotResultCode(resultCode: Int) {
+        normalPrefs.edit().putInt(KEY_SCREENSHOT_RESULT_CODE, resultCode).apply()
+    }
+    
+    /**
+     * 设置截屏权限的结果数据URI
+     */
+    fun setScreenshotResultDataUri(resultDataUri: String?) {
+        normalPrefs.edit().putString(KEY_SCREENSHOT_RESULT_DATA, resultDataUri).apply()
     }
     
     fun getScreenshotResultCode(): Int {
@@ -295,6 +312,16 @@ class PreferenceManager(private val context: Context) {
     fun clearScreenshotPermission() {
         normalPrefs.edit()
             .remove(KEY_SCREENSHOT_PERMISSION_GRANTED)
+            .remove(KEY_SCREENSHOT_RESULT_CODE)
+            .remove(KEY_SCREENSHOT_RESULT_DATA)
+            .apply()
+    }
+    
+    /**
+     * 清除截屏权限结果数据
+     */
+    fun clearScreenshotResultData() {
+        normalPrefs.edit()
             .remove(KEY_SCREENSHOT_RESULT_CODE)
             .remove(KEY_SCREENSHOT_RESULT_DATA)
             .apply()

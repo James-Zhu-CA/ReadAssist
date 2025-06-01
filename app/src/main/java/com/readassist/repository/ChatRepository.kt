@@ -7,6 +7,7 @@ import com.readassist.network.ApiResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.util.*
+import android.util.Log
 
 class ChatRepository(
     private val chatDao: ChatDao,
@@ -180,6 +181,59 @@ class ChatRepository(
         chatDao.deleteAllMessages()
         chatDao.deleteAllSessions()
         geminiRepository.clearCache()
+    }
+    
+    /**
+     * 添加消息到会话
+     */
+    suspend fun addMessageToSession(sessionId: String, chatItem: com.readassist.service.ChatItem) {
+        try {
+            // 创建聊天记录实体
+            val chatEntity = ChatEntity(
+                sessionId = sessionId,
+                bookName = "笔记", // 使用更友好的默认值
+                appPackage = "com.readassist", // 使用本应用包名作为默认值
+                userMessage = chatItem.userMessage,
+                aiResponse = chatItem.aiMessage,
+                promptTemplate = "", // 可以设置默认值或从偏好设置中获取
+                timestamp = System.currentTimeMillis()
+            )
+            
+            // 尝试获取会话信息以补充缺失字段
+            val session = chatDao.getSession(sessionId)
+            if (session != null) {
+                val updatedEntity = chatEntity.copy(
+                    bookName = session.bookName,
+                    appPackage = session.appPackage
+                )
+                // 保存消息
+                chatDao.insertChatMessage(updatedEntity)
+                
+                // 更新会话信息
+                updateSession(sessionId, session.bookName, session.appPackage)
+            } else {
+                // 无法找到会话信息，使用默认值创建会话
+                Log.d("ChatRepository", "无法找到会话 $sessionId，使用默认值创建")
+                
+                // 从会话ID中尝试提取应用和书籍信息
+                val parts = sessionId.split("_")
+                val extractedApp = if (parts.size > 0) parts[0] else "com.readassist"
+                val extractedBook = if (parts.size > 1) parts[1] else "笔记"
+                
+                // 保存消息
+                val finalEntity = chatEntity.copy(
+                    bookName = extractedBook,
+                    appPackage = extractedApp
+                )
+                chatDao.insertChatMessage(finalEntity)
+                
+                // 创建会话
+                updateSession(sessionId, extractedBook, extractedApp)
+            }
+        } catch (e: Exception) {
+            Log.e("ChatRepository", "保存消息失败", e)
+            throw e
+        }
     }
     
     /**

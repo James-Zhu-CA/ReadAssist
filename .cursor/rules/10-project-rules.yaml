@@ -1,0 +1,135 @@
+name: 项目规则和开发流程规范
+description: |
+  ReadAssist项目的代码规范、架构设计和文档更新标准，确保所有开发活动遵循一致的流程和标准。
+  本规则与其他规则文件（01-09）互相补充，特别关注模块化设计和文档维护流程。
+
+# 参考的现有规则
+references:
+  - 03-arch-design.yaml: 基础MVVM架构和目录结构规范
+  - 08-project-specs.yaml: 项目功能需求和技术架构要求
+
+rules:
+  # 代码架构规范
+  - name: 模块化设计原则
+    description: |
+      项目采用模块化设计，核心服务通过专业化的管理器类实现各功能。
+      每个管理器类只负责一项核心功能，遵循单一职责原则。
+      此为对03-arch-design.yaml中MVVM架构的扩展和细化。
+    examples:
+      - FloatingButtonManager：管理悬浮按钮的显示和交互
+      - ChatWindowManager：管理聊天窗口的UI和交互
+      - SessionManager：管理聊天会话的创建和维护
+      - ScreenshotManager：管理截屏功能和权限
+      - AiCommunicationManager：处理AI通信
+      - AiConfigurationManager：管理AI配置
+      - TextSelectionManager：处理文本选择
+
+  - name: 接口通信规范
+    description: |
+      模块间通过定义明确的接口和回调进行通信，避免直接依赖。
+      服务类作为协调者实现各管理器的回调接口。
+    examples:
+      - 使用回调接口通知事件：ScreenshotCallbacks, TextSelectionCallbacks
+      - 通过服务类中转数据，避免管理器间直接通信
+      - 使用LocalBroadcastManager处理跨组件通信
+
+  - name: 依赖注入原则
+    description: |
+      通过构造函数传入依赖，而不是在类内部创建依赖实例。
+      这便于测试和降低组件间耦合。
+    examples:
+      - 推荐：class SessionManager(private val repository: ChatRepository)
+      - 不推荐：在类内部直接创建依赖实例
+
+  # 代码规范
+  - name: 代码风格统一
+    description: |
+      遵循Kotlin官方代码风格，保持代码格式统一。
+      使用一致的命名规范和注释风格。
+    examples:
+      - 类名：采用PascalCase（如FloatingButtonManager）
+      - 方法名和变量名：采用camelCase（如setButtonVisibility）
+      - 常量：采用UPPER_SNAKE_CASE（如BUTTON_SIZE）
+      - 使用文档注释（/***/）说明类和公共方法的功能
+
+  - name: 日志标准
+    description: |
+      每个类使用固定的TAG便于过滤，采用统一的日志级别和格式。
+      关键操作和状态变化必须有日志记录。
+    examples:
+      - 定义TAG：private const val TAG = "ChatWindowManager"
+      - 使用统一前缀：Log.d(TAG, "📸 截屏成功")
+      - 错误日志：Log.e(TAG, "❌ 操作失败", exception)
+
+  # 文档更新规范
+  - name: 版本文档更新流程
+    description: |
+      每次功能更新或架构调整后，必须更新相关文档，包括版本说明、开发指南和README。
+    procedure:
+      - 1. 更新CHANGELOG.md，添加版本号、日期和变更内容
+      - 2. 如有架构变更，更新或创建VERSION_NOTES.md详细说明
+      - 3. 更新DEVELOPER_GUIDE.md，确保开发指南与当前架构一致
+      - 4. 在README.md中添加简要的最新更新说明
+      - 5. 如有新增配置项，更新配置文档
+
+  - name: 文档结构规范
+    description: |
+      项目文档应遵循统一的结构和格式，确保内容清晰可读。
+    standards:
+      - CHANGELOG.md：使用语义化版本格式，按版本号降序排列
+      - VERSION_NOTES.md：包含背景、目标、方案、详细说明和效果评估
+      - DEVELOPER_GUIDE.md：包含架构概述、开发指南、最佳实践和常见问题
+      - README.md：包含项目简介、功能特点、安装使用说明和最新更新
+
+  # 开发流程规范
+  - name: 功能开发流程
+    description: |
+      新功能开发应遵循标准流程，确保代码质量和架构一致性。
+    procedure:
+      - 1. 明确功能需求和设计，确定涉及的管理器
+      - 2. 如需新建管理器，遵循模块化设计原则
+      - 3. 实现功能代码，添加适当的日志和注释
+      - 4. 编写单元测试，确保代码质量
+      - 5. 更新相关文档，说明新功能的使用方法
+      - 6. 代码审查和测试，确保无回归问题
+      - 7. 合并到主分支并发布
+
+  - name: 重构规范
+    description: |
+      代码重构应遵循渐进式改进原则，保持向后兼容性和功能稳定性。
+    procedure:
+      - 1. 明确重构目标和范围，制定详细计划
+      - 2. 保留原有代码，同时开发新的实现
+      - 3. 添加适当的迁移策略，确保平稳过渡
+      - 4. 全面测试新实现，确保功能一致性
+      - 5. 更新相关文档，详细说明架构变更
+      - 6. 在稳定后逐步淘汰旧实现
+
+  - name: 测试标准
+    description: |
+      项目应有完善的测试覆盖，包括单元测试、集成测试和UI测试。
+      此规则与09-debug-testing.yaml互补，更关注测试类型和范围。
+    standards:
+      - 单元测试：测试各管理器的独立功能
+      - 集成测试：测试管理器间的交互
+      - UI测试：测试用户界面和交互流程
+      - 模拟测试：使用mock对象模拟依赖
+
+  # 错误处理规范
+  - name: 错误处理标准
+    description: |
+      统一的错误处理机制，确保应用稳定性和用户体验。
+    standards:
+      - 使用try-catch包装可能异常的操作
+      - 记录详细的错误日志，包括异常信息和堆栈
+      - 通过回调或状态更新通知错误情况
+      - 提供用户友好的错误提示
+      - 实现错误恢复机制，避免应用崩溃
+
+# 执行建议
+execution:
+  - 每次提交前，检查代码是否符合上述规范
+  - 定期进行代码审查，确保规范的落实
+  - 使用静态代码分析工具检查代码质量
+  - 建立CI/CD流程，自动化测试和部署
+  - 定期更新文档，确保与代码保持一致 

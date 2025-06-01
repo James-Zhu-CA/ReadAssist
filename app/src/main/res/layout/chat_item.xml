@@ -9,15 +9,14 @@
         android:id="@+id/messageContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:background="@drawable/message_border"
         android:layout_margin="2dp">
 
         <TextView
             android:id="@+id/messageTextView"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:textSize="14sp"
             android:textColor="#000000"
             android:lineSpacingMultiplier="1.2"

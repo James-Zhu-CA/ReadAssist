@@ -19,7 +19,7 @@ class GeminiRepository(private val preferenceManager: PreferenceManager) {
         private const val MAX_TEXT_LENGTH = 2000
         private const val CACHE_DURATION_MS = 3600_000L // 1小时
         private const val MAX_CACHE_SIZE = 5
-        private const val SYSTEM_PROMPT = "你是一个专业的阅读助手，请用中文回答问题"
+        private const val SYSTEM_PROMPT = "你是一个专业的阅读助手，请用用户指定的语言回答问题，回答完后根据之前的问题猜测用户可能会有的问题，请用户问问题。"
         private const val MAX_RETRY_COUNT = 3
     }
     
@@ -98,31 +98,18 @@ class GeminiRepository(private val preferenceManager: PreferenceManager) {
         }
         Log.d(TAG, "✅ API Key已验证，长度: ${apiKey.length}")
         
-        // 检查图片大小，如果太大则压缩
+        // 检查图片大小，如果太大则压缩 - 但不创建新的Bitmap对象
         val pixelCount = bitmap.width * bitmap.height
         Log.d(TAG, "📊 图片像素总数: $pixelCount")
         
-        val processedBitmap = if (pixelCount > 2073600) { // 大于1920x1080
-            Log.d(TAG, "📦 图片过大，开始压缩...")
-            val scale = kotlin.math.sqrt(2073600.0 / pixelCount)
-            val newWidth = (bitmap.width * scale).toInt()
-            val newHeight = (bitmap.height * scale).toInt()
-            Log.d(TAG, "📏 压缩比例: $scale, 新尺寸: ${newWidth}x${newHeight}")
-            
-            val scaledBitmap = Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
-            Log.d(TAG, "✅ 图片压缩完成")
-            scaledBitmap
-        } else {
-            Log.d(TAG, "📦 图片尺寸合适，无需压缩")
-            bitmap
-        }
-        
-        Log.d(TAG, "📐 处理后图片尺寸: ${processedBitmap.width}x${processedBitmap.height}")
+        // 重要：不再在这里创建新的Bitmap对象，而是直接使用传入的bitmap
+        // 注释掉创建压缩Bitmap的代码，即使图片较大也直接使用
+        Log.d(TAG, "📦 直接使用原始图片，由系统内部处理压缩")
         
         // 将图片转换为Base64
         Log.d(TAG, "🔄 开始Base64转换...")
         val base64Image = try {
-            val result = bitmapToBase64(processedBitmap)
+            val result = bitmapToBase64(bitmap)
             Log.d(TAG, "✅ Base64转换成功")
             result
         } catch (e: Exception) {
@@ -145,6 +132,12 @@ class GeminiRepository(private val preferenceManager: PreferenceManager) {
         val cacheKey = generateCacheKey("image_$prompt", context)
         Log.d(TAG, "🔑 缓存键: $cacheKey")
         
+        // 再次检查图片是否还有效（可能在Base64转换过程中被回收）
+        if (bitmap.isRecycled) {
+            Log.e(TAG, "❌ 请求前图片已被回收")
+            return ApiResult.Error(Exception("图片在处理过程中被回收"))
+        }
+        
         Log.d(TAG, "🚀 执行API请求...")
         val result = executeRequest(apiKey, request, cacheKey)
         
@@ -162,6 +155,9 @@ class GeminiRepository(private val preferenceManager: PreferenceManager) {
                 Log.e(TAG, "🌐 网络错误: ${result.message}")
             }
         }
+        
+        // 注意：不在这里回收bitmap，由调用方负责
+        Log.d(TAG, "♻️ 图片使用完毕，但不回收，由调用方负责")
         
         Log.d(TAG, "🖼️ === sendImage 结束 ===")
         return result
@@ -346,8 +342,7 @@ class GeminiRepository(private val preferenceManager: PreferenceManager) {
 请按以下要求分析截图：
 1. 如果截图有高亮选择，请先输出高亮部分的文字然后解读，如果没有则对全屏文字进行解读，不需要全文输出，只针对你认为重要的句子进行原文输出即可。
 2. 为避免触发版权保护机制，请不要一整段原文输出。
-3. 整体回答要简要明了，不要超过300字。
-4. 请用户提问题将对话进行下去。"""
+3. 整体回答要简要明了，不要超过300字。"""
 
         val finalPrompt = basePrompt + imageAnalysisGuidance
         
@@ -401,6 +396,12 @@ class GeminiRepository(private val preferenceManager: PreferenceManager) {
         Log.d(TAG, "🔍 Bitmap配置: ${bitmap.config}")
         Log.d(TAG, "📊 Bitmap字节数: ${bitmap.byteCount}")
         
+        // 检查bitmap有效性
+        if (bitmap.isRecycled) {
+            Log.e(TAG, "❌ Bitmap已被回收")
+            throw IllegalArgumentException("图片已被回收，无法转换为Base64")
+        }
+        
         val outputStream = ByteArrayOutputStream()
         
         // 使用JPEG格式以获得更好的压缩比，同时保持质量
@@ -431,12 +432,27 @@ class GeminiRepository(private val preferenceManager: PreferenceManager) {
             }
         }
         
+        // 释放输出流资源
+        try {
+            outputStream.close()
+        } catch (e: Exception) {
+            Log.w(TAG, "关闭输出流失败", e)
+        }
+        
         Log.d(TAG, "🔄 开始Base64编码...")
         val base64Result = Base64.encodeToString(byteArray, Base64.NO_WRAP)
         
         if (base64Result.isBlank()) {
             Log.e(TAG, "❌ Base64编码结果为空")
             throw Exception("Base64编码失败")
+        }
+        
+        // 再次检查bitmap是否仍然有效（确保未被回收）
+        if (bitmap.isRecycled) {
+            Log.e(TAG, "❌ Base64编码后，发现Bitmap已被回收")
+            // 这可能是内存压力导致的垃圾收集，但我们仍继续处理
+        } else {
+            Log.d(TAG, "✅ Bitmap在Base64编码后仍然有效")
         }
         
         Log.d(TAG, "✅ Base64编码成功")
@@ -495,16 +511,7 @@ class GeminiRepository(private val preferenceManager: PreferenceManager) {
         when (finishReason) {
             "RECITATION" -> {
                 Log.w(TAG, "⚠️ 内容被Gemini识别为可能涉及版权保护")
-                return """📚 检测到受保护内容
-
-这张图片可能包含受版权保护的材料（如书籍、论文等），Google Gemini 出于版权考虑无法直接分析。
-
-💡 建议：
-1. 尝试截取更小的文字片段
-2. 避免包含书籍封面、标题页等
-3. 可以手动输入文字内容进行讨论
-
-如需分析学习资料，请确保内容符合学术使用规范。"""
+                return """📚 检测到受保护内容，可尝试重复提交或切换模型再提交。"""
             }
             "SAFETY" -> {
                 Log.w(TAG, "⚠️ 内容被安全过滤器阻止")

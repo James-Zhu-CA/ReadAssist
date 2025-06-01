@@ -2638,8 +2638,8 @@ class FloatingWindowService : Service(), ScreenshotService.ScreenshotCallback {
             chatListView?.setSelection(chatAdapter?.count?.minus(1) ?: 0)
             if (saveToDb && currentSessionId.isNotEmpty()) {
                 try {
-                    // app.chatRepository.addMessageToSession(currentSessionId, chatItem)
-                    // 数据库保存操作暂时注释掉，需要实现相应的Repository方法
+                    app.chatRepository.addMessageToSession(currentSessionId, chatItem)
+                    // 数据库保存操作启用
                 } catch (e: Exception) {
                     Log.e(TAG, "Error saving message to DB", e)
                 }

@@ -17,6 +17,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     
+    <!-- 振动权限 -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    
     <!-- 辅助功能服务权限 -->
     <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE"
         tools:ignore="ProtectedPermissions" />
@@ -51,20 +54,61 @@
             android:exported="false"
             android:parentActivityName=".ui.MainActivity" />
 
+        <!-- 历史记录页面 Activity -->
+        <activity
+            android:name=".ui.HistoryActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.MainActivity" />
+
+        <!-- 会话详情页面 Activity -->
+        <activity
+            android:name=".ui.SessionDetailActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.HistoryActivity" />
+
         <!-- 截屏权限请求 Activity -->
         <activity
             android:name=".ui.ScreenshotPermissionActivity"
-            android:exported="false"
+            android:exported="true"
             android:theme="@style/Theme.ReadAssist"
-            android:launchMode="singleTask"
+            android:launchMode="singleInstance"
             android:excludeFromRecents="true"
-            android:taskAffinity=""
+            android:taskAffinity=".screenshot"
             android:configChanges="orientation|screenSize|keyboardHidden"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="portrait"
+            android:noHistory="true">
+            <intent-filter>
+                <action android:name="com.readassist.REQUEST_SCREENSHOT_PERMISSION" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- 截屏权限结果接收 Activity -->
+        <activity
+            android:name=".ui.ScreenshotResultActivity"
+            android:exported="true"
+            android:theme="@style/Theme.ReadAssist.Translucent"
+            android:launchMode="singleInstance"
+            android:excludeFromRecents="true"
+            android:taskAffinity=".screenshot.result"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:noHistory="true">
+            <intent-filter>
+                <action android:name="com.readassist.PROCESS_SCREENSHOT_RESULT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
 
         <!-- 悬浮窗服务 -->
         <service
             android:name=".service.FloatingWindowService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
+
+        <!-- 重构后的悬浮窗服务 -->
+        <service
+            android:name=".service.FloatingWindowServiceNew"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />

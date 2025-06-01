@@ -344,11 +344,11 @@ class TextAccessibilityService : AccessibilityService() {
      */
     private fun startFloatingWindowService() {
         try {
-            val intent = Intent(this, FloatingWindowService::class.java)
+            val intent = Intent(this, FloatingWindowServiceNew::class.java)
             startService(intent)
-            Log.d(TAG, "FloatingWindowService started")
+            Log.d(TAG, "FloatingWindowServiceNew started")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to start FloatingWindowService", e)
+            Log.e(TAG, "Failed to start FloatingWindowServiceNew", e)
         }
     }
     
@@ -357,11 +357,11 @@ class TextAccessibilityService : AccessibilityService() {
      */
     private fun stopFloatingWindowService() {
         try {
-            val intent = Intent(this, FloatingWindowService::class.java)
+            val intent = Intent(this, FloatingWindowServiceNew::class.java)
             stopService(intent)
-            Log.d(TAG, "FloatingWindowService stopped")
+            Log.d(TAG, "FloatingWindowServiceNew stopped")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to stop FloatingWindowService", e)
+            Log.e(TAG, "Failed to stop FloatingWindowServiceNew", e)
         }
     }
     
@@ -575,6 +575,15 @@ class TextAccessibilityService : AccessibilityService() {
      * 从标题中提取书名
      */
     private fun extractBookNameFromTitle(title: String): String {
+        // 如果标题是Android类名或布局名称，直接返回空
+        if (title.startsWith("android.") || 
+            title.contains("Layout") || 
+            title.contains("View") ||
+            title.contains("$")) {
+            Log.d(TAG, "🚫 检测到Android组件名称，不提取书籍名: $title")
+            return ""
+        }
+        
         // 移除常见的应用后缀
         val cleanTitle = title
             .replace(" - Adobe Acrobat Reader", "")
@@ -583,6 +592,7 @@ class TextAccessibilityService : AccessibilityService() {
             .replace(" - SuperNote", "")
             .replace("SuperNote Launcher", "")
             .replace("com.ratta.supernote.launcher", "")
+            .replace("com.supernote.document", "")
             .replace(".pdf", "")
             .replace(".epub", "")
             .replace(".txt", "")
@@ -590,11 +600,24 @@ class TextAccessibilityService : AccessibilityService() {
             .replace(".docx", "")
             .trim()
         
-        return if (cleanTitle.length > 50) {
+        // 如果清理后的标题为空或看起来像是一个类名，则不使用它
+        if (cleanTitle.isEmpty() || 
+            cleanTitle.contains(".") || 
+            cleanTitle == "android" ||
+            cleanTitle.length < 2) {
+            Log.d(TAG, "🚫 标题清理后无效: '$cleanTitle'，原始: '$title'")
+            return ""
+        }
+        
+        // 如果标题过长，截断它
+        val finalTitle = if (cleanTitle.length > 50) {
             cleanTitle.take(50) + "..."
         } else {
-            cleanTitle.ifEmpty { "Supernote阅读器" }
+            cleanTitle
         }
+        
+        Log.d(TAG, "📚 提取书籍名称: '$finalTitle'，原始: '$title'")
+        return finalTitle
     }
     
     /**
@@ -738,5 +761,122 @@ class TextAccessibilityService : AccessibilityService() {
         }
         Log.d(TAG, "❌ 剪贴板无有效文本可供请求。")
         // Optionally, notify error or send empty: notifyTextSelectionError()
+    }
+
+    /**
+     * 广播选中文本，通知浮动窗口服务
+     */
+    private fun broadcastSelectedText(text: String, isSelection: Boolean = true) {
+        // 不要过于频繁地广播相同的文本
+        if (text == lastProcessedText && text.length < 100) {
+            Log.d(TAG, "跳过重复文本广播")
+            return
+        }
+        
+        lastProcessedText = text
+        
+        // 确保有效的书籍名称
+        if (currentBookName.isEmpty() || 
+            currentBookName.startsWith("android.") ||
+            currentBookName.contains("Layout") ||
+            currentBookName.contains("View") ||
+            currentBookName.contains(".")) {
+            
+            // 尝试从上下文中提取一个合理的书籍名称
+            val appName = when (currentAppPackage) {
+                "com.supernote.document" -> "Supernote文档"
+                "com.ratta.supernote.launcher" -> "Supernote阅读"
+                "com.adobe.reader" -> "Adobe PDF阅读器"
+                "com.kingsoft.moffice_eng" -> "WPS Office"
+                "com.readassist" -> "ReadAssist"
+                else -> currentAppPackage.substringAfterLast(".")
+            }
+            
+            // 根据文本内容尝试提取书籍标题（取前几个字作为大致的书名）
+            val possibleTitle = if (text.length > 30) {
+                text.take(30).trim() + "..."
+            } else if (text.isNotEmpty()) {
+                text.trim()
+            } else {
+                appName
+            }
+            
+            // 更新当前书籍名称
+            currentBookName = possibleTitle
+            Log.d(TAG, "📚 从选中文本更新书籍名称: $currentBookName")
+        }
+        
+        val intent = Intent(if (isSelection) ACTION_TEXT_SELECTED else ACTION_TEXT_DETECTED).apply {
+            putExtra(EXTRA_DETECTED_TEXT, text)
+            putExtra(EXTRA_SOURCE_APP, currentAppPackage)
+            putExtra(EXTRA_BOOK_NAME, currentBookName)
+            putExtra(EXTRA_IS_SELECTION, isSelection)
+            
+            // 查找并添加文本选择的位置信息（如果有）
+            val selectionBounds = getTextSelectionBounds()
+            if (selectionBounds != null) {
+                putExtra("SELECTION_X", selectionBounds.left)
+                putExtra("SELECTION_Y", selectionBounds.top)
+                putExtra("SELECTION_WIDTH", selectionBounds.width())
+                putExtra("SELECTION_HEIGHT", selectionBounds.height())
+                Log.d(TAG, "📍 添加选择位置到广播: $selectionBounds")
+            }
+        }
+        
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+        Log.d(TAG, "📢 广播" + (if (isSelection) "选中" else "检测到的") + "文本: ${text.take(100)}...")
+    }
+
+    /**
+     * 获取文本选择的边界位置
+     */
+    private fun getTextSelectionBounds(): android.graphics.Rect? {
+        // 从根节点尝试查找选中的文本节点并获取其位置
+        try {
+            val rootNode = rootInActiveWindow ?: return null
+            
+            // 尝试查找被选中的节点
+            val selectedNode = findSelectedNode(rootNode)
+            if (selectedNode != null) {
+                val rect = android.graphics.Rect()
+                selectedNode.getBoundsInScreen(rect)
+                selectedNode.recycle()
+                
+                if (rect.width() > 0 && rect.height() > 0) {
+                    Log.d(TAG, "📍 找到选中文本位置: $rect")
+                    return rect
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "获取文本选择位置时出错", e)
+        }
+        
+        return null
+    }
+    
+    /**
+     * 查找被选中的节点
+     */
+    private fun findSelectedNode(rootNode: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        // 检查当前节点是否被选中
+        if (rootNode.isSelected) {
+            return rootNode
+        }
+        
+        // 递归查找子节点
+        for (i in 0 until rootNode.childCount) {
+            val child = rootNode.getChild(i) ?: continue
+            
+            try {
+                val selectedNode = findSelectedNode(child)
+                if (selectedNode != null) {
+                    return selectedNode
+                }
+            } finally {
+                child.recycle()
+            }
+        }
+        
+        return null
     }
 } 

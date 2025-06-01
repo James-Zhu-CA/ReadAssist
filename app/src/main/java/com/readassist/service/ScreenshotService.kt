@@ -4,8 +4,11 @@ import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.PixelFormat
+import android.graphics.Rect
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.media.Image
@@ -17,6 +20,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.Surface
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.WindowManager
@@ -29,6 +33,13 @@ import java.nio.ByteBuffer
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.TimeoutCancellationException
+import android.view.PixelCopy
+import java.io.File
+import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import androidx.annotation.RequiresApi
 
 class ScreenshotService : Service() {
     
@@ -113,12 +124,44 @@ class ScreenshotService : Service() {
         Log.d(TAG, "权限Intent: $resultData")
         
         try {
-            val mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-            mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, resultData)
+            // 验证传入的权限数据
+            if (resultCode != Activity.RESULT_OK) {
+                Log.e(TAG, "❌ 权限结果码无效: $resultCode")
+                return
+            }
             
-            Log.d(TAG, "✅ MediaProjection创建成功: ${mediaProjection != null}")
+            if (resultData.extras == null) {
+                Log.e(TAG, "❌ 权限Intent数据为空")
+                return
+            }
+            
+            // 获取系统服务
+            val mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+            
+            // 尝试创建MediaProjection
+            Log.d(TAG, "正在创建MediaProjection...")
+            try {
+                mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, resultData)
+                Log.d(TAG, "✅ MediaProjection创建结果: ${mediaProjection != null}")
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ 创建MediaProjection失败", e)
+                mediaProjection = null
+            }
             
             if (mediaProjection != null) {
+                // 设置MediaProjection回调
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    mediaProjection?.registerCallback(object : MediaProjection.Callback() {
+                        override fun onStop() {
+                            Log.w(TAG, "⚠️ MediaProjection被系统停止了")
+                            serviceScope.launch(Dispatchers.Main) {
+                                screenshotCallback?.onScreenshotFailed("截屏权限已被系统收回，请重新授权")
+                            }
+                        }
+                    }, null)
+                }
+                
+                // 初始化VirtualDisplay
                 setupVirtualDisplay()
                 Log.d(TAG, "✅ 截屏服务初始化完成")
                 
@@ -148,7 +191,17 @@ class ScreenshotService : Service() {
         try {
             val windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
             val displayMetrics = DisplayMetrics()
-            windowManager.defaultDisplay.getMetrics(displayMetrics)
+            
+            // 获取屏幕尺寸（兼容各种Android版本）
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val bounds = windowManager.currentWindowMetrics.bounds
+                displayMetrics.widthPixels = bounds.width()
+                displayMetrics.heightPixels = bounds.height()
+                displayMetrics.densityDpi = resources.configuration.densityDpi
+            } else {
+                @Suppress("DEPRECATION")
+                windowManager.defaultDisplay.getMetrics(displayMetrics)
+            }
             
             val density = displayMetrics.densityDpi
             val width = displayMetrics.widthPixels
@@ -164,8 +217,8 @@ class ScreenshotService : Service() {
                 Log.w(TAG, "清理旧资源时出现异常", e)
             }
             
-            // 创建新的ImageReader
-            imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 1)
+            // 创建新的ImageReader - 增加缓冲区大小到2
+            imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
             Log.d(TAG, "✅ ImageReader创建成功: ${imageReader != null}")
             
             if (mediaProjection == null) {
@@ -183,15 +236,18 @@ class ScreenshotService : Service() {
                 "ReadAssist-Screenshot",
                 width, height, density,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                imageReader?.surface, null, null
+                imageReader?.surface, null, backgroundHandler
             )
             
             Log.d(TAG, "✅ VirtualDisplay创建结果: ${virtualDisplay != null}")
             
             if (virtualDisplay != null) {
                 Log.d(TAG, "🎉 Virtual display创建成功: ${width}x${height}")
-                // 给VirtualDisplay一些时间初始化
-                Thread.sleep(500)
+                // 给VirtualDisplay一些时间初始化 - 增加初始化时间为1秒，墨水屏需要更长时间
+                serviceScope.launch {
+                    delay(1000)
+                    Log.d(TAG, "VirtualDisplay初始化等待完成")
+                }
             } else {
                 Log.e(TAG, "❌ VirtualDisplay创建失败")
             }
@@ -223,18 +279,16 @@ class ScreenshotService : Service() {
         Log.d(TAG, "VirtualDisplay状态: ${virtualDisplay != null}")
         Log.d(TAG, "ImageReader状态: ${imageReader != null}")
         
-        val reader = imageReader ?: run {
-            Log.e(TAG, "ImageReader not initialized, attempting to reinitialize...")
+        // 检查服务状态
+        if (mediaProjection == null || virtualDisplay == null || imageReader == null) {
+            Log.e(TAG, "❌ 截屏服务状态异常，尝试重新初始化...")
             // 尝试重新初始化
-            if (mediaProjection != null) {
-                setupVirtualDisplay()
-                // 重新检查
-                if (imageReader == null) {
-                    screenshotCallback?.onScreenshotFailed("截屏服务初始化失败")
-                    return
-                }
-            } else {
-                screenshotCallback?.onScreenshotFailed("截屏权限已失效，请重新授权")
+            setupVirtualDisplay()
+            
+            // 重新检查
+            if (mediaProjection == null || virtualDisplay == null || imageReader == null) {
+                Log.e(TAG, "❌ 重新初始化失败，无法继续")
+                screenshotCallback?.onScreenshotFailed("截屏服务初始化失败，请重新授权")
                 return
             }
         }
@@ -257,6 +311,18 @@ class ScreenshotService : Service() {
                             
                             Log.d(TAG, "📋 准备设置ImageReader监听器...")
                             
+                            // 先尝试直接获取图像（不等待）
+                            try {
+                                val directImage = currentReader.acquireLatestImage()
+                                if (directImage != null) {
+                                    Log.d(TAG, "✅ 直接获取图像成功！")
+                                    return@withContext directImage
+                                }
+                            } catch (e: Exception) {
+                                Log.d(TAG, "直接获取图像失败，将使用监听器方式")
+                            }
+                            
+                            // 设置监听器
                             currentReader.setOnImageAvailableListener({
                                 try {
                                     Log.d(TAG, "🔔 ImageReader监听器被触发！")
@@ -268,26 +334,24 @@ class ScreenshotService : Service() {
                                     Log.d(TAG, "🔓 countDown - 释放等待锁")
                                     latch.countDown()
                                 }
-                            }, Handler(Looper.getMainLooper()))
+                            }, backgroundHandler)
                             
                             isListenerSet = true
                             Log.d(TAG, "✅ ImageReader监听器设置完成")
                             
-                            // 针对墨水屏设备延长超时时间：
-                            // 前两次尝试: 15秒 (适应慢刷新)
-                            // 后三次尝试: 20秒 (给设备更多时间)
-                            val timeoutSeconds = if (attempt < 2) 15L else 20L
+                            // 针对墨水屏设备延长超时时间
+                            val timeoutSeconds = if (attempt < 2) 10L else 15L
                             Log.d(TAG, "⏰ 设置超时时间: ${timeoutSeconds}秒")
                             
-                            // 开始等待，并定期打印状态
+                            // 开始等待
                             Log.d(TAG, "⏳ 开始等待图像捕获，超时${timeoutSeconds}秒...")
                             
-                            // 分段等待，每3秒打印一次状态并尝试额外的触发
+                            // 分段等待，每2秒打印一次状态
                             var remainingTime = timeoutSeconds
                             var success = false
                             
                             while (remainingTime > 0 && !success) {
-                                val waitTime = minOf(3L, remainingTime)
+                                val waitTime = minOf(2L, remainingTime)
                                 Log.d(TAG, "⌛ 等待中... 剩余时间: ${remainingTime}秒")
                                 
                                 success = latch.await(waitTime, java.util.concurrent.TimeUnit.SECONDS)
@@ -299,6 +363,21 @@ class ScreenshotService : Service() {
                                     remainingTime -= waitTime
                                     if (remainingTime > 0) {
                                         Log.d(TAG, "💤 继续等待... 还需${remainingTime}秒")
+                                        
+                                        // 主动尝试再次获取图像
+                                        if (attempt > 1) {  // 在后续尝试中增加额外主动获取
+                                            try {
+                                                val directImage = currentReader.acquireLatestImage()
+                                                if (directImage != null) {
+                                                    Log.d(TAG, "✅ 主动获取图像成功！")
+                                                    capturedImage = directImage
+                                                    success = true
+                                                    break
+                                                }
+                                            } catch (e: Exception) {
+                                                // 忽略异常，继续等待
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -318,9 +397,17 @@ class ScreenshotService : Service() {
                                 
                                 // 墨水屏专用：增加延迟时间，让设备充分刷新
                                 if (attempt < 4) {
-                                    val delayMs = if (attempt < 2) 2000L else 3000L // 2-3秒延迟
+                                    val delayMs = (attempt + 1) * 1000L // 递增延迟
                                     Log.d(TAG, "💤 等待 ${delayMs}ms 后重试...")
                                     delay(delayMs)
+                                    
+                                    // 重新设置虚拟显示以刷新状态
+                                    if (attempt > 1) {
+                                        withContext(Dispatchers.Main) {
+                                            setupVirtualDisplay()
+                                        }
+                                        delay(1000) // 再等待1秒让虚拟显示初始化
+                                    }
                                 }
                             }
                         } catch (e: Exception) {
@@ -450,7 +537,61 @@ class ScreenshotService : Service() {
      * 检查MediaProjection是否有效
      */
     fun isMediaProjectionValid(): Boolean {
-        return mediaProjection != null
+        val isValid = mediaProjection != null
+        
+        try {
+            if (isValid) {
+                // 额外验证：尝试使用MediaProjection进行简单操作
+                val displayMetrics = DisplayMetrics()
+                val windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+                
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    val display = windowManager.currentWindowMetrics.bounds
+                    displayMetrics.densityDpi = resources.configuration.densityDpi
+                    Log.d(TAG, "权限验证：使用新API检查屏幕尺寸: ${display.width()}x${display.height()}")
+                } else {
+                    @Suppress("DEPRECATION")
+                    windowManager.defaultDisplay.getMetrics(displayMetrics)
+                    Log.d(TAG, "权限验证：使用旧API检查屏幕尺寸: ${displayMetrics.widthPixels}x${displayMetrics.heightPixels}")
+                }
+                
+                // 使用MediaProjection进行简单操作，确认其仍然有效
+                try {
+                    Log.d(TAG, "检查MediaProjection有效性...")
+                    val temp = imageReader
+                    if (temp != null && temp.surface != null) {
+                        val testDisplay = mediaProjection?.createVirtualDisplay(
+                            "ValidityTest",
+                            1, 1, displayMetrics.densityDpi,
+                            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                            null, null, null
+                        )
+                        
+                        if (testDisplay != null) {
+                            Log.d(TAG, "✅ MediaProjection完整性验证通过")
+                            testDisplay.release()
+                            return true
+                        } else {
+                            Log.w(TAG, "❌ MediaProjection无法创建测试Display")
+                        }
+                    } else {
+                        Log.d(TAG, "MediaProjection基本有效，但ImageReader不可用")
+                    }
+                } catch (e: SecurityException) {
+                    Log.e(TAG, "❌ MediaProjection权限验证失败：安全异常", e)
+                    return false
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ MediaProjection权限验证出现未知异常", e)
+                    return false
+                }
+            } else {
+                Log.d(TAG, "❌ MediaProjection为空")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "权限验证过程中出现异常", e)
+        }
+        
+        return isValid
     }
     
     /**
@@ -779,7 +920,7 @@ class ScreenshotService : Service() {
     }
     
     /**
-     * VirtualDisplay截屏方法，作为PixelCopy的备用方案
+     * 方法2：VirtualDisplay截屏方法，作为PixelCopy的备用方案
      */
     private suspend fun captureWithVirtualDisplayEnhanced(): Bitmap? {
         return withContext(Dispatchers.IO) {
@@ -815,9 +956,15 @@ class ScreenshotService : Service() {
                     
                     if (success && capturedImage != null) {
                         Log.d(TAG, "🎉 VirtualDisplay截屏成功！")
-                        val bitmap = imageToBitmap(capturedImage!!)
-                        capturedImage?.close()
-                        return@withContext bitmap
+                        val image = capturedImage
+                        if (image != null) {
+                            val bitmap = imageToBitmap(image)
+                            image.close()
+                            return@withContext bitmap
+                        } else {
+                            Log.w(TAG, "⚠️ 图像为空")
+                            return@withContext null
+                        }
                     } else {
                         Log.w(TAG, "⚠️ VirtualDisplay截屏失败: ${if (!success) "超时" else "图像为空"}")
                         return@withContext null
@@ -844,150 +991,254 @@ class ScreenshotService : Service() {
     }
     
     /**
-     * 快速截屏方法：优化性能，移除重试机制和复杂验证
+     * 快速截屏方法（优化版）- 专为墨水屏设备优化
      */
     fun captureScreenFast() {
         Log.d(TAG, "=== captureScreenFast() 开始 ===")
-        Log.d(TAG, "MediaProjection状态: ${mediaProjection != null}")
-        Log.d(TAG, "VirtualDisplay状态: ${virtualDisplay != null}")
+        
+        // 首先验证截屏服务状态
+        if (mediaProjection == null) {
+            Log.e(TAG, "❌ MediaProjection为空，无法截屏")
+            screenshotCallback?.onScreenshotFailed("截屏服务未就绪")
+            return
+        }
         
         serviceScope.launch {
             try {
-                Log.d(TAG, "🚀 快速截屏开始...")
+                Log.d(TAG, "开始截屏...")
                 
-                // 直接使用PixelCopy方法，不重试
-                val result = captureWithPixelCopyFast()
+                // 先尝试使用PixelCopy方式（更可靠）
+                var resultBitmap: Bitmap? = null
                 
-                if (result != null) {
-                    Log.d(TAG, "✅ 快速截屏成功！尺寸: ${result.width}x${result.height}")
-                    screenshotCallback?.onScreenshotSuccess(result)
+                // 尝试最多3次
+                repeat(3) { attempt ->
+                    if (resultBitmap != null) return@repeat // 如果已获取到图像则跳过
+                    
+                    Log.d(TAG, "🎯 PixelCopy尝试 ${attempt + 1}/3...")
+                    try {
+                        resultBitmap = withTimeoutOrNull(5000) { // 5秒超时
+                            captureWithPixelCopy()
+                        }
+                        
+                        if (resultBitmap != null) {
+                            Log.d(TAG, "✅ PixelCopy截屏成功")
+                        } else {
+                            Log.w(TAG, "⚠️ PixelCopy尝试 ${attempt + 1} 失败")
+                            // 稍等片刻后重试
+                            delay(500)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "❌ PixelCopy尝试异常", e)
+                    }
+                }
+                
+                // 如果PixelCopy方式失败，回退到传统方式
+                if (resultBitmap == null) {
+                    Log.d(TAG, "⚠️ PixelCopy方式失败，尝试传统方式")
+                    
+                    try {
+                        resultBitmap = withTimeoutOrNull(10000) { // 10秒超时
+                            captureWithVirtualDisplayEnhanced()
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "❌ 传统截屏方式异常", e)
+                    }
+                }
+                
+                // 处理截屏结果
+                val finalBitmap = resultBitmap
+                if (finalBitmap != null) {
+                    Log.d(TAG, "🎉 截屏成功，大小: ${finalBitmap.width}x${finalBitmap.height}")
+                    screenshotCallback?.onScreenshotSuccess(finalBitmap)
                 } else {
-                    Log.e(TAG, "❌ 快速截屏失败")
-                    screenshotCallback?.onScreenshotFailed("截屏失败，请重试")
+                    Log.e(TAG, "💀 所有截屏方式均失败")
+                    screenshotCallback?.onScreenshotFailed("截屏失败，设备可能不兼容此功能")
+                    
+                    // 截屏失败时，尝试重置服务状态
+                    resetServiceState()
                 }
                 
             } catch (e: Exception) {
                 Log.e(TAG, "❌ 快速截屏异常", e)
-                screenshotCallback?.onScreenshotFailed("截屏异常：${e.message}")
+                screenshotCallback?.onScreenshotFailed("截屏出错: ${e.message}")
+                resetServiceState()
             }
         }
         
-        Log.d(TAG, "=== captureScreenFast() 方法结束 ===")
+        Log.d(TAG, "=== captureScreenFast() 方法调用结束 ===")
     }
-
+    
     /**
-     * 快速PixelCopy截屏方法 - 移除复杂的验证和延迟
+     * 屏幕截图回调接口
      */
-    private suspend fun captureWithPixelCopyFast(): Bitmap? {
-        return withContext(Dispatchers.IO) {
+    interface ScreenshotCallback {
+        fun onScreenshotSuccess(bitmap: Bitmap)
+        fun onScreenshotFailed(error: String)
+    }
+    
+    /**
+     * 优化版截图方法，直接调用PixelCopy API
+     */
+    fun takeScreenshot(
+        selectionBounds: Rect?,
+        selectionPosition: Pair<Int, Int>?,
+        callback: ScreenshotCallback
+    ) {
+        Log.d(TAG, "开始截屏...")
+        
+        // 使用协程异步执行截屏
+        GlobalScope.launch(Dispatchers.Main) {
             try {
-                Log.d(TAG, "🚀 开始快速PixelCopy截屏...")
-                
-                if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) {
-                    Log.w(TAG, "❌ PixelCopy需要Android 8.0+")
-                    return@withContext null
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                    // 对于Android N及以上版本，使用PixelCopy API
+                    pixelCopyScreenshot(selectionBounds, callback)
+                } else {
+                    // 对于较旧的版本，使用传统方法
+                    legacyScreenshot(callback)
                 }
-                
-                if (virtualDisplay == null) {
-                    Log.e(TAG, "❌ VirtualDisplay未初始化")
-                    return@withContext null
-                }
-                
-                // 获取屏幕尺寸
-                val windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
-                val displayMetrics = DisplayMetrics()
-                windowManager.defaultDisplay.getMetrics(displayMetrics)
-                
-                val width = displayMetrics.widthPixels
-                val height = displayMetrics.heightPixels
-                
-                Log.d(TAG, "📐 屏幕尺寸: ${width}x${height}")
-                
-                // 创建Bitmap
-                val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-                
-                // 使用CountDownLatch等待PixelCopy完成
-                val latch = java.util.concurrent.CountDownLatch(1)
-                var copySuccess = false
-                
-                // 获取VirtualDisplay的Surface
-                val surface = virtualDisplay?.surface
-                if (surface == null) {
-                    Log.e(TAG, "❌ VirtualDisplay的Surface为空")
-                    return@withContext null
-                }
-                
-                Log.d(TAG, "🎯 开始快速PixelCopy操作...")
-                
-                // 在主线程执行PixelCopy
-                withContext(Dispatchers.Main) {
-                    try {
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                            android.view.PixelCopy.request(
-                                virtualDisplay!!.surface,
-                                bitmap,
-                                object : android.view.PixelCopy.OnPixelCopyFinishedListener {
-                                    override fun onPixelCopyFinished(result: Int) {
-                                        copySuccess = (result == android.view.PixelCopy.SUCCESS)
-                                        if (copySuccess) {
-                                            Log.d(TAG, "✅ 快速PixelCopy成功")
-                                        } else {
-                                            Log.e(TAG, "❌ 快速PixelCopy失败，错误码: $result")
-                                        }
-                                        latch.countDown()
-                                    }
-                                },
-                                backgroundHandler
-                            )
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "❌ 快速PixelCopy请求异常", e)
-                        latch.countDown()
-                    }
-                }
-                
-                // 等待PixelCopy完成，缩短超时时间
-                Log.d(TAG, "⏳ 等待快速PixelCopy完成，最多1秒...")
-                val completed = latch.await(1, java.util.concurrent.TimeUnit.SECONDS)
-                
-                if (!completed) {
-                    Log.w(TAG, "⚠️ 快速PixelCopy超时（1秒）")
-                    bitmap.recycle()
-                    return@withContext null
-                }
-                
-                if (!copySuccess) {
-                    Log.w(TAG, "⚠️ 快速PixelCopy失败")
-                    bitmap.recycle()
-                    return@withContext null
-                }
-                
-                // 简化的内容检测 - 只检查是否全黑
-                if (bitmap.isRecycled) {
-                    Log.e(TAG, "❌ Bitmap已被回收")
-                    return@withContext null
-                }
-                
-                // 快速检查bitmap是否有内容（检查中心区域几个像素点）
-                val centerX = bitmap.width / 2
-                val centerY = bitmap.height / 2
-                val testPixels = IntArray(9)
-                bitmap.getPixels(testPixels, 0, 3, centerX - 1, centerY - 1, 3, 3)
-                
-                val hasContent = testPixels.any { it != 0 && it != Color.BLACK }
-                if (!hasContent) {
-                    Log.w(TAG, "⚠️ 截屏内容为空或全黑")
-                    bitmap.recycle()
-                    return@withContext null
-                }
-                
-                Log.d(TAG, "🎉 快速截屏成功！尺寸: ${bitmap.width}x${bitmap.height}")
-                return@withContext bitmap
-                
             } catch (e: Exception) {
-                Log.e(TAG, "❌ 快速PixelCopy截屏异常", e)
-                return@withContext null
+                Log.e(TAG, "截屏异常", e)
+                callback.onScreenshotFailed("截屏异常: ${e.message}")
             }
         }
+    }
+    
+    /**
+     * 使用PixelCopy API执行截屏（适用于墨水屏）
+     */
+    @RequiresApi(Build.VERSION_CODES.N)
+    private suspend fun pixelCopyScreenshot(selectionBounds: Rect?, callback: ScreenshotCallback) {
+        Log.d(TAG, "🔄 开始PixelCopy截屏（墨水屏专用）...")
+        
+        withContext(Dispatchers.Default) {
+            try {
+                // 获取应用中显示的根窗口
+                val rootView = windowManager?.let { wm ->
+                    val displayMetrics = DisplayMetrics()
+                    wm.defaultDisplay.getMetrics(displayMetrics)
+                    
+                    // 创建与屏幕大小相同的Bitmap
+                    val width = displayMetrics.widthPixels
+                    val height = displayMetrics.heightPixels
+                    
+                    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                    
+                    // 执行PixelCopy操作
+                    val pixelCopyListener = PixelCopy.OnPixelCopyFinishedListener { copyResult ->
+                        if (copyResult == PixelCopy.SUCCESS) {
+                            val nonEmptyPixels = countNonEmptyPixels(bitmap)
+                            val totalPixels = width * height
+                            val contentPercentage = (nonEmptyPixels * 100) / totalPixels
+                            
+                            Log.d(TAG, "🎉 PixelCopy截屏成功！尺寸: ${width}x${height}，内容: $contentPercentage%")
+                            
+                            // 保存截图到文件
+                            val file = saveScreenshotToFile(bitmap)
+                            if (file != null) {
+                                Log.d(TAG, "📁 成功截屏已保存到: ${file.absolutePath}")
+                            }
+                            
+                            // 通过主线程回调成功
+                            GlobalScope.launch(Dispatchers.Main) {
+                                Log.d(TAG, "✅ PixelCopy截屏成功")
+                                Log.d(TAG, "🎉 截屏成功，大小: ${bitmap.width}x${bitmap.height}")
+                                callback.onScreenshotSuccess(bitmap)
+                            }
+                        } else {
+                            // 通过主线程回调失败
+                            GlobalScope.launch(Dispatchers.Main) {
+                                Log.e(TAG, "❌ PixelCopy截屏失败，代码: $copyResult")
+                                callback.onScreenshotFailed("截屏失败，错误代码: $copyResult")
+                            }
+                        }
+                    }
+                    
+                    // 从屏幕拷贝像素到bitmap
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            val source = wm.defaultDisplay.getRootSurface()
+                            PixelCopy.request(source, bitmap, pixelCopyListener, Handler(Looper.getMainLooper()))
+                        } else {
+                            val surface = Surface(wm.defaultDisplay.getRootSurface())
+                            PixelCopy.request(surface, bitmap, pixelCopyListener, Handler(Looper.getMainLooper()))
+                            surface.release()
+                        }
+                    } catch (e: Exception) {
+                        throw e
+                    }
+                    
+                    // 返回bitmap供后续处理
+                    bitmap
+                } ?: throw IllegalStateException("无法获取窗口管理器")
+            } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+    
+    /**
+     * 传统截屏方法，用于较旧的设备
+     */
+    private fun legacyScreenshot(callback: ScreenshotCallback) {
+        try {
+            // 获取屏幕尺寸
+            val displayMetrics = DisplayMetrics()
+            windowManager?.defaultDisplay?.getMetrics(displayMetrics)
+            val width = displayMetrics.widthPixels
+            val height = displayMetrics.heightPixels
+            
+            // 创建Bitmap
+            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            
+            // 获取屏幕截图
+            val canvas = Canvas(bitmap)
+            
+            // 通过Paint保持绘制质量
+            val paint = Paint()
+            paint.isAntiAlias = true
+            paint.isFilterBitmap = true
+            paint.isDither = true
+            
+            // 获取根View并绘制到Canvas
+            val decorView = windowManager?.let {
+                (application as? Activity)?.window?.decorView
+            }
+            
+            if (decorView != null) {
+                decorView.draw(canvas)
+                
+                // 保存截图到文件
+                saveScreenshotToFile(bitmap)
+                
+                // 通知成功
+                callback.onScreenshotSuccess(bitmap)
+            } else {
+                callback.onScreenshotFailed("无法获取屏幕内容")
+            }
+        } catch (e: Exception) {
+            callback.onScreenshotFailed("传统截屏失败: ${e.message}")
+        }
+    }
+    
+    /**
+     * 计算非空像素的数量，用于评估截图质量
+     */
+    private fun countNonEmptyPixels(bitmap: Bitmap): Int {
+        var count = 0
+        val width = bitmap.width
+        val height = bitmap.height
+        
+        // 采样检查，避免逐像素检查带来的性能问题
+        val sampleStep = 10
+        for (x in 0 until width step sampleStep) {
+            for (y in 0 until height step sampleStep) {
+                val pixel = bitmap.getPixel(x, y)
+                if (pixel != 0) {
+                    count++
+                }
+            }
+        }
+        
+        return count * sampleStep * sampleStep
     }
 } 
