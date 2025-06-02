@@ -149,6 +149,16 @@ class TextSelectionManager {
      * 获取当前应用包名
      */
     fun getCurrentAppPackage(): String {
+        Log.d(TAG, "📱 获取当前应用包名 - 当前值: '$currentAppPackage'")
+        
+        // 如果应用包名为空，尝试获取其他信息
+        if (currentAppPackage.isEmpty() || currentAppPackage == "unknown") {
+            // 这里可以添加其他方式获取应用包名的逻辑
+            Log.d(TAG, "⚠️ 应用包名为空或未知，使用默认值: 'com.readassist'")
+            return "com.readassist"
+        }
+        
+        Log.d(TAG, "✅ 返回应用包名: '$currentAppPackage'")
         return currentAppPackage
     }
     
@@ -156,6 +166,29 @@ class TextSelectionManager {
      * 获取当前书籍名称
      */
     fun getCurrentBookName(): String {
+        Log.d(TAG, "📚 获取当前书籍名称 - 当前值: '$currentBookName'")
+        
+        // 如果书籍名为空或无效，使用默认值
+        if (currentBookName.isEmpty() || 
+            currentBookName.startsWith("android.") || 
+            currentBookName.contains("Layout") || 
+            currentBookName.contains("View") || 
+            currentBookName.contains(".")) {
+            
+            // 尝试根据应用类型提供更有意义的默认名称
+            val defaultName = when (currentAppPackage) {
+                "com.supernote.document" -> "Supernote文档"
+                "com.ratta.supernote.launcher" -> "Supernote阅读"
+                "com.adobe.reader" -> "PDF文档"
+                "com.kingsoft.moffice_eng" -> "Office文档"
+                else -> "阅读笔记"
+            }
+            
+            Log.d(TAG, "⚠️ 书籍名称无效，使用根据应用自动生成的默认值: '$defaultName'")
+            return defaultName
+        }
+        
+        Log.d(TAG, "✅ 返回书籍名称: '$currentBookName'")
         return currentBookName
     }
     
@@ -187,6 +220,22 @@ class TextSelectionManager {
      */
     fun isSelectionActive(): Boolean {
         return isTextSelectionActive
+    }
+    
+    /**
+     * 设置当前应用包名
+     */
+    fun setCurrentAppPackage(packageName: String) {
+        Log.d(TAG, "📱 手动设置应用包名: '$packageName'")
+        currentAppPackage = packageName
+    }
+    
+    /**
+     * 设置当前书籍名称
+     */
+    fun setCurrentBookName(bookName: String) {
+        Log.d(TAG, "📚 手动设置书籍名称: '$bookName'")
+        currentBookName = bookName
     }
     
     /**

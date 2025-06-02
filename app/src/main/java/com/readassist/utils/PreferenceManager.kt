@@ -259,6 +259,20 @@ class PreferenceManager(private val context: Context) {
         return normalPrefs.getBoolean(KEY_ACCESSIBILITY_ENABLED, false)
     }
     
+    /**
+     * 设置字符串偏好设置
+     */
+    fun setString(key: String, value: String) {
+        normalPrefs.edit().putString(key, value).apply()
+    }
+    
+    /**
+     * 获取字符串偏好设置
+     */
+    fun getString(key: String, defaultValue: String): String {
+        return normalPrefs.getString(key, defaultValue) ?: defaultValue
+    }
+    
     fun setAutoAnalyzeEnabled(enabled: Boolean) {
         normalPrefs.edit().putBoolean(KEY_AUTO_ANALYZE_ENABLED, enabled).apply()
     }

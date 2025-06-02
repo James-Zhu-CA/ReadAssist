@@ -4,11 +4,8 @@ import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Paint
 import android.graphics.PixelFormat
-import android.graphics.Rect
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.media.Image
@@ -20,7 +17,6 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
-import android.os.Surface
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.WindowManager
@@ -33,13 +29,6 @@ import java.nio.ByteBuffer
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.TimeoutCancellationException
-import android.view.PixelCopy
-import java.io.File
-import java.io.FileOutputStream
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import androidx.annotation.RequiresApi
 
 class ScreenshotService : Service() {
     
@@ -1066,179 +1055,5 @@ class ScreenshotService : Service() {
         }
         
         Log.d(TAG, "=== captureScreenFast() 方法调用结束 ===")
-    }
-    
-    /**
-     * 屏幕截图回调接口
-     */
-    interface ScreenshotCallback {
-        fun onScreenshotSuccess(bitmap: Bitmap)
-        fun onScreenshotFailed(error: String)
-    }
-    
-    /**
-     * 优化版截图方法，直接调用PixelCopy API
-     */
-    fun takeScreenshot(
-        selectionBounds: Rect?,
-        selectionPosition: Pair<Int, Int>?,
-        callback: ScreenshotCallback
-    ) {
-        Log.d(TAG, "开始截屏...")
-        
-        // 使用协程异步执行截屏
-        GlobalScope.launch(Dispatchers.Main) {
-            try {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-                    // 对于Android N及以上版本，使用PixelCopy API
-                    pixelCopyScreenshot(selectionBounds, callback)
-                } else {
-                    // 对于较旧的版本，使用传统方法
-                    legacyScreenshot(callback)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "截屏异常", e)
-                callback.onScreenshotFailed("截屏异常: ${e.message}")
-            }
-        }
-    }
-    
-    /**
-     * 使用PixelCopy API执行截屏（适用于墨水屏）
-     */
-    @RequiresApi(Build.VERSION_CODES.N)
-    private suspend fun pixelCopyScreenshot(selectionBounds: Rect?, callback: ScreenshotCallback) {
-        Log.d(TAG, "🔄 开始PixelCopy截屏（墨水屏专用）...")
-        
-        withContext(Dispatchers.Default) {
-            try {
-                // 获取应用中显示的根窗口
-                val rootView = windowManager?.let { wm ->
-                    val displayMetrics = DisplayMetrics()
-                    wm.defaultDisplay.getMetrics(displayMetrics)
-                    
-                    // 创建与屏幕大小相同的Bitmap
-                    val width = displayMetrics.widthPixels
-                    val height = displayMetrics.heightPixels
-                    
-                    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-                    
-                    // 执行PixelCopy操作
-                    val pixelCopyListener = PixelCopy.OnPixelCopyFinishedListener { copyResult ->
-                        if (copyResult == PixelCopy.SUCCESS) {
-                            val nonEmptyPixels = countNonEmptyPixels(bitmap)
-                            val totalPixels = width * height
-                            val contentPercentage = (nonEmptyPixels * 100) / totalPixels
-                            
-                            Log.d(TAG, "🎉 PixelCopy截屏成功！尺寸: ${width}x${height}，内容: $contentPercentage%")
-                            
-                            // 保存截图到文件
-                            val file = saveScreenshotToFile(bitmap)
-                            if (file != null) {
-                                Log.d(TAG, "📁 成功截屏已保存到: ${file.absolutePath}")
-                            }
-                            
-                            // 通过主线程回调成功
-                            GlobalScope.launch(Dispatchers.Main) {
-                                Log.d(TAG, "✅ PixelCopy截屏成功")
-                                Log.d(TAG, "🎉 截屏成功，大小: ${bitmap.width}x${bitmap.height}")
-                                callback.onScreenshotSuccess(bitmap)
-                            }
-                        } else {
-                            // 通过主线程回调失败
-                            GlobalScope.launch(Dispatchers.Main) {
-                                Log.e(TAG, "❌ PixelCopy截屏失败，代码: $copyResult")
-                                callback.onScreenshotFailed("截屏失败，错误代码: $copyResult")
-                            }
-                        }
-                    }
-                    
-                    // 从屏幕拷贝像素到bitmap
-                    try {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            val source = wm.defaultDisplay.getRootSurface()
-                            PixelCopy.request(source, bitmap, pixelCopyListener, Handler(Looper.getMainLooper()))
-                        } else {
-                            val surface = Surface(wm.defaultDisplay.getRootSurface())
-                            PixelCopy.request(surface, bitmap, pixelCopyListener, Handler(Looper.getMainLooper()))
-                            surface.release()
-                        }
-                    } catch (e: Exception) {
-                        throw e
-                    }
-                    
-                    // 返回bitmap供后续处理
-                    bitmap
-                } ?: throw IllegalStateException("无法获取窗口管理器")
-            } catch (e: Exception) {
-                throw e
-            }
-        }
-    }
-    
-    /**
-     * 传统截屏方法，用于较旧的设备
-     */
-    private fun legacyScreenshot(callback: ScreenshotCallback) {
-        try {
-            // 获取屏幕尺寸
-            val displayMetrics = DisplayMetrics()
-            windowManager?.defaultDisplay?.getMetrics(displayMetrics)
-            val width = displayMetrics.widthPixels
-            val height = displayMetrics.heightPixels
-            
-            // 创建Bitmap
-            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-            
-            // 获取屏幕截图
-            val canvas = Canvas(bitmap)
-            
-            // 通过Paint保持绘制质量
-            val paint = Paint()
-            paint.isAntiAlias = true
-            paint.isFilterBitmap = true
-            paint.isDither = true
-            
-            // 获取根View并绘制到Canvas
-            val decorView = windowManager?.let {
-                (application as? Activity)?.window?.decorView
-            }
-            
-            if (decorView != null) {
-                decorView.draw(canvas)
-                
-                // 保存截图到文件
-                saveScreenshotToFile(bitmap)
-                
-                // 通知成功
-                callback.onScreenshotSuccess(bitmap)
-            } else {
-                callback.onScreenshotFailed("无法获取屏幕内容")
-            }
-        } catch (e: Exception) {
-            callback.onScreenshotFailed("传统截屏失败: ${e.message}")
-        }
-    }
-    
-    /**
-     * 计算非空像素的数量，用于评估截图质量
-     */
-    private fun countNonEmptyPixels(bitmap: Bitmap): Int {
-        var count = 0
-        val width = bitmap.width
-        val height = bitmap.height
-        
-        // 采样检查，避免逐像素检查带来的性能问题
-        val sampleStep = 10
-        for (x in 0 until width step sampleStep) {
-            for (y in 0 until height step sampleStep) {
-                val pixel = bitmap.getPixel(x, y)
-                if (pixel != 0) {
-                    count++
-                }
-            }
-        }
-        
-        return count * sampleStep * sampleStep
     }
 } 

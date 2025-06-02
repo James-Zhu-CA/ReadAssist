@@ -1,9 +1,11 @@
 package com.readassist
 
 import android.app.Application
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
+import androidx.multidex.MultiDex
 import com.readassist.database.AppDatabase
 import com.readassist.repository.ChatRepository
 import com.readassist.repository.GeminiRepository
@@ -22,6 +24,12 @@ class ReadAssistApplication : Application() {
     
     // 全局仓库实例
     lateinit var geminiRepository: GeminiRepository
+
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(base)
+        // 初始化 MultiDex
+        MultiDex.install(this)
+    }
 
     override fun onCreate() {
         super.onCreate()

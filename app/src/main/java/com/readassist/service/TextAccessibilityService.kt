@@ -32,6 +32,12 @@ class TextAccessibilityService : AccessibilityService() {
             "com.supernote.app",
             "com.ratta.supernote.launcher",  // Supernote A5 X2 启动器
             "com.supernote.document",        // Supernote A5 X2 文档阅读器 - 关键包名！
+            "com.supernote.reader",          // 可能的其他包名
+            "com.ratta.reader",              // 可能的其他包名
+            "com.ratta.supernote.reader",    // 可能的其他包名
+            "com.ratta.supernote.document",  // 可能的其他包名
+            "com.ratta.document",            // 可能的其他包名
+            "com.ratta.supernote",           // 可能的其他包名
             "com.readassist",
             "com.readassist.debug"
         )
@@ -45,6 +51,13 @@ class TextAccessibilityService : AccessibilityService() {
     private var lastProcessedText: String = ""
     private var currentAppPackage: String = ""
     private var currentBookName: String = ""
+    
+    // 公开原始属性供调试
+    val currentAppPackageRaw: String
+        get() = currentAppPackage
+        
+    val currentBookNameRaw: String 
+        get() = currentBookName
     
     // 文本请求广播接收器
     private val textRequestReceiver = object : BroadcastReceiver() {
@@ -116,34 +129,61 @@ class TextAccessibilityService : AccessibilityService() {
             return
         }
         
-        val packageName = event.packageName?.toString() ?: return
-        Log.d(TAG, "🎯 收到辅助功能事件: ${getEventTypeName(event.eventType)} from $packageName")
+        val eventPackageName = event.packageName?.toString() ?: return
+        
+        // 对 Supernote 应用进行特殊日志记录
+        val isSupernoteApp = eventPackageName.contains("supernote") || eventPackageName.contains("ratta")
+        val logLevel = if (isSupernoteApp) "🔴🔴🔴" else "🎯"
+        
+        Log.d(TAG, "$logLevel 收到辅助功能事件: ${getEventTypeName(event.eventType)} from $eventPackageName")
 
         // 只处理支持的应用
-        if (!SUPPORTED_PACKAGES.contains(packageName)) {
-            // Log.d(TAG, "⚠️ 跳过不支持的应用: $packageName") // 减少不必要的日志
+        if (!SUPPORTED_PACKAGES.contains(eventPackageName)) {
+            if (isSupernoteApp) {
+                Log.w(TAG, "🔴🔴🔴 Supernote相关应用未被识别为支持的应用: $eventPackageName")
+                
+                // 对于疑似 Supernote 应用，尝试强制处理
+                Log.d(TAG, "🔴 尝试强制处理 Supernote 应用: $eventPackageName")
+                updateCurrentAppInfo(eventPackageName, event)
+            } else {
+                // Log.d(TAG, "⚠️ 跳过不支持的应用: $eventPackageName") // 减少不必要的日志
+            }
             return
         }
         
         // 更新当前应用信息（主要为了获取包名，书名提取可以按需保留或移除）
-        updateCurrentAppInfo(packageName, event)
+        updateCurrentAppInfo(eventPackageName, event)
         
         // 核心修改：只对特定类型的事件做最基础的处理，主要依赖剪贴板
         when (event.eventType) {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
-                Log.d(TAG, "Window state changed: $packageName")
-                // extractBookNameFromWindow(event) // 书名提取可以根据需要保留或简化
+                if (isSupernoteApp) {
+                    Log.d(TAG, "🔴 Supernote窗口状态变更: $eventPackageName")
+                    Log.d(TAG, "🔴 窗口标题: ${event.className}")
+                    Log.d(TAG, "🔴 窗口文本: ${event.text}")
+                    
+                    // 强制更新应用和书籍名称
+                    currentAppPackage = eventPackageName
+                    
+                    // 尝试提取书籍名称
+                    val potentialBookName = extractBookNameFromTitle(event.className?.toString() ?: "")
+                    if (potentialBookName.isNotEmpty()) {
+                        currentBookName = potentialBookName
+                        Log.d(TAG, "🔴 从窗口标题提取书籍名称成功: $currentBookName")
+                    } else {
+                        Log.d(TAG, "🔴 无法从窗口标题提取书籍名称")
+                    }
+                } else {
+                    Log.d(TAG, "Window state changed: $eventPackageName")
+                }
             }
             // 移除大部分其他事件类型的主动文本提取和广播
-            // AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> { ... }
-            // AccessibilityEvent.TYPE_VIEW_CLICKED -> { ... }
-            // AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED -> { ... }
-            // AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED -> { ... }
-            // AccessibilityEvent.TYPE_VIEW_SELECTED -> { ... }
-            // AccessibilityEvent.TYPE_VIEW_LONG_CLICKED -> { ... }
-            // AccessibilityEvent.TYPE_VIEW_FOCUSED -> { ... }
             else -> {
-                 Log.d(TAG, "🔍 其他事件 (仅记录，不主动提取文本): ${getEventTypeName(event.eventType)} from $packageName")
+                if (isSupernoteApp) {
+                    Log.d(TAG, "🔴 Supernote其他事件: ${getEventTypeName(event.eventType)}")
+                } else {
+                    Log.d(TAG, "🔍 其他事件 (仅记录，不主动提取文本): ${getEventTypeName(event.eventType)} from $eventPackageName")
+                }
             }
         }
     }
@@ -196,14 +236,41 @@ class TextAccessibilityService : AccessibilityService() {
     /**
      * 更新当前应用信息
      */
-    private fun updateCurrentAppInfo(packageName: String, event: AccessibilityEvent) {
-        currentAppPackage = packageName
+    private fun updateCurrentAppInfo(eventPackageName: String, event: AccessibilityEvent) {
+        val oldAppPackage = currentAppPackage
+        val oldBookName = currentBookName
+        
+        Log.d(TAG, "🔄 更新应用信息 - 旧应用: '$oldAppPackage', 旧书籍: '$oldBookName'")
+        Log.d(TAG, "🔄 更新应用信息 - 传入包名: '$eventPackageName', 事件类型: ${getEventTypeName(event.eventType)}")
+        
+        // 记录事件的详细信息
+        val eventText = event.text?.joinToString(" ") { it.toString() } ?: ""
+        val eventClassName = event.className?.toString() ?: ""
+        Log.d(TAG, "🔄 事件详情 - 类名: '$eventClassName', 文本: '${eventText.take(100)}'")
+        
+        // 更新应用包名
+        currentAppPackage = eventPackageName
         
         // 尝试从窗口标题提取书名
         val windowTitle = event.className?.toString() ?: ""
-        if (windowTitle.isNotEmpty() && currentBookName.isEmpty()) {
-            currentBookName = extractBookNameFromTitle(windowTitle)
+        if (windowTitle.isNotEmpty()) {
+            val newBookName = extractBookNameFromTitle(windowTitle)
+            if (newBookName.isNotEmpty()) {
+                currentBookName = newBookName
+                Log.d(TAG, "📚 从窗口标题提取书籍名: '$newBookName', 原始标题: '$windowTitle'")
+            }
         }
+        
+        // 如果需要，也可以从事件文本中提取书名
+        if (currentBookName.isEmpty() && eventText.isNotEmpty()) {
+            val possibleBookName = extractBookNameFromTitle(eventText)
+            if (possibleBookName.isNotEmpty()) {
+                currentBookName = possibleBookName
+                Log.d(TAG, "📚 从事件文本提取书籍名: '$possibleBookName', 原始文本: '${eventText.take(100)}'")
+            }
+        }
+        
+        Log.d(TAG, "📱 应用信息已更新 - 当前应用: '$currentAppPackage', 当前书籍: '$currentBookName'")
     }
     
     /**
@@ -245,55 +312,29 @@ class TextAccessibilityService : AccessibilityService() {
                     
                     // 立即作为选中文本处理
                     Log.d(TAG, "🎯🎯🎯 立即处理目标文本")
-                    notifyTextSelected(text)
+                    notifyTextSelected(text, false, currentAppPackage, currentBookName)
                     return
                 }
                 
-                if (!text.isNullOrBlank() && text != lastClipboardText) {
-                    // 检查是否包含元数据
-                    if (text.contains("Homo deus") || (text.contains("/") && text.contains("--"))) {
-                        Log.e(TAG, "🚨🚨🚨 剪贴板中检测到元数据！")
-                        Log.e(TAG, "🚨 完整内容: $text")
-                        Log.e(TAG, "🚨 当前应用: $currentAppPackage")
-                        Log.e(TAG, "🚨 调用栈:")
-                        Thread.currentThread().stackTrace.take(8).forEach { element ->
-                            Log.e(TAG, "🚨   at ${element.className}.${element.methodName}(${element.fileName}:${element.lineNumber})")
-                        }
-                    }
-                    
-                    // 首先检查是否是书籍元数据（从剪贴板层面过滤）
-                    val isBookMeta = isBookMetadata(text)
-                    
-                    if (isBookMeta) {
-                        Log.d(TAG, "🚫🚫🚫 过滤剪贴板元数据: ${text.take(100)}...")
-                        Log.d(TAG, "🚫 元数据详情: 长度=${text.length}")
-                        return
-                    }
-                    
-                    // 检查是否是有效的内容文本
-                    val isValidContent = isValidText(text) && isContentText(text)
-                    
-                    Log.d(TAG, "📋 文本验证: 有效=$isValidContent, 元数据=$isBookMeta, 长度=${text.length}")
-                    
-                    if (isValidContent) {
+                // Clipboard change handling
+                if (text != null && text.isNotEmpty()) {
+                    // Check for clipboard changes
+                    if (text != lastClipboardText) {
                         lastClipboardText = text
-                        lastProcessedText = text
                         
-                        Log.d(TAG, "📋📋📋 有效剪贴板文本: ${text.take(50)}...")
+                        Log.d(TAG, "📋 检测到剪贴板变化: ${text.take(50)}...")
                         
-                        // 如果是来自 Supernote，优先作为文本选择处理
-                        if (currentAppPackage == "com.ratta.supernote.launcher" || currentAppPackage == "com.supernote.document") {
-                            Log.d(TAG, "🎯🎯🎯 Supernote 剪贴板选中文本")
-                            notifyTextSelected(text)
+                        // 避免处理ReadAssist自己的剪贴板内容
+                        if (currentAppPackage != "com.readassist" && currentAppPackage != "com.readassist.debug") {
+                            lastProcessedText = text // 避免重复处理
+                            // Update the call to use the new parameters
+                            notifyTextSelected(text, false, currentAppPackage, currentBookName)
                         } else {
-                            Log.d(TAG, "📝 其他应用剪贴板文本")
-                            notifyTextDetected(text)
+                            Log.d(TAG, "🚫 忽略来自ReadAssist应用的剪贴板变化")
                         }
-                    } else {
-                        Log.d(TAG, "❌ 剪贴板文本无效: 长度=${text.length}, 内容=${text.take(30)}...")
                     }
                 } else {
-                    Log.d(TAG, "❌ 剪贴板文本为空或重复")
+                    Log.d(TAG, "📋 剪贴板文本为空")
                 }
             } else {
                 Log.d(TAG, "❌ 剪贴板数据为空")
@@ -307,7 +348,7 @@ class TextAccessibilityService : AccessibilityService() {
      * 通知检测到文本
      */
     private fun notifyTextDetected(text: String) {
-        if (currentAppPackage == packageName || currentAppPackage == "$packageName.debug") {
+        if (currentAppPackage == "com.readassist" || currentAppPackage == "com.readassist.debug") {
             Log.d(TAG, "🚫 阻止广播来自ReadAssist应用自身的检测文本 (剪贴板): ${text.take(50)}...")
             return
         }
@@ -322,21 +363,31 @@ class TextAccessibilityService : AccessibilityService() {
     }
     
     /**
-     * 通知检测到选中文本
+     * 通知文本已选择
      */
-    private fun notifyTextSelected(text: String) {
-        if (currentAppPackage == packageName || currentAppPackage == "$packageName.debug") {
-            Log.d(TAG, "🚫 阻止广播来自ReadAssist应用自身的选中文本 (剪贴板): ${text.take(50)}...")
+    private fun notifyTextSelected(text: String, isRequest: Boolean = false, 
+                                 appPackage: String = currentAppPackage, 
+                                 bookName: String = currentBookName) {
+        // 应用自我检查
+        if ((appPackage == "com.readassist" || appPackage == "com.readassist.debug") && !isRequest) {
+            Log.d(TAG, "🚫 阻止广播来自ReadAssist应用自身的选中文本: ${text.take(50)}...")
             return
         }
-        Log.d(TAG, "Text selected (from Clipboard), broadcasting: ${text.take(50)}...")
+        
+        // 详细记录
+        Log.d(TAG, "📢 通知文本已选择 - 来源应用: '$appPackage', 书籍: '$bookName', 请求标志: $isRequest")
+        Log.d(TAG, "📢 通知内容: '${text.take(100)}...'")
+        
         val intent = Intent(ACTION_TEXT_SELECTED).apply {
             putExtra(EXTRA_DETECTED_TEXT, text)
-            putExtra(EXTRA_SOURCE_APP, currentAppPackage) // 这里的 currentAppPackage 会是剪贴板内容来源的应用
-            putExtra(EXTRA_BOOK_NAME, currentBookName)
+            putExtra(EXTRA_SOURCE_APP, appPackage)
+            putExtra(EXTRA_BOOK_NAME, bookName)
             putExtra(EXTRA_IS_SELECTION, true)
         }
-        LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+        
+        // 使用普通广播而非本地广播
+        sendBroadcast(intent)
+        Log.d(TAG, "已发送文本选择广播")
     }
     
     /**
@@ -444,10 +495,11 @@ class TextAccessibilityService : AccessibilityService() {
             if (!selectedText.isNullOrBlank() && isValidText(selectedText)) {
                 Log.d(TAG, "✅ 检查到选中文本: ${selectedText.take(50)}...")
                 
-                // 避免重复处理相同文本
+                // Avoid duplicate text notifications
                 if (selectedText != lastProcessedText) {
                     lastProcessedText = selectedText
-                    notifyTextSelected(selectedText)
+                    // Update the call to use the new parameters
+                    notifyTextSelected(selectedText, false, currentAppPackage, currentBookName)
                 }
             } else {
                 Log.d(TAG, "❌ 未检查到有效的选中文本")
@@ -575,13 +627,106 @@ class TextAccessibilityService : AccessibilityService() {
      * 从标题中提取书名
      */
     private fun extractBookNameFromTitle(title: String): String {
+        Log.d(TAG, "📚 尝试从标题提取书籍名 - 原始标题: '$title', 当前应用: '$currentAppPackage'")
+        
         // 如果标题是Android类名或布局名称，直接返回空
         if (title.startsWith("android.") || 
             title.contains("Layout") || 
             title.contains("View") ||
             title.contains("$")) {
-            Log.d(TAG, "🚫 检测到Android组件名称，不提取书籍名: $title")
+            Log.d(TAG, "🚫 检测到Android组件名称，不提取书籍名: '$title'")
             return ""
+        }
+        
+        // 特殊应用的标题处理
+        val isSupernoteApp = currentAppPackage.contains("supernote") || currentAppPackage.contains("ratta")
+        
+        if (isSupernoteApp) {
+            // Supernote的标题处理 - 增强版
+            Log.d(TAG, "🔴 处理Supernote标题: '$title'")
+            
+            // 可能的Supernote标题模式列表
+            val possibleBookName = when {
+                // 情况1: 直接包含文件名
+                title.contains(".pdf", ignoreCase = true) -> {
+                    val nameWithExt = title.substringAfterLast("/").substringAfterLast("\\")
+                    nameWithExt.replace(".pdf", "", ignoreCase = true).trim()
+                }
+                
+                // 情况2: "文档名 - Supernote"格式
+                title.contains(" - Supernote", ignoreCase = true) -> {
+                    title.split(" - Supernote", ignoreCase = true)[0].trim()
+                }
+                
+                // 情况3: 标题中包含"阅读器"并且是Supernote应用
+                title.contains("阅读器", ignoreCase = true) && isSupernoteApp -> {
+                    // 尝试找出实际的书名 - 通常在"阅读器"之前
+                    val parts = title.split("阅读器")
+                    if (parts.isNotEmpty() && parts[0].isNotEmpty()) {
+                        parts[0].trim()
+                    } else if (parts.size > 1 && parts[1].isNotEmpty()) {
+                        parts[1].trim()
+                    } else {
+                        "Supernote文档"
+                    }
+                }
+                
+                // 情况4: 类名中包含文档或阅读相关词汇
+                title.contains("Document", ignoreCase = true) || 
+                title.contains("Reader", ignoreCase = true) -> {
+                    if (title.contains(".")) {
+                        // 如果是类名，使用简单名称
+                        title.substringAfterLast(".").replace("Activity", "").replace("Fragment", "").trim()
+                    } else {
+                        title.trim()
+                    }
+                }
+                
+                // 情况5: 其他可能的格式，保持原样
+                else -> title.trim()
+            }
+            
+            val finalName = if (possibleBookName.isEmpty() || possibleBookName.length < 2) {
+                "Supernote文档"
+            } else {
+                possibleBookName
+            }
+            
+            Log.d(TAG, "🔴 Supernote标题处理结果: '$finalName'")
+            return finalName
+        }
+        
+        // 其他应用的标题处理，保持原来的逻辑
+        if (currentAppPackage == "com.adobe.reader") {
+            // Adobe阅读器的标题通常是：文件名 - Adobe Acrobat Reader
+            val extractedName = title.replace(" - Adobe Acrobat Reader", "")
+                        .replace(".pdf", "")
+                        .trim()
+            Log.d(TAG, "📚 Adobe Reader特殊处理 - 提取结果: '$extractedName'")
+            return extractedName
+        } else if (currentAppPackage == "com.kingsoft.moffice_eng") {
+            // WPS Office的标题通常是：文件名 - WPS Office
+            val extractedName = title.replace(" - WPS Office", "")
+                        .replace(".docx", "")
+                        .replace(".doc", "")
+                        .replace(".ppt", "")
+                        .replace(".pptx", "")
+                        .replace(".xls", "")
+                        .replace(".xlsx", "")
+                        .trim()
+            Log.d(TAG, "📚 WPS Office特殊处理 - 提取结果: '$extractedName'")
+            return extractedName
+        } else if (currentAppPackage == "com.supernote.document" || 
+                   currentAppPackage == "com.ratta.supernote.launcher") {
+            // Supernote的标题处理
+            val extractedName = title.replace(" - Supernote", "")
+                        .replace(" - SuperNote", "")
+                        .replace("SuperNote Launcher", "")
+                        .replace("Document", "")
+                        .replace("阅读器", "")
+                        .trim()
+            Log.d(TAG, "📚 Supernote特殊处理 - 提取结果: '$extractedName'")
+            return extractedName
         }
         
         // 移除常见的应用后缀
@@ -616,7 +761,7 @@ class TextAccessibilityService : AccessibilityService() {
             cleanTitle
         }
         
-        Log.d(TAG, "📚 提取书籍名称: '$finalTitle'，原始: '$title'")
+        Log.d(TAG, "📚 通用处理提取书籍名称: '$finalTitle'，原始: '$title'")
         return finalTitle
     }
     
@@ -738,6 +883,13 @@ class TextAccessibilityService : AccessibilityService() {
     // handleSelectedTextRequest method - called by textRequestReceiver
     private fun handleSelectedTextRequest() {
         Log.d(TAG, "🔍 处理选中文本请求 (依赖剪贴板)...")
+        Log.d(TAG, "🔍 当前环境信息 - 应用包名: '$currentAppPackage', 书籍名称: '$currentBookName'")
+
+        // 检查当前是否在 Supernote 应用中
+        val isSupernoteApp = currentAppPackage.contains("supernote") || currentAppPackage.contains("ratta")
+        if (isSupernoteApp) {
+            Log.d(TAG, "🔴 在Supernote应用中处理文本请求: $currentAppPackage")
+        }
 
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         if (clipboard.hasPrimaryClip()) {
@@ -747,8 +899,33 @@ class TextAccessibilityService : AccessibilityService() {
                 if (!text.isNullOrBlank() && isValidText(text)) {
                     Log.d(TAG, "✅ 从剪贴板获取到有效文本供请求: ${text.take(50)}...")
                     lastProcessedText = text // Update last processed text
-                    // currentAppPackage should ideally be known if clipboard change was recent
-                    notifyTextSelected(text)
+                    
+                    // 确保通知时使用正确的应用包名和书籍名称
+                    var appPackage = if (currentAppPackage.isEmpty()) "com.readassist" else currentAppPackage
+                    var bookName = if (currentBookName.isEmpty()) {
+                        when {
+                            appPackage.contains("supernote") || appPackage.contains("ratta") -> "Supernote文档"
+                            appPackage == "com.adobe.reader" -> "PDF文档"
+                            appPackage == "com.kingsoft.moffice_eng" -> "Office文档"
+                            else -> "阅读笔记"
+                        }
+                    } else {
+                        currentBookName
+                    }
+                    
+                    // 如果处于默认状态但怀疑是Supernote应用，尝试纠正
+                    if (appPackage == "com.readassist" && isSupernoteApp) {
+                        Log.d(TAG, "🔴 检测到Supernote应用但应用包名为默认值，尝试纠正")
+                        appPackage = "com.supernote.document"
+                        if (bookName == "阅读笔记") {
+                            bookName = "Supernote文档"
+                        }
+                    }
+                    
+                    Log.d(TAG, "📤 广播选中文本 - 应用: '$appPackage', 书籍: '$bookName'")
+                    
+                    // 广播选中文本，确保使用有效的应用和书籍信息
+                    notifyTextSelected(text, true, appPackage, bookName)
                     return
                 } else {
                     Log.d(TAG, "📋 剪贴板文本无效或为空 (for request): '${text?.take(50)}'")
@@ -878,5 +1055,110 @@ class TextAccessibilityService : AccessibilityService() {
         }
         
         return null
+    }
+
+    /**
+     * 获取当前应用包名
+     */
+    fun getCurrentAppPackage(): String {
+        // 如果当前包名为空或无效，返回本应用包名
+        return if (currentAppPackage.isEmpty() || currentAppPackage == "unknown") {
+            "com.readassist"
+        } else {
+            currentAppPackage
+        }
+    }
+    
+    /**
+     * 获取当前书籍名称
+     */
+    fun getCurrentBookName(): String {
+        // 如果当前书籍名称为空或无效，返回默认名称
+        return if (currentBookName.isEmpty() || 
+                  currentBookName.startsWith("android.") ||
+                  currentBookName.contains("Layout") ||
+                  currentBookName.contains("View") ||
+                  currentBookName.contains(".")) {
+            "阅读笔记"
+        } else {
+            currentBookName
+        }
+    }
+    
+    /**
+     * 获取最近的意图数据（用于调试）
+     */
+    fun getRecentIntentData(): String {
+        try {
+            // 简化实现，避免packageName冲突
+            val sb = StringBuilder()
+            
+            // 1. 获取当前活动窗口
+            val rootNode = rootInActiveWindow
+            if (rootNode != null) {
+                sb.append("窗口标题: ").append(rootNode.className ?: "未知").append("\n")
+                
+                // 2. 收集所有文本
+                val texts = ArrayList<String>()
+                findAllTexts(rootNode, texts)
+                
+                // 3. 尝试识别文件路径
+                val pdfFilePaths = texts.filter { 
+                    it.contains("/storage/") && 
+                    (it.contains(".pdf", true) || 
+                     it.contains(".mark", true) || 
+                     it.contains(".epub", true))
+                }
+                
+                if (pdfFilePaths.isNotEmpty()) {
+                    sb.append("文件路径: ").append(pdfFilePaths.first()).append("\n")
+                } else {
+                    sb.append("未找到文件路径\n")
+                }
+                
+                // 4. 记录当前应用包名
+                sb.append("当前应用: ").append(currentAppPackage).append("\n")
+                sb.append("当前书籍: ").append(currentBookName).append("\n")
+            } else {
+                sb.append("无法获取窗口信息")
+            }
+            
+            return sb.toString()
+        } catch (e: Exception) {
+            Log.e(TAG, "获取意图数据时出错", e)
+            return "获取意图数据出错: ${e.message}"
+        }
+    }
+    
+    /**
+     * 辅助方法：递归查找所有文本
+     */
+    private fun findAllTexts(node: AccessibilityNodeInfo?, texts: MutableList<String>) {
+        if (node == null) return
+        
+        try {
+            // 添加节点文本
+            val text = node.text
+            if (text != null && text.isNotEmpty()) {
+                texts.add(text.toString())
+            }
+            
+            // 添加节点描述
+            val desc = node.contentDescription
+            if (desc != null && desc.isNotEmpty()) {
+                texts.add(desc.toString())
+            }
+            
+            // 递归子节点
+            for (i in 0 until node.childCount) {
+                val child = node.getChild(i)
+                if (child != null) {
+                    findAllTexts(child, texts)
+                    child.recycle()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "查找文本时出错", e)
+        }
     }
 } 

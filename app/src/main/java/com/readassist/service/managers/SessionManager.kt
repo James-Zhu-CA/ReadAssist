@@ -35,7 +35,7 @@ class SessionManager(
                                currentBookName.contains("Layout") || 
                                currentBookName.contains("View") || 
                                currentBookName.contains(".")) {
-                "笔记"
+                "阅读笔记" // 改为更友好的默认值
             } else {
                 currentBookName
             }
@@ -274,18 +274,44 @@ class SessionManager(
      * 获取处理后的书籍名称
      */
     fun getSanitizedBookName(): String {
-        return sanitizeBookName(currentBookName)
+        // 首先尝试使用当前书籍名称
+        val sanitized = sanitizeBookName(currentBookName)
+        if (sanitized != "阅读笔记") {
+            return sanitized
+        }
+        
+        // 如果是默认值，尝试从会话ID中提取
+        if (currentSessionId.isNotEmpty()) {
+            val parts = currentSessionId.split("_")
+            if (parts.size > 1 && parts[1].isNotEmpty() && 
+                !parts[1].contains("android.") && !parts[1].contains(".")) {
+                return parts[1]
+            }
+        }
+        
+        // 最后才返回默认值
+        return "阅读笔记"
     }
     
     /**
      * 获取处理后的应用包名
      */
     fun getSanitizedAppPackage(): String {
-        return if (currentAppPackage.isEmpty() || currentAppPackage == "unknown") {
-            "com.readassist"
-        } else {
-            currentAppPackage
+        // 首先检查是否有有效的当前应用包名
+        if (currentAppPackage.isNotEmpty() && currentAppPackage != "unknown") {
+            return currentAppPackage
         }
+        
+        // 如果没有，尝试从会话ID中提取
+        if (currentSessionId.isNotEmpty()) {
+            val parts = currentSessionId.split("_")
+            if (parts.isNotEmpty() && parts[0].isNotEmpty() && !parts[0].contains("unknown")) {
+                return parts[0]
+            }
+        }
+        
+        // 最后才使用默认值
+        return "com.readassist"
     }
     
     /**
@@ -293,11 +319,11 @@ class SessionManager(
      */
     private fun sanitizeBookName(bookName: String): String {
         return when {
-            bookName.isEmpty() -> "笔记"
-            bookName.startsWith("android.") -> "笔记" // 过滤掉Android类名
-            bookName.contains("Layout") -> "笔记" // 过滤掉布局类名
-            bookName.contains("View") -> "笔记" // 过滤掉视图类名
-            bookName.contains(".") -> "笔记" // 过滤掉包含点号的类名
+            bookName.isEmpty() -> "阅读笔记" // 改为更友好的默认值
+            bookName.startsWith("android.") -> "阅读笔记" // 过滤掉Android类名
+            bookName.contains("Layout") -> "阅读笔记" // 过滤掉布局类名
+            bookName.contains("View") -> "阅读笔记" // 过滤掉视图类名
+            bookName.contains(".") -> "阅读笔记" // 过滤掉包含点号的类名
             else -> bookName // 使用有意义的书籍名称
         }
     }

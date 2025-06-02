@@ -161,6 +161,9 @@ class ChatWindowManager(
         try {
             windowManager.addView(chatWindow, chatWindowParams)
             Log.d(TAG, "Chat window created with background overlay")
+            
+            // 更新窗口标题
+            updateWindowTitle()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to create chat window", e)
         }
@@ -537,68 +540,44 @@ class ChatWindowManager(
     fun isVisible(): Boolean = isWindowVisible
     
     /**
-     * 预加载聊天窗口但不立即显示，减少后续显示时的延迟
+     * 更新窗口标题
      */
-    fun preloadChatWindow() {
-        if (chatWindow == null) {
-            createChatWindow()
-        }
-        // 仅创建窗口但不添加到WindowManager
-    }
-    
-    /**
-     * 检查聊天窗口是否已预加载但未显示
-     */
-    fun isPreloaded(): Boolean {
-        return chatWindow != null && !isWindowVisible
-    }
-    
-    /**
-     * 快速显示聊天窗口（减少动画和延迟）
-     */
-    fun showChatWindowFast() {
-        if (chatWindow == null) {
-            createChatWindow()
-        }
-        
-        if (!isWindowVisible) {
-            try {
-                // 添加到窗口管理器
-                windowManager.addView(chatWindow, layoutParams)
-                isWindowVisible = true
-                
-                // 不使用动画，直接显示
-                chatWindow?.apply {
-                    alpha = 1.0f
-                    visibility = View.VISIBLE
-                }
-                
-                // 通知回调
-                callbacks.onChatWindowShown()
-                
-                // 加载历史记录
-                loadChatHistory()
-            } catch (e: Exception) {
-                Log.e(TAG, "快速显示聊天窗口失败", e)
+    fun updateWindowTitle() {
+        chatWindow?.let { window ->
+            val titleText = window.findViewById<TextView>(R.id.titleText)
+            
+            // 从偏好设置获取当前应用和书籍名称
+            val appPreference = preferenceManager.getString("current_app_package", "com.readassist")
+            val bookPreference = preferenceManager.getString("current_book_name", "阅读笔记")
+            
+            // 获取可显示的应用名称
+            val appDisplayName = when (appPreference) {
+                "com.supernote.document" -> "Supernote"
+                "com.ratta.supernote.launcher" -> "Supernote"
+                "com.adobe.reader" -> "Adobe Reader"
+                "com.kingsoft.moffice_eng" -> "WPS Office"
+                "com.readassist" -> "ReadAssist"
+                else -> appPreference.substringAfterLast(".")
             }
-        }
-    }
-    
-    /**
-     * 更新最后一条系统消息
-     */
-    fun updateLastMessage(message: String) {
-        // 查找最后一条系统消息
-        for (i in chatAdapter.items.size - 1 downTo 0) {
-            val item = chatAdapter.items[i]
-            if (item.isSystemMessage) {
-                // 更新消息内容
-                item.systemMessage = message
-                
-                // 通知适配器更新
-                chatAdapter.notifyItemChanged(i)
-                break
+            
+            // 设置标题
+            val title = if (bookPreference == "阅读笔记" || bookPreference.isEmpty()) {
+                "AI阅读助手"
+            } else {
+                "$bookPreference"
             }
+            
+            // 设置副标题
+            val subtitle = if (appPreference != "com.readassist") {
+                " - $appDisplayName"
+            } else {
+                ""
+            }
+            
+            // 更新UI
+            titleText?.text = title + subtitle
+            
+            Log.d(TAG, "📱 更新窗口标题: $title$subtitle")
         }
     }
     

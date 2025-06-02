@@ -225,100 +225,55 @@ class ScreenshotManager(
     fun performScreenshot() {
         Log.d(TAG, "=== 执行截屏 ===")
         
-        // 清除旧的待处理截图
-        clearPendingScreenshot()
-        
-        // 通知回调开始截屏
-        callbacks.onScreenshotStarted()
-        
-        // 检查权限，如果权限未授予，直接请求权限
+        // 检查权限状态
         if (!preferenceManager.isScreenshotPermissionGranted()) {
             Log.e(TAG, "❌ 截屏权限未授予，直接请求权限")
             callbacks.onScreenshotFailed("需要获取截屏权限")
             
-            // 立即启动权限请求流程
-            coroutineScope.launch {
-                requestScreenshotPermission()
-            }
+            // 重置状态标志并请求权限
+            isRequestingPermission = false
+            requestScreenshotPermission()
             return
         }
         
-        // 检查服务是否已绑定并就绪
-        if (screenshotService == null) {
-            if (serviceBound) {
-                // 服务已绑定但引用为空，可能是初始化问题
-                Log.e(TAG, "❌ 截屏服务绑定但未初始化")
-                callbacks.onScreenshotFailed("截屏服务未初始化")
-                return
-            } else {
-                // 尝试重新绑定服务
-                Log.d(TAG, "重新绑定截屏服务...")
-                bindScreenshotService()
+        // 开始截屏流程
+        coroutineScope.launch {
+            try {
+                // 通知截屏开始
+                withContext(Dispatchers.Main) {
+                    callbacks.onScreenshotStarted()
+                }
                 
-                // 启动后台线程等待服务绑定完成，避免阻塞UI
-                coroutineScope.launch {
-                    var retryCount = 0
-                    val maxRetries = 10
-                    
-                    while (screenshotService == null && retryCount < maxRetries) {
-                        delay(100)
-                        retryCount++
-                    }
-                    
-                    if (screenshotService != null) {
-                        // 服务绑定成功，执行截屏
-                        withContext(Dispatchers.Main) {
-                            executeScreenshot()
-                        }
-                    } else {
-                        // 绑定超时
-                        Log.e(TAG, "❌ 截屏服务绑定超时")
-                        withContext(Dispatchers.Main) {
-                            callbacks.onScreenshotFailed("截屏服务绑定超时")
-                        }
-                    }
-                }
-                return
-            }
-        }
-        
-        // 服务已绑定且就绪，直接执行截屏
-        executeScreenshot()
-    }
-    
-    /**
-     * 实际执行截屏操作
-     */
-    private fun executeScreenshot() {
-        Log.d(TAG, "开始执行实际截屏操作...")
-        
-        try {
-            // 获取选择区域信息
-            val selectionBounds = textSelectionBounds
-            val selectionPosition = textSelectionPosition
-            
-            // 调用截屏服务执行截屏
-            screenshotService?.takeScreenshot(
-                selectionBounds,
-                selectionPosition,
-                object : ScreenshotService.ScreenshotCallback {
-                    override fun onScreenshotSuccess(bitmap: Bitmap) {
-                        // 设置当前截图
-                        setPendingScreenshot(bitmap)
+                // 短暂延迟，让UI更新
+                delay(200)
+                
+                // 获取截屏服务
+                val service = screenshotService
+                if (service == null) {
+                    Log.e(TAG, "❌ 截屏服务未连接")
+                    withContext(Dispatchers.Main) {
+                        callbacks.onScreenshotFailed("截屏服务未准备就绪")
                         
-                        // 通知回调截屏成功
-                        callbacks.onScreenshotSuccess(bitmap)
+                        // 尝试绑定服务
+                        bindScreenshotService()
                     }
-                    
-                    override fun onScreenshotFailed(error: String) {
-                        // 通知回调截屏失败
-                        callbacks.onScreenshotFailed(error)
-                    }
+                    return@launch
                 }
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "截屏操作异常", e)
-            callbacks.onScreenshotFailed("截屏操作异常: ${e.message}")
+                
+                Log.d(TAG, "开始执行实际截屏操作...")
+                
+                // 在后台线程中执行截屏
+                withContext(Dispatchers.IO) {
+                    // 使用新的快速截屏方法
+                    service.captureScreenFast()
+                }
+            } catch (e: Exception) {
+                // 捕获截屏过程中的异常
+                Log.e(TAG, "❌ 截屏过程异常", e)
+                withContext(Dispatchers.Main) {
+                    callbacks.onScreenshotFailed("截屏出错: ${e.message}")
+                }
+            }
         }
     }
     

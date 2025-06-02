@@ -177,25 +177,29 @@ class AiCommunicationManager(
         bookName: String
     ) {
         try {
-            // 使用sendMessage API来保存消息，但不使用其返回的AI响应
-            val result = chatRepository.sendMessage(
+            Log.d(TAG, "保存消息 - 会话ID: $sessionId, 应用: $appPackage, 书籍: $bookName")
+            
+            // 直接使用ChatRepository的API保存消息，但先使用ChatEntity构建完整的消息对象
+            val chatEntity = com.readassist.database.ChatEntity(
                 sessionId = sessionId,
-                userMessage = userMessage,
                 bookName = bookName,
                 appPackage = appPackage,
-                promptTemplate = preferenceManager.getPromptTemplate()
+                userMessage = userMessage,
+                aiResponse = aiResponse,
+                promptTemplate = preferenceManager.getPromptTemplate(),
+                timestamp = System.currentTimeMillis()
             )
             
-            when (result) {
-                is ApiResult.Success -> {
-                    Log.d(TAG, "消息保存成功: ${result.data}")
-                }
-                is ApiResult.Error -> {
-                    Log.e(TAG, "消息保存失败", result.exception)
-                }
-                is ApiResult.NetworkError -> {
-                    Log.e(TAG, "保存消息网络错误: ${result.message}")
-                }
+            // 使用数据访问对象直接保存实体
+            val messageId = chatRepository.saveChatEntity(chatEntity)
+            
+            if (messageId > 0) {
+                Log.d(TAG, "消息保存成功: ${chatEntity.copy(id = messageId)}")
+                
+                // 确保会话记录也被更新
+                chatRepository.updateSession(sessionId, bookName, appPackage)
+            } else {
+                Log.e(TAG, "消息保存失败，返回的ID无效: $messageId")
             }
         } catch (e: Exception) {
             Log.e(TAG, "保存消息异常", e)
