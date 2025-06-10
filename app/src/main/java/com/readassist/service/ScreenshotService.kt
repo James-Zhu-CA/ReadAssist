@@ -1056,4 +1056,211 @@ class ScreenshotService : Service() {
         
         Log.d(TAG, "=== captureScreenFast() 方法调用结束 ===")
     }
+    
+    /**
+     * 优化版PixelCopy截屏方法 - 减少墨水屏等待时间
+     */
+    private suspend fun captureWithPixelCopyOptimized(): Bitmap? {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "🔄 开始优化版PixelCopy截屏...")
+                
+                if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) {
+                    Log.w(TAG, "❌ PixelCopy需要Android 8.0+，当前系统不支持")
+                    return@withContext null
+                }
+                
+                if (virtualDisplay == null) {
+                    Log.e(TAG, "❌ VirtualDisplay未初始化")
+                    return@withContext null
+                }
+                
+                // 获取屏幕尺寸
+                val windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+                val displayMetrics = DisplayMetrics()
+                windowManager.defaultDisplay.getMetrics(displayMetrics)
+                
+                val width = displayMetrics.widthPixels
+                val height = displayMetrics.heightPixels
+                
+                Log.d(TAG, "📐 屏幕尺寸: ${width}x${height}")
+                
+                // 创建Bitmap
+                val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                
+                // 使用CountDownLatch等待PixelCopy完成
+                val latch = java.util.concurrent.CountDownLatch(1)
+                var copySuccess = false
+                
+                // 获取VirtualDisplay的Surface
+                val surface = virtualDisplay?.surface
+                if (surface == null) {
+                    Log.e(TAG, "❌ VirtualDisplay的Surface为空")
+                    return@withContext null
+                }
+                
+                // 优化版墨水屏渲染流程 - 大幅减少等待时间
+                Log.d(TAG, "🎯 开始优化版墨水屏渲染流程...")
+                
+                // 阶段1：快速刷新VirtualDisplay
+                Log.d(TAG, "📺 阶段1: 快速刷新VirtualDisplay...")
+                try {
+                    virtualDisplay?.resize(width, height, displayMetrics.densityDpi)
+                    Log.d(TAG, "✅ VirtualDisplay刷新完成")
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ VirtualDisplay刷新失败，继续后续流程", e)
+                }
+                
+                // 阶段2：减少等待时间 (从800ms减少到200ms)
+                Log.d(TAG, "⏰ 阶段2: 等待VirtualDisplay稳定（200ms）...")
+                delay(200) // 从800ms优化为200ms
+                Log.d(TAG, "✅ VirtualDisplay稳定期完成")
+                
+                // 阶段3：减少渲染次数和间隔 (从3次300ms减少到2次100ms)
+                Log.d(TAG, "🔄 阶段3: 优化VirtualDisplay渲染...")
+                repeat(2) { i -> // 从3次减少到2次
+                    try {
+                        Log.d(TAG, "   触发 ${i + 1}/2: VirtualDisplay刷新...")
+                        virtualDisplay?.resize(width, height, displayMetrics.densityDpi)
+                        delay(100) // 从300ms减少到100ms
+                        Log.d(TAG, "   ✅ 触发 ${i + 1} 完成")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "   ⚠️ 触发 ${i + 1} 失败", e)
+                    }
+                }
+                
+                // 阶段4：大幅减少最终等待时间 (从1000ms减少到300ms)
+                Log.d(TAG, "⏰ 阶段4: 最终等待VirtualDisplay渲染（300ms）...")
+                delay(300) // 从1000ms优化为300ms
+                Log.d(TAG, "✅ VirtualDisplay渲染等待完成")
+                
+                Log.d(TAG, "🎯 开始PixelCopy操作...")
+                
+                // 在主线程执行PixelCopy
+                withContext(Dispatchers.Main) {
+                    try {
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                            android.view.PixelCopy.request(
+                                virtualDisplay!!.surface,
+                                bitmap,
+                                object : android.view.PixelCopy.OnPixelCopyFinishedListener {
+                                    override fun onPixelCopyFinished(result: Int) {
+                                        copySuccess = (result == android.view.PixelCopy.SUCCESS)
+                                        if (copySuccess) {
+                                            Log.d(TAG, "✅ PixelCopy成功")
+                                        } else {
+                                            Log.e(TAG, "❌ PixelCopy失败，错误码: $result")
+                                        }
+                                        latch.countDown()
+                                    }
+                                },
+                                backgroundHandler
+                            )
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "❌ PixelCopy请求异常", e)
+                        latch.countDown()
+                    }
+                }
+                
+                // 等待PixelCopy完成，保持2秒超时
+                Log.d(TAG, "⏳ 等待PixelCopy完成，最多2秒...")
+                val completed = latch.await(2, java.util.concurrent.TimeUnit.SECONDS)
+                
+                if (!completed) {
+                    Log.w(TAG, "⚠️ PixelCopy超时（2秒）")
+                    bitmap.recycle()
+                    return@withContext null
+                }
+                
+                if (!copySuccess) {
+                    Log.w(TAG, "⚠️ PixelCopy失败")
+                    bitmap.recycle()
+                    return@withContext null
+                }
+                
+                // 检查bitmap是否有效
+                if (bitmap.isRecycled) {
+                    Log.e(TAG, "❌ Bitmap已被回收")
+                    return@withContext null
+                }
+                
+                // 简化的内容检测 - 只检查关键区域
+                Log.d(TAG, "🔍 开始简化像素分析...")
+                val centerX = bitmap.width / 2
+                val centerY = bitmap.height / 2
+                
+                // 只检查中心区域的9个像素点
+                val testPixels = IntArray(9)
+                bitmap.getPixels(testPixels, 0, 3, centerX - 1, centerY - 1, 3, 3)
+                
+                val nonTransparentCount = testPixels.count { Color.alpha(it) > 0 }
+                val contentPercentage = (nonTransparentCount * 100) / 9
+                
+                Log.d(TAG, "📊 简化内容检测结果: $contentPercentage% (${nonTransparentCount}/9)")
+                
+                if (contentPercentage < 50) {
+                    Log.w(TAG, "⚠️ 截屏内容可能不完整，但继续处理")
+                }
+                
+                Log.d(TAG, "🎉 优化版PixelCopy截屏成功！尺寸: ${bitmap.width}x${bitmap.height}，内容: $contentPercentage%")
+                
+                // 保存截屏文件
+                try {
+                    val timestamp = System.currentTimeMillis()
+                    val testFile = java.io.File("${applicationContext.getExternalFilesDir(null)?.absolutePath}/screenshot_$timestamp.png")
+                    val outputStream = java.io.FileOutputStream(testFile)
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+                    outputStream.close()
+                    Log.d(TAG, "📁 成功截屏已保存到: ${testFile.absolutePath}")
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ 保存截屏文件失败", e)
+                }
+                
+                return@withContext bitmap
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ 优化版PixelCopy截屏异常", e)
+                return@withContext null
+            }
+        }
+    }
+
+    /**
+     * 超快速截屏方法 - 专为性能优化设计
+     */
+    fun captureScreenUltraFast() {
+        Log.d(TAG, "=== captureScreenUltraFast() 开始 ===")
+        
+        if (mediaProjection == null) {
+            Log.e(TAG, "❌ MediaProjection为空，无法截屏")
+            screenshotCallback?.onScreenshotFailed("截屏服务未就绪")
+            return
+        }
+        
+        serviceScope.launch {
+            try {
+                Log.d(TAG, "开始超快速截屏...")
+                
+                // 直接使用优化版PixelCopy，不进行重试
+                val resultBitmap = withTimeoutOrNull(3000) { // 3秒超时
+                    captureWithPixelCopyOptimized()
+                }
+                
+                if (resultBitmap != null) {
+                    Log.d(TAG, "🎉 超快速截屏成功，大小: ${resultBitmap.width}x${resultBitmap.height}")
+                    screenshotCallback?.onScreenshotSuccess(resultBitmap)
+                } else {
+                    Log.e(TAG, "💀 超快速截屏失败")
+                    screenshotCallback?.onScreenshotFailed("截屏失败，请重试")
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ 超快速截屏异常", e)
+                screenshotCallback?.onScreenshotFailed("截屏出错: ${e.message}")
+            }
+        }
+        
+        Log.d(TAG, "=== captureScreenUltraFast() 方法调用结束 ===")
+    }
 } 

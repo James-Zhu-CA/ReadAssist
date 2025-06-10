@@ -347,4 +347,18 @@ class PreferenceManager(private val context: Context) {
         normalPrefs.edit().clear().apply()
         encryptedPrefs.edit().clear().apply()
     }
+
+    /**
+     * 获取布尔值
+     */
+    fun getBoolean(key: String, defaultValue: Boolean = false): Boolean {
+        return normalPrefs.getBoolean(key, defaultValue)
+    }
+
+    /**
+     * 设置布尔值
+     */
+    fun setBoolean(key: String, value: Boolean) {
+        normalPrefs.edit().putBoolean(key, value).apply()
+    }
 } 

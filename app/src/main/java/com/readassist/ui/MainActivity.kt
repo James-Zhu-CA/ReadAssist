@@ -21,6 +21,13 @@ import com.readassist.utils.ApiKeyHelper
 import com.readassist.utils.PermissionUtils
 import com.readassist.viewmodel.MainViewModel
 import android.util.Log
+import android.os.Build
+import android.os.Environment
+import android.provider.Settings
+import android.net.Uri
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
 
 class MainActivity : AppCompatActivity() {
     
@@ -69,6 +76,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
+    private val overlayPermissionReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == "com.readassist.OVERLAY_PERMISSION_DENIED") {
+                // 显示悬浮窗权限提示
+                showOverlayPermissionDialog()
+            }
+        }
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
@@ -94,13 +110,33 @@ class MainActivity : AppCompatActivity() {
         // Initialize new UI elements for storage permission
         // tvStoragePermissionStatus = binding.tvStoragePermissionStatus
         // btnRequestStoragePermission = binding.btnRequestStoragePermission
+
+        // 首次打开时刷新悬浮窗状态
+        updateFloatingServiceStatus()
+        
+        // 注册广播接收器
+        registerReceiver(overlayPermissionReceiver, IntentFilter("com.readassist.OVERLAY_PERMISSION_DENIED"))
     }
     
     override fun onResume() {
         super.onResume()
+        Log.e(TAG, "MainActivity.onResume() 被调用，开始检查权限状态")
+        
+        // 判断是否为掌阅设备，尤其是X3 Pro
+        if (isIReaderX3Pro()) {
+            binding.tvScreenshotStatus.text = "截屏权限：您的设备是掌阅公司的，请使用右上角弧形菜单里截屏命令截屏"
+            binding.tvScreenshotStatus.setTextColor(getColor(R.color.text_default))
+            binding.btnScreenshotPermission.visibility = View.GONE
+            // 也可以隐藏其他相关UI
+            return
+        }
+        
+        // 直接检查并记录所有文件访问权限状态
+        val hasAllFiles = hasAllFilesAccess()
+        Log.e(TAG, "所有文件访问权限状态: $hasAllFiles")
+        
         // 每次回到前台都检查状态
         viewModel.checkPermissions()
-        viewModel.checkServiceStatus()
         viewModel.checkApiKey()
         
         // 更新悬浮窗服务状态
@@ -112,6 +148,9 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent("com.readassist.RECHECK_SCREENSHOT_PERMISSION")
             sendBroadcast(intent)
         }
+        
+        // 强制刷新权限UI显示
+        updatePermissionStatusUI()
     }
     
     /**
@@ -121,11 +160,6 @@ class MainActivity : AppCompatActivity() {
         // 权限状态观察
         viewModel.permissionStatus.observe(this, Observer { status ->
             updatePermissionStatus(status)
-        })
-        
-        // 服务状态观察
-        viewModel.isServiceRunning.observe(this, Observer { isRunning ->
-            updateServiceStatus(isRunning)
         })
         
         // API Key 状态观察
@@ -157,9 +191,9 @@ class MainActivity : AppCompatActivity() {
      */
     private fun setupClickListeners() {
         // 权限设置按钮
-        binding.btnPermissions.setOnClickListener {
-            requestPermissions()
-        }
+        // binding.btnPermissions.setOnClickListener {
+        //     requestPermissions()
+        // }
         
         // API Key 设置按钮
         binding.btnApiKey.setOnClickListener {
@@ -203,6 +237,14 @@ class MainActivity : AppCompatActivity() {
         binding.btnRequestStoragePermission.setOnClickListener {
             viewModel.requestStoragePermissions(this)
         }
+        
+        // 添加截屏自动弹窗开关监听
+        binding.switchScreenshotAutoPopup.isChecked = app.preferenceManager.getBoolean("screenshot_auto_popup", true)
+        binding.switchScreenshotAutoPopup.setOnCheckedChangeListener { _, isChecked ->
+            app.preferenceManager.setBoolean("screenshot_auto_popup", isChecked)
+            Log.d(TAG, "截屏自动弹窗设置已${if (isChecked) "开启" else "关闭"}")
+            Toast.makeText(this, "截屏自动弹窗已${if (isChecked) "开启" else "关闭"}", Toast.LENGTH_SHORT).show()
+        }
     }
     
     /**
@@ -239,7 +281,7 @@ class MainActivity : AppCompatActivity() {
                         startActivity(Intent(this, SettingsActivity::class.java))
                     }
                 } else {
-                    requestPermissions()
+                    // requestPermissions()
                 }
             }
             .setNeutralButton("手动设置") { _, _ ->
@@ -258,7 +300,6 @@ class MainActivity : AppCompatActivity() {
             override fun onPermissionGranted() {
                 showMessage("所有权限已授予")
                 viewModel.checkPermissions()
-                viewModel.checkServiceStatus()
             }
             
             override fun onPermissionDenied(missingPermissions: List<String>) {
@@ -551,96 +592,73 @@ class MainActivity : AppCompatActivity() {
     private fun updatePermissionStatus(status: MainViewModel.PermissionStates) {
         Log.d(TAG, "Updating permission status UI for state: $status")
 
-        // Get individual permission states directly for more granular UI updates
         val overlayGranted = PermissionUtils.hasOverlayPermission(this)
         val accessibilityGranted = PermissionUtils.hasAccessibilityPermission(this)
         val storageGranted = PermissionUtils.hasStoragePermissions(this).allGranted
-        val screenshotGranted = app.preferenceManager.isScreenshotPermissionGranted() // Use preference manager as source of truth
+        val screenshotGranted = app.preferenceManager.isScreenshotPermissionGranted()
+        val allFilesGranted = hasAllFilesAccess()
+        val floatingServiceRunning = isFloatingWindowServiceRunning()
+        // 你可以根据实际需要添加其他服务的运行状态检测
 
-        // Update general permission button visibility
-        // This button is for Overlay, Accessibility, and Storage primarily.
-        // Screenshot has its own dedicated button.
-        if (!overlayGranted || !accessibilityGranted || !storageGranted) {
-            binding.btnPermissions.visibility = View.VISIBLE
-            binding.btnPermissions.text = "授予必要权限"
-        } else {
-            binding.btnPermissions.visibility = View.GONE
-        }
-
-        // Update overall permission status text (tvPermissionStatus)
-        var overallStatusText = ""
-        var allCorePermissionsGranted = true
-
-        if (overlayGranted) {
-            overallStatusText += "悬浮窗: 已授予\n"
-        } else {
-            overallStatusText += "悬浮窗: 未授予\n"
-            allCorePermissionsGranted = false
-        }
-        if (accessibilityGranted) {
-            overallStatusText += "无障碍: 已授予\n"
-        } else {
-            overallStatusText += "无障碍: 未授予\n"
-            allCorePermissionsGranted = false
-        }
-        // Note: Screenshot and Storage have their own TextViews, but we include them in the summary if missing.
-
-        if (allCorePermissionsGranted && storageGranted && screenshotGranted) {
-            binding.tvPermissionStatus.text = "所有核心权限已授予"
-            binding.tvPermissionStatus.setTextColor(ContextCompat.getColor(this, R.color.text_success))
-        } else {
-            var missingSummary = "部分权限未授予:\n"
-            if (!overlayGranted) missingSummary += "- 悬浮窗\n"
-            if (!accessibilityGranted) missingSummary += "- 无障碍\n"
-            if (!storageGranted) missingSummary += "- 存储 (影响历史记录导出等)\n"
-            if (!screenshotGranted) missingSummary += "- 截屏 (影响AI分析)"
-            binding.tvPermissionStatus.text = missingSummary.trim()
-            binding.tvPermissionStatus.setTextColor(ContextCompat.getColor(this, R.color.text_error))
-        }
-
-        // Update Screenshot Permission UI (tvScreenshotStatus & btnScreenshotPermission)
-        if (screenshotGranted) {
-            binding.tvScreenshotStatus.text = getString(R.string.screenshot_permission_status, getString(R.string.status_granted))
-            binding.tvScreenshotStatus.setTextColor(ContextCompat.getColor(this, R.color.text_success))
-            binding.btnScreenshotPermission.visibility = View.GONE
-        } else {
-            binding.tvScreenshotStatus.text = getString(R.string.screenshot_permission_status, getString(R.string.status_not_granted))
-            binding.tvScreenshotStatus.setTextColor(ContextCompat.getColor(this, R.color.text_error))
-            binding.btnScreenshotPermission.visibility = View.VISIBLE
-            binding.btnScreenshotPermission.text = "授予截屏权限"
-        }
-
-        // Update Storage Permission UI (tvStoragePermissionStatus & btnRequestStoragePermission)
-        if (storageGranted) {
-            binding.tvStoragePermissionStatus.text = getString(R.string.storage_permission_status_granted)
-            binding.tvStoragePermissionStatus.setTextColor(ContextCompat.getColor(this, R.color.text_success))
+        // 统一格式：权限名称：状态
+        // 存储权限
+        if (allFilesGranted) {
+            binding.tvStoragePermissionStatus.text = "存储权限：已授予所有文件访问权限"
+            binding.tvStoragePermissionStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
             binding.btnRequestStoragePermission.visibility = View.GONE
         } else {
-            binding.tvStoragePermissionStatus.text = getString(R.string.storage_permission_status_denied)
-            binding.tvStoragePermissionStatus.setTextColor(ContextCompat.getColor(this, R.color.text_error))
+            binding.tvStoragePermissionStatus.text = "存储权限：未授权所有文件访问"
+            binding.tvStoragePermissionStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
             binding.btnRequestStoragePermission.visibility = View.VISIBLE
+            binding.btnRequestStoragePermission.text = "授权所有文件访问"
+            binding.btnRequestStoragePermission.setOnClickListener {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                    intent.data = Uri.parse("package:" + packageName)
+                    startActivity(intent)
+                }
+            }
+        }
+
+        // 无障碍服务权限
+        if (accessibilityGranted) {
+            binding.tvAccessibilityPermissionStatus.text = "无障碍服务权限：已授予"
+            binding.tvAccessibilityPermissionStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
+            binding.btnRequestAccessibilityPermission.visibility = View.GONE
+        } else {
+            binding.tvAccessibilityPermissionStatus.text = "无障碍服务权限：未授权"
+            binding.tvAccessibilityPermissionStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
+            binding.btnRequestAccessibilityPermission.visibility = View.VISIBLE
+            binding.btnRequestAccessibilityPermission.text = "授予无障碍权限"
+            binding.btnRequestAccessibilityPermission.setOnClickListener {
+                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                startActivity(intent)
+            }
+        }
+
+        // 截屏权限，掌阅设备特殊提示
+        if (com.readassist.utils.DeviceUtils.isIReaderDevice()) {
+            binding.tvScreenshotStatus.text = "截屏权限：您的设备是掌阅公司的，请使用右上角弧形菜单里的截屏命令来截屏"
+            binding.tvScreenshotStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
+            binding.btnScreenshotPermission.visibility = View.GONE
+        } else {
+            if (screenshotGranted) {
+                binding.tvScreenshotStatus.text = "截屏权限：已授予"
+                binding.tvScreenshotStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
+                binding.btnScreenshotPermission.visibility = View.GONE
+            } else {
+                binding.tvScreenshotStatus.text = "截屏权限：未授权"
+                binding.tvScreenshotStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
+                binding.btnScreenshotPermission.visibility = View.VISIBLE
+                binding.btnScreenshotPermission.text = "授予截屏权限"
+            }
         }
 
         // Log the final state of UI elements for debugging
-        Log.d(TAG, "tvPermissionStatus: ${binding.tvPermissionStatus.text}")
-        Log.d(TAG, "btnPermissions visible: ${binding.btnPermissions.visibility == View.VISIBLE}")
         Log.d(TAG, "tvScreenshotStatus: ${binding.tvScreenshotStatus.text}")
         Log.d(TAG, "btnScreenshotPermission visible: ${binding.btnScreenshotPermission.visibility == View.VISIBLE}")
         Log.d(TAG, "tvStoragePermissionStatus: ${binding.tvStoragePermissionStatus.text}")
         Log.d(TAG, "btnRequestStoragePermission visible: ${binding.btnRequestStoragePermission.visibility == View.VISIBLE}")
-    }
-    
-    /**
-     * 更新服务状态显示
-     */
-    private fun updateServiceStatus(isRunning: Boolean) {
-        if (isRunning) {
-            binding.tvServiceStatus.text = "✓ 服务正在运行"
-            binding.tvServiceStatus.setTextColor(0xFF333333.toInt())
-        } else {
-            binding.tvServiceStatus.text = "⚠ 服务未运行"
-            binding.tvServiceStatus.setTextColor(0xFF666666.toInt())
-        }
     }
     
     /**
@@ -694,12 +712,11 @@ class MainActivity : AppCompatActivity() {
      * 切换悬浮窗服务状态
      */
     private fun toggleFloatingWindowService() {
-        if (isFloatingWindowServiceRunning()) {
-            // 停止悬浮窗服务
+        val isServiceRunning = isFloatingWindowServiceRunning()
+        if (isServiceRunning) {
             stopService(Intent(this, FloatingWindowServiceNew::class.java))
-            showMessage("悬浮窗服务已停止")
+            showMessage("悬浮按钮已停止")
         } else {
-            // 检查权限后启动悬浮窗服务
             if (PermissionUtils.hasOverlayPermission(this)) {
                 startFloatingWindowService()
             } else {
@@ -707,8 +724,6 @@ class MainActivity : AppCompatActivity() {
                 requestPermissions()
             }
         }
-        
-        // 更新状态显示
         updateFloatingServiceStatus()
     }
     
@@ -769,13 +784,13 @@ class MainActivity : AppCompatActivity() {
     private fun updateFloatingServiceStatus() {
         val isServiceRunning = isFloatingWindowServiceRunning()
         if (isServiceRunning) {
-            binding.tvFloatingWindowStatus.text = "✓ 悬浮窗服务运行中"
+            binding.tvFloatingWindowStatus.text = "✓ 悬浮按钮运行中"
             binding.tvFloatingWindowStatus.setTextColor(getColor(R.color.text_success))
-            binding.btnFloatingWindow.text = "停止悬浮窗"
+            binding.btnFloatingWindow.text = "停止悬浮按钮"
         } else {
-            binding.tvFloatingWindowStatus.text = "- 悬浮窗服务已停止"
+            binding.tvFloatingWindowStatus.text = "- 悬浮按钮已停止"
             binding.tvFloatingWindowStatus.setTextColor(getColor(R.color.text_default))
-            binding.btnFloatingWindow.text = "启动悬浮窗"
+            binding.btnFloatingWindow.text = "启动悬浮按钮"
         }
     }
 
@@ -831,5 +846,67 @@ class MainActivity : AppCompatActivity() {
                 updateFloatingServiceStatus()
             }
         }
+    }
+
+    // 检查是否有所有文件访问权限
+    private fun hasAllFilesAccess(): Boolean {
+        val hasAccess = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val result = Environment.isExternalStorageManager()
+            Log.e(TAG, "检查所有文件访问权限结果: $result (API ${Build.VERSION.SDK_INT})")
+            result
+        } else {
+            Log.e(TAG, "API等级低于30，默认拥有所有文件访问权限")
+            true
+        }
+        return hasAccess
+    }
+
+    // 添加强制刷新UI的方法
+    private fun updatePermissionStatusUI() {
+        Log.e(TAG, "强制刷新权限UI显示")
+        // 获取存储权限状态
+        val hasAllFilesAccess = hasAllFilesAccess()
+        
+        // 更新存储权限状态显示
+        binding.tvStoragePermissionStatus.text = if (hasAllFilesAccess) {
+            "已授予所有文件访问权限"
+        } else {
+            "未授权所有文件访问"
+        }
+        
+        // 更新存储权限按钮状态
+        binding.btnRequestStoragePermission.visibility = if (hasAllFilesAccess) {
+            View.GONE
+        } else {
+            View.VISIBLE
+        }
+    }
+
+    private fun isIReaderX3Pro(): Boolean {
+        val manufacturer = Build.MANUFACTURER?.lowercase() ?: ""
+        val model = Build.MODEL?.lowercase() ?: ""
+        return manufacturer.contains("ireader") || manufacturer.contains("掌阅") || model.contains("x3 pro") || model.contains("x3pro")
+    }
+
+    private fun showOverlayPermissionDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("需要悬浮窗权限")
+            .setMessage("ReadAssist需要悬浮窗权限才能显示悬浮按钮。请在设置中授予权限。")
+            .setPositiveButton("去设置") { _, _ ->
+                // 跳转到悬浮窗权限设置页面
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:$packageName")
+                )
+                startActivity(intent)
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // 注销广播接收器
+        unregisterReceiver(overlayPermissionReceiver)
     }
 } 

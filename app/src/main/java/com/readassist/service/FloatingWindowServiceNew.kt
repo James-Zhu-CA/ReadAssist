@@ -25,12 +25,18 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.ServiceConnection
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
 import android.graphics.Rect
+import android.net.Uri
+import android.os.Build
 import android.os.IBinder
 import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import com.readassist.ReadAssistApplication
+import com.readassist.database.ChatEntity
+import com.readassist.network.ApiResult
 import com.readassist.service.managers.AiCommunicationManager
 import com.readassist.service.managers.AiConfigurationManager
 import com.readassist.service.managers.ChatWindowManager
@@ -47,7 +53,16 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import java.util.concurrent.atomic.AtomicReference
+import com.readassist.utils.DeviceUtils
+import android.widget.Toast
+import com.readassist.utils.PreferenceManager
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import java.util.Date
+import java.util.Locale
 
 /**
  * 重构后的悬浮窗服务
@@ -56,7 +71,8 @@ class FloatingWindowServiceNew : Service(),
     ScreenshotManager.ScreenshotCallbacks, 
     TextSelectionManager.TextSelectionCallbacks,
     ChatWindowManager.ChatWindowCallbacks,
-    FloatingButtonManager.FloatingButtonCallbacks {
+    FloatingButtonManager.FloatingButtonCallbacks,
+    ChatWindowManager.OnScreenshotMonitoringStateChangedListener {
     
     companion object {
         private const val TAG = "FloatingWindowServiceNew"
@@ -132,15 +148,43 @@ class FloatingWindowServiceNew : Service(),
         }
     }
     
+    private val screenshotTakenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == TextAccessibilityService.ACTION_SCREENSHOT_TAKEN_VIA_ACCESSIBILITY) {
+                val uriString = intent.getStringExtra(TextAccessibilityService.EXTRA_SCREENSHOT_URI)
+                if (uriString != null) {
+                    val uri = Uri.parse(uriString)
+                    Log.d(TAG, "Screenshot taken via accessibility: $uri")
+                    serviceScope.launch {
+                        processScreenshotFromUri(uri)
+                    }
+                }
+            }
+        }
+    }
+    
+    private var pendingScreenshot: Uri? = null
+    private var pendingScreenshotBitmap: Bitmap? = null
+    
+    private lateinit var preferenceManager: PreferenceManager
+    
+    // 新增：记录上一次截屏的文件路径
+    private var lastScreenshotFile: File? = null
+    
     override fun onCreate() {
         super.onCreate()
+        Log.e("FloatingWindowServiceNew", "onCreate called")
         Log.d(TAG, "FloatingWindowService created")
         
         // 初始化核心组件
         app = application as ReadAssistApplication
-        
+        // 初始化preferenceManager
+        preferenceManager = PreferenceManager(applicationContext)
         // 初始化各个管理器
         initializeManagers()
+        
+        // 设置自己作为勾选状态监听器
+        chatWindowManager.setOnScreenshotMonitoringStateChangedListener(this)
         
         // 注册广播接收器
         registerReceivers()
@@ -161,62 +205,66 @@ class FloatingWindowServiceNew : Service(),
                 }
             }
         }
+        
+        // 标记服务已启动
+        getSharedPreferences("service_prefs", MODE_PRIVATE)
+            .edit().putBoolean("is_floating_service_running", true).apply()
     }
     
     /**
      * 初始化管理器
      */
     private fun initializeManagers() {
+        Log.e(TAG, "initializeManagers called")
+        
         // 初始化会话管理器
-        sessionManager = SessionManager(app.chatRepository)
-        
-        // 初始化AI通信管理器
-        aiCommunicationManager = AiCommunicationManager(
-            app.chatRepository,
-            app.geminiRepository,
-            app.preferenceManager
-        )
-        
-        // 初始化AI配置管理器
-        aiConfigurationManager = AiConfigurationManager(
-            this,
-            app.preferenceManager
+        sessionManager = SessionManager(
+            chatRepository = app.chatRepository
         )
         
         // 初始化文本选择管理器
-        textSelectionManager = TextSelectionManager().apply {
-            setCallbacks(this@FloatingWindowServiceNew)
-        }
+        textSelectionManager = TextSelectionManager()
+        textSelectionManager.setCallbacks(this)
         
-        // 初始化悬浮按钮管理器
-        floatingButtonManager = FloatingButtonManager(
-            this,
-            getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager,
-            app.preferenceManager,
-            this
+        // 初始化截屏管理器
+        screenshotManager = ScreenshotManager(
+            context = this,
+            preferenceManager = preferenceManager,
+            coroutineScope = serviceScope,
+            callbacks = this
         )
         
         // 初始化聊天窗口管理器
         chatWindowManager = ChatWindowManager(
-            this,
-            getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager,
-            app.preferenceManager,
-            serviceScope,
-            this
+            context = this,
+            windowManager = getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager,
+            preferenceManager = preferenceManager,
+            coroutineScope = serviceScope,
+            callbacks = this
+        )
+        chatWindowManager.setTextSelectionManager(textSelectionManager)
+        
+        // 初始化AI配置管理器
+        aiConfigurationManager = AiConfigurationManager(
+            context = this,
+            preferenceManager = preferenceManager
         )
         
-        // 初始化截屏管理器
-        screenshotManager = ScreenshotManager(
-            this,
-            app.preferenceManager,
-            serviceScope,
-            this
+        // 初始化AI通信管理器
+        aiCommunicationManager = AiCommunicationManager(
+            chatRepository = app.chatRepository,
+            geminiRepository = app.geminiRepository,
+            preferenceManager = preferenceManager
         )
         
-        // 创建悬浮按钮
+        // 初始化悬浮按钮管理器
+        floatingButtonManager = FloatingButtonManager(
+            context = this,
+            windowManager = getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager,
+            preferenceManager = preferenceManager,
+            callbacks = this
+        )
         floatingButtonManager.createButton()
-        
-        // 初始化截屏服务
         screenshotManager.initialize()
     }
     
@@ -224,8 +272,8 @@ class FloatingWindowServiceNew : Service(),
      * 注册广播接收器
      */
     private fun registerReceivers() {
-        // 注册文本检测广播接收器
-        val filter = IntentFilter().apply {
+        Log.e("FloatingWindowServiceNew", "registerReceivers called")
+        val textFilter = IntentFilter().apply {
             addAction(TextAccessibilityService.ACTION_TEXT_DETECTED)
             addAction(TextAccessibilityService.ACTION_TEXT_SELECTED)
             addAction("com.readassist.TEXT_SELECTION_ACTIVE")
@@ -235,7 +283,10 @@ class FloatingWindowServiceNew : Service(),
             addAction("com.readassist.SCREENSHOT_PERMISSION_DENIED")
             addAction("com.readassist.SCREENSHOT_PERMISSION_ERROR")
         }
-        registerReceiver(textDetectedReceiver, filter)
+        registerReceiver(textDetectedReceiver, textFilter)
+
+        val screenshotFilter = IntentFilter(TextAccessibilityService.ACTION_SCREENSHOT_TAKEN_VIA_ACCESSIBILITY)
+        registerReceiver(screenshotTakenReceiver, screenshotFilter)
     }
     
     /**
@@ -265,12 +316,20 @@ class FloatingWindowServiceNew : Service(),
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.e(TAG, "onStartCommand called")
         Log.d(TAG, "FloatingWindowService started")
         
-        if (!com.readassist.utils.PermissionUtils.hasOverlayPermission(this)) {
+        // 检查悬浮窗权限
+        if (!Settings.canDrawOverlays(this)) {
             Log.e(TAG, "No overlay permission, stopping service")
             stopSelf()
             return START_NOT_STICKY
+        }
+        
+        // 检查截屏监控设置
+        val autoPopup = preferenceManager.getBoolean("screenshot_auto_popup", true)
+        if (chatWindowManager != null) {
+            chatWindowManager.setScreenshotMonitoringEnabled(autoPopup)
         }
         
         return START_STICKY
@@ -278,30 +337,37 @@ class FloatingWindowServiceNew : Service(),
     
     override fun onBind(intent: Intent?): IBinder? = null
     
+    /**
+     * 当服务被销毁时调用
+     */
     override fun onDestroy() {
-        super.onDestroy()
-        Log.d(TAG, "FloatingWindowService destroyed")
-        
-        // 清理各个管理器
-        floatingButtonManager.removeButton()
-        chatWindowManager.hideChatWindow()
-        screenshotManager.cleanup()
-        
-        // 取消注册广播接收器
+        Log.e(TAG, "onDestroy called")
         try {
+            // 注销广播接收器
             unregisterReceiver(textDetectedReceiver)
+            unregisterReceiver(screenshotTakenReceiver)
+            Log.e(TAG, "已注销所有广播接收器")
         } catch (e: Exception) {
-            Log.e(TAG, "取消注册广播接收器失败", e)
+            Log.e(TAG, "注销广播接收器失败", e)
         }
         
-        // 取消协程作用域
-        serviceScope.cancel()
+        // 销毁管理器
+        screenshotManager?.cleanup()
+        chatWindowManager?.hideChatWindow()
+        floatingButtonManager?.removeButton()
+        
+        super.onDestroy()
+        
+        // 标记服务已停止
+        getSharedPreferences("service_prefs", MODE_PRIVATE)
+            .edit().putBoolean("is_floating_service_running", false).apply()
     }
     
     /**
      * 处理悬浮按钮点击
      */
     private fun handleFloatingButtonClick() {
+        Log.e(TAG, "[日志追踪] handleFloatingButtonClick 被调用")
         Log.d(TAG, "🔘 悬浮按钮被点击")
         
         // 立即显示点击反馈
@@ -315,6 +381,15 @@ class FloatingWindowServiceNew : Service(),
             // 恢复按钮状态
             floatingButtonManager.restoreDefaultState()
             return
+        }
+        
+        // 新增：记录当前待处理截图状态
+        Log.e(TAG, "当前待处理截图状态: ${pendingScreenshotBitmap != null}, 是否已回收: ${pendingScreenshotBitmap?.isRecycled}")
+        
+        // 如果没有待处理截图，尝试获取最近的截图
+        if (pendingScreenshotBitmap == null || pendingScreenshotBitmap?.isRecycled == true) {
+            Log.e(TAG, "尝试在后台主动获取最近的截图")
+            getRecentScreenshot()
         }
         
         // 记录详细的上下文信息（调试）
@@ -466,9 +541,18 @@ class FloatingWindowServiceNew : Service(),
         app.preferenceManager.setString("current_app_package", appPackageName)
         app.preferenceManager.setString("current_book_name", bookName)
         
-        // 执行截屏，不显示聊天窗口
-        Log.d(TAG, " 优先截屏模式：直接开始截屏分析")
-        performScreenshotFirst()
+        // 根据设备类型执行不同操作
+        if (DeviceUtils.isIReaderDevice()) {
+            // 掌阅设备：直接显示聊天窗口，不主动截屏
+            Log.d(TAG, "掌阅设备：点击悬浮按钮，直接显示聊天窗口")
+            chatWindowManager.showChatWindow()
+            // 恢复按钮的默认状态，因为我们没有在等待截屏
+            floatingButtonManager.restoreDefaultState()
+        } else {
+            // 非掌阅设备：保持原有逻辑，先截屏再显示窗口
+            Log.e(TAG, "[日志追踪] 即将执行 performScreenshotFirst()，此时不会直接弹出对话窗口")
+            performScreenshotFirst()
+        }
     }
     
     /**
@@ -555,7 +639,7 @@ class FloatingWindowServiceNew : Service(),
      * 先执行截屏，再显示聊天窗口
      */
     private fun performScreenshotFirst() {
-        Log.d(TAG, "📸 先执行截屏...")
+        Log.e(TAG, "[日志追踪] performScreenshotFirst 开始执行")
         
         // 执行截屏前不显示聊天窗口
         floatingButtonManager.showScreenshotAnalysisState()
@@ -563,20 +647,53 @@ class FloatingWindowServiceNew : Service(),
         // 使用协程避免阻塞UI线程
         serviceScope.launch {
             try {
-                // 预先准备权限状态(如果需要)，尝试在后台初始化
-                if (!screenshotManager.isScreenshotServiceReady()) {
-                    screenshotManager.recheckScreenshotPermission()
+                // 对于掌阅设备，不需要检查截屏权限
+                if (!DeviceUtils.isIReaderDevice()) {
+                    // 预先准备权限状态(如果需要)，尝试在后台初始化
+                    if (!screenshotManager.isScreenshotServiceReady()) {
+                        Log.e(TAG, "[日志追踪] 截屏服务未就绪，重新检查权限")
+                        screenshotManager.recheckScreenshotPermission()
+                    }
                 }
                 
                 // 执行截屏
                 withContext(Dispatchers.Main) {
+                    Log.e(TAG, "[日志追踪] 开始执行截屏")
                     screenshotManager.performScreenshot()
+                    
+                    // 对于掌阅设备，需要等待辅助功能服务完成截屏
+                    if (DeviceUtils.isIReaderDevice()) {
+                        Log.e(TAG, "[日志追踪] 掌阅设备：等待辅助功能服务完成截屏")
+                        // 等待辅助功能服务完成截屏
+                        var retryCount = 0
+                        while (retryCount < 10) {
+                            delay(200)
+                            val pendingScreenshot = screenshotManager.getPendingScreenshot()
+                            if (pendingScreenshot != null) {
+                                Log.e(TAG, "[日志追踪] 掌阅设备：截屏成功，图片尺寸: ${pendingScreenshot.width}x${pendingScreenshot.height}")
+                                chatWindowManager.showChatWindow()
+                                return@withContext
+                            }
+                            retryCount++
+                        }
+                        Log.e(TAG, "[日志追踪] 掌阅设备：截屏超时")
+                        chatWindowManager.showChatWindow()
+                    } else {
+                        // Supernote设备保持原有逻辑
+                        val pendingScreenshot = screenshotManager.getPendingScreenshot()
+                        if (pendingScreenshot != null) {
+                            Log.e(TAG, "[日志追踪] Supernote设备：截屏成功，图片尺寸: ${pendingScreenshot.width}x${pendingScreenshot.height}")
+                            chatWindowManager.showChatWindow()
+                        } else {
+                            Log.e(TAG, "[日志追踪] Supernote设备：截屏失败，pendingScreenshot为null")
+                            chatWindowManager.showChatWindow()
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "截屏处理异常", e)
                 withContext(Dispatchers.Main) {
                     chatWindowManager.showChatWindow()
-                    chatWindowManager.addSystemMessage("❌ 截屏处理异常: ${e.message}")
                     floatingButtonManager.restoreDefaultState()
                 }
             }
@@ -627,54 +744,63 @@ class FloatingWindowServiceNew : Service(),
      */
     private fun sendUserMessage(message: String) {
         Log.d(TAG, "=== sendUserMessage 开始 ===")
-        // 检查是否有待发送的截屏图片
-        val pendingScreenshot = screenshotManager.getPendingScreenshot()
+        Log.e(TAG, "原始输入框内容: $message")
+        // 读取勾选项状态
+        val sendScreenshot = chatWindowManager.isSendScreenshotChecked()
+        val sendClipboard = chatWindowManager.isSendClipboardChecked()
+        Log.e(TAG, "勾选项状态 - 发送截图: $sendScreenshot, 发送剪贴板: $sendClipboard")
         
-        if (pendingScreenshot != null) {
-            Log.d(TAG, "✅ 找到待处理截图，尺寸: ${pendingScreenshot.width}x${pendingScreenshot.height}")
-            Log.d(TAG, "📝 待发送消息: $message")
-            
-            try {
-                // 将消息发送给AI前先检查图片是否有效
-                if (pendingScreenshot.isRecycled) {
-                    Log.e(TAG, "❌ 待发送的截图已被回收")
-                    chatWindowManager.addSystemMessage("❌ 错误：图片已被回收，请重新截屏")
-                    return
-                }
-                
-                Log.d(TAG, "🔄 创建图片副本前，原图状态: isRecycled=${pendingScreenshot.isRecycled}")
-                
-                // 创建一个临时副本以确保安全
-                val bitmapCopy = pendingScreenshot.copy(pendingScreenshot.config ?: Bitmap.Config.ARGB_8888, true)
-                if (bitmapCopy == null) {
-                    Log.e(TAG, "❌ 无法创建图片副本")
-                    chatWindowManager.addSystemMessage("❌ 错误：无法处理图片，请重新截屏")
-                    return
-                }
-                
-                Log.d(TAG, "✅ 创建图片副本成功，尺寸: ${bitmapCopy.width}x${bitmapCopy.height}")
-                
-                // 发送图片消息，使用副本
-                Log.d(TAG, "🚀 发送图片消息 (使用副本)")
-                sendImageMessageToAI(message, bitmapCopy)
-                
-                // 清除原始截图 - 但不回收副本，因为sendImageMessageToAI是异步的
-                Log.d(TAG, "♻️ 清除原始截图")
-                screenshotManager.clearPendingScreenshot()
-                
-                // 不在这里回收副本，因为sendImageMessageToAI是异步的
-                // 副本将由AiCommunicationManager负责回收
-                
-            } catch (e: Exception) {
-                Log.e(TAG, "❌ 处理截图时出错", e)
-                chatWindowManager.addSystemMessage("❌ 错误：图片处理失败，请重新截屏")
-                // 确保释放资源
-                Log.d(TAG, "♻️ 出错后清除原始截图")
-                screenshotManager.clearPendingScreenshot()
-            }
+        // 读取剪贴板内容
+        val clipboardContent = if (sendClipboard) getTodayClipboardContent() else null
+        Log.e(TAG, "剪贴板内容: $clipboardContent")
+        
+        // 检查是否有有效内容
+        val hasUserInput = !message.isNullOrBlank()
+        val hasClipboardContent = !clipboardContent.isNullOrBlank()
+        val hasScreenshot = sendScreenshot && pendingScreenshotBitmap != null && !pendingScreenshotBitmap!!.isRecycled
+        
+        // 如果都没有内容，显示错误并返回
+        if (!hasUserInput && !hasClipboardContent && !hasScreenshot) {
+            Log.e(TAG, "❌ 没有任何内容可发送 (无输入、无剪贴板、无截图)")
+            return
+        }
+        
+        // 组合最终要发送的文本内容
+        val sb = StringBuilder()
+        if (!message.isNullOrBlank()) sb.append(message)
+        if (!clipboardContent.isNullOrBlank()) {
+            if (sb.isNotEmpty()) sb.append("\n")
+            sb.append("[剪贴板内容] ").append(clipboardContent)
+        }
+        
+        // 如果没有用户输入但有截图，添加默认文本
+        if (sb.isEmpty() && hasScreenshot) {
+            sb.append("请分析这张截屏图片：")
+        }
+        
+        val finalText = sb.toString()
+        Log.e(TAG, "最终要发送的文本内容: " + finalText.replace("\n", "\\n"))
+        
+        // 最终文本为空时不发送
+        if (finalText.isBlank()) {
+            Log.e(TAG, "❌ 最终文本为空，不发送消息")
+            return
+        }
+        
+        // 只有勾选了"发送截屏图片"且有图片时才带上图片，否则只发文本
+        val currentPendingBitmap = if (sendScreenshot) pendingScreenshotBitmap else null
+        Log.e(TAG, "待处理截图状态: ${currentPendingBitmap != null}, 是否已回收: ${currentPendingBitmap?.isRecycled}")
+        if (currentPendingBitmap != null && !currentPendingBitmap.isRecycled) {
+            Log.d(TAG, "✅ 勾选了发送截图，且有待处理截图，尺寸: ${currentPendingBitmap.width}x${currentPendingBitmap.height}")
+            pendingScreenshotBitmap = null
+            sendImageMessageToAI(finalText, currentPendingBitmap)
         } else {
-            Log.d(TAG, "🔤 无截图，作为纯文本消息发送")
-            sendTextMessageToAI(message)
+            if (currentPendingBitmap != null) {
+                Log.w(TAG, "⚠️ 截图已回收，作为纯文本消息发送")
+                pendingScreenshotBitmap = null
+            }
+            Log.d(TAG, "🔤 未勾选发送截图或无截图，仅发送文本")
+            sendTextMessageToAI(finalText)
         }
         Log.d(TAG, "=== sendUserMessage 结束 ===")
     }
@@ -683,22 +809,35 @@ class FloatingWindowServiceNew : Service(),
      * 发送文本消息到AI
      */
     private fun sendTextMessageToAI(message: String) {
+        Log.d(TAG, "发送纯文本消息: $message")
         serviceScope.launch {
             try {
-                // 确保会话ID已初始化
-                val sessionId = ensureSessionInitialized()
-                
-                // 获取应用和书籍信息
-                val appPackage = sessionManager.getSanitizedAppPackage()
-                val bookName = sessionManager.getSanitizedBookName()
-                
-                // 添加用户消息到UI
+                // 获取当前会话ID
+                val sessionId = sessionManager.getCurrentSessionId()
+                if (sessionId.isEmpty()) {
+                    Log.e(TAG, "会话ID为空，无法发送消息")
+                    return@launch
+                }
+
+                // 获取当前应用包名和书籍名称
+                val appPackage = textSelectionManager.getCurrentAppPackage()
+                val bookName = textSelectionManager.getCurrentBookName()
+
+                // 检查 API Key
+                val apiKey = preferenceManager.getApiKey()
+                if (apiKey.isNullOrBlank()) {
+                    Log.e(TAG, "API Key 未设置")
+                    return@launch
+                }
+                Log.d(TAG, "API Key 已设置，长度: ${apiKey.length}")
+
+                // 添加用户消息到聊天窗口
                 chatWindowManager.addUserMessage(message)
                 
-                // 添加加载消息
+                // 添加加载动画
                 chatWindowManager.addLoadingMessage("AI思考中...")
-                
-                // 发送消息到AI
+
+                // 发送消息到AI并获取响应
                 val result = aiCommunicationManager.sendTextMessage(
                     sessionId = sessionId,
                     message = message,
@@ -706,26 +845,35 @@ class FloatingWindowServiceNew : Service(),
                     bookName = bookName
                 )
                 
-                // 移除加载消息
+                // 移除加载动画
                 chatWindowManager.removeLastMessage()
-                
-                // 处理结果
+
                 when (result) {
-                    is com.readassist.network.ApiResult.Success -> {
+                    is ApiResult.Success -> {
+                        // 添加AI响应到聊天窗口
                         chatWindowManager.addAiMessage(result.data)
+                        
+                        // 保存消息到数据库
+                        val chatEntity = ChatEntity(
+                            sessionId = sessionId,
+                            bookName = bookName,
+                            appPackage = appPackage,
+                            userMessage = message,
+                            aiResponse = result.data,
+                            promptTemplate = "",
+                            timestamp = System.currentTimeMillis()
+                        )
+                        app.chatRepository.saveChatEntity(chatEntity)
                     }
-                    is com.readassist.network.ApiResult.Error -> {
-                        val errorMessage = result.exception.message ?: "未知错误"
-                        chatWindowManager.addAiMessage("发送消息时发生错误: $errorMessage", true)
+                    is ApiResult.Error -> {
+                        Log.e(TAG, "发送消息失败", result.exception)
                     }
-                    is com.readassist.network.ApiResult.NetworkError -> {
-                        chatWindowManager.addAiMessage("网络错误: ${result.message}", true)
+                    is ApiResult.NetworkError -> {
+                        Log.e(TAG, "发送消息网络错误：${result.message}")
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "发送消息异常", e)
-                chatWindowManager.removeLastMessage()
-                chatWindowManager.addAiMessage("发送消息时发生异常: ${e.message}", true)
+                Log.e(TAG, "发送消息失败", e)
             }
         }
     }
@@ -734,6 +882,7 @@ class FloatingWindowServiceNew : Service(),
      * 发送图片消息到AI
      */
     private fun sendImageMessageToAI(message: String, bitmap: Bitmap) {
+        Log.e(TAG, "sendImageMessageToAI 被调用，bitmap: $bitmap, isRecycled: ${bitmap.isRecycled}")
         Log.d(TAG, "=== sendImageMessageToAI 开始 ===")
         Log.d(TAG, "📤 发送图片消息，尺寸: ${bitmap.width}x${bitmap.height}")
         
@@ -745,7 +894,6 @@ class FloatingWindowServiceNew : Service(),
                 // 检查bitmap是否已回收
                 if (bitmap.isRecycled) {
                     Log.e(TAG, "❌ 图片已被回收，无法发送")
-                    chatWindowManager.addSystemMessage("❌ 错误：图片已被回收，请重新截屏")
                     return@launch
                 }
                 
@@ -842,11 +990,6 @@ class FloatingWindowServiceNew : Service(),
     // === TextSelectionManager.TextSelectionCallbacks 实现 ===
     
     override fun onTextDetected(text: String, appPackage: String, bookName: String) {
-        // 如果聊天窗口已显示且启用自动分析，立即更新分析按钮
-        if (chatWindowManager.isVisible()) {
-            chatWindowManager.updateAnalyzeButton(text)
-        }
-        
         // 更新会话信息
         serviceScope.launch {
             sessionManager.updateSessionIfNeeded(appPackage, bookName)
@@ -921,8 +1064,22 @@ class FloatingWindowServiceNew : Service(),
     }
     
     override fun onScreenshotSuccess(bitmap: Bitmap) {
-        Log.d(TAG, "📸 截屏成功")
-        
+        Log.e(TAG, "📸 截屏成功 (onScreenshotSuccess)，保存新的待处理图片。尺寸: ${bitmap.width}x${bitmap.height}")
+        // 回收旧的图片（如果有），并保存新的图片
+        pendingScreenshotBitmap?.recycle()
+        pendingScreenshotBitmap = bitmap
+
+        // 关键：检查是否应该自动弹窗
+        val autoPopup = preferenceManager.getBoolean("screenshot_auto_popup", true)
+        if (!autoPopup) {
+            Log.d(TAG, "🚫 用户已关闭截屏后自动弹窗功能，仅保存截图。")
+            // 虽然不弹窗，但可以给一个Toast提示
+            Toast.makeText(this, "截屏已保存，点击悬浮窗手动分析", Toast.LENGTH_SHORT).show()
+            // 恢复悬浮窗状态
+            floatingButtonManager.restoreDefaultState()
+            return // 提前返回，不执行后续弹窗逻辑
+        }
+
         // 恢复界面显示
         floatingButtonManager.setButtonVisibility(true)
         floatingButtonManager.restoreDefaultState()
@@ -943,38 +1100,89 @@ class FloatingWindowServiceNew : Service(),
         // 导入提示文本到输入框
         chatWindowManager.importTextToInputField(promptText)
         
-        // 显示提示消息
-        chatWindowManager.addSystemMessage("📸 截屏已准备就绪，请在输入框中添加您的问题，然后点击发送")
+        // 新增：自动勾选"发送截图"选项
+        chatWindowManager.setSendScreenshotChecked(true)
         
-        // 清除选择文本信息
-        textSelectionManager.clearSelectedText()
+        // 新增：检查剪贴板内容并更新UI
+        updateClipboardUI()
+    }
+    
+    override fun onScreenshotComplete(uri: Uri) {
+        Log.e(TAG, "📸 onScreenshotComplete in FloatingWindowServiceNew called with URI: $uri")
+        // 确保在这里调用 processScreenshot
+        processScreenshot(uri)
+    }
+    
+    override fun onScreenshotTaken(uri: Uri) {
+        Log.e(TAG, "📸 收到截屏: $uri")
+        // 这里可以添加额外的处理逻辑
+    }
+    
+    private fun processScreenshot(uri: Uri) {
+        Log.e(TAG, "📸 开始处理截屏: $uri")
+        try {
+            // 直接从URI解码图片
+            val bitmap = contentResolver.openInputStream(uri)?.use { inputStream ->
+                BitmapFactory.decodeStream(inputStream)
+            }
+            if (bitmap == null) {
+                Log.e(TAG, "❌ 无法从URI解码截屏图片: $uri")
+                onScreenshotFailed("无法解码截屏图片")
+                return
+            }
+            Log.e(TAG, "✅ 成功从URI解码截屏图片: ${bitmap.width}x${bitmap.height}")
+
+            // 新增：在处理新截屏前，删除上一次的截屏文件
+            lastScreenshotFile?.let { file ->
+                if (file.exists()) {
+                    val deleted = file.delete()
+                    Log.e(TAG, "🗑️ 删除上一次截屏文件: ${file.absolutePath}, 结果: $deleted")
+                }
+            }
+
+            // 记录本次截屏文件
+            if (uri.scheme == "file") {
+                lastScreenshotFile = File(uri.path!!)
+            } else {
+                lastScreenshotFile = null // content uri 不处理
+            }
+
+            // 关键：只要解码成功就调用onScreenshotSuccess
+            Log.e(TAG, "📢 调用onScreenshotSuccess，弹出聊天窗口")
+            onScreenshotSuccess(bitmap)
+        } catch (e: Exception) {
+            Log.e(TAG, "处理截屏失败", e)
+            onScreenshotFailed("截屏处理失败：${e.message}")
+        }
     }
     
     override fun onScreenshotFailed(error: String) {
-        Log.e(TAG, "截屏失败: $error")
-        
-        // 恢复界面显示
-        floatingButtonManager.setButtonVisibility(true)
-        floatingButtonManager.restoreDefaultState()
-        
-        // 显示错误消息
-        chatWindowManager.showChatWindow()
-        chatWindowManager.addAiMessage("📸 截屏失败：$error", true)
+        Log.e(TAG, "❌ 截屏失败: $error")
+        // 处理截屏失败
+        Toast.makeText(this, "截屏失败: $error", Toast.LENGTH_SHORT).show()
     }
-    
+
     override fun onScreenshotCancelled() {
+        Log.e(TAG, "📸 截屏已取消")
         // 恢复界面显示
         floatingButtonManager.setButtonVisibility(true)
         floatingButtonManager.restoreDefaultState()
+    }
+
+    override fun onScreenshotMessage(message: String) {
+        Log.e(TAG, "📸 截屏消息: $message")
+        chatWindowManager.addSystemMessage(message)
     }
     
     override fun onPermissionRequesting() {
+        Log.e(TAG, "🔐 正在请求截屏权限...")
         // 显示加载消息
         chatWindowManager.showChatWindow()
         chatWindowManager.addLoadingMessage("🔐 正在请求截屏权限...")
     }
-    
+
     override fun onPermissionGranted() {
+        Log.e(TAG, "✅ 截屏权限已授予")
         // 隐藏加载消息
         chatWindowManager.removeLastMessage()
         
@@ -984,22 +1192,15 @@ class FloatingWindowServiceNew : Service(),
         // 继续执行截屏分析
         performScreenshotFirst()
     }
-    
+
     override fun onPermissionDenied() {
+        Log.e(TAG, "❌ 截屏权限被拒绝")
         // 隐藏加载消息
         chatWindowManager.removeLastMessage()
         
         // 恢复UI
         floatingButtonManager.setButtonVisibility(true)
         floatingButtonManager.restoreDefaultState()
-        
-        // 显示拒绝消息
-        chatWindowManager.showChatWindow()
-        chatWindowManager.addAiMessage("❌ 截屏权限被拒绝，截屏功能无法使用", true)
-    }
-    
-    override fun onScreenshotMessage(message: String) {
-        chatWindowManager.addSystemMessage(message)
     }
     
     // === ChatWindowManager.ChatWindowCallbacks 实现 ===
@@ -1009,8 +1210,12 @@ class FloatingWindowServiceNew : Service(),
      */
     override fun onChatWindowShown() {
         Log.d(TAG, "聊天窗口已显示")
-        
-        // 检查当前会话ID
+        // 注册勾选项监听
+        chatWindowManager.setOnCheckStateChangedListener(object : ChatWindowManager.OnCheckStateChangedListener {
+            override fun onCheckStateChanged() {
+                updateInputHintByCheckState()
+            }
+        })
         serviceScope.launch {
             // 从偏好设置读取之前保存的应用和书籍信息
             val savedAppPackage = app.preferenceManager.getString("current_app_package", "com.readassist")
@@ -1055,6 +1260,21 @@ class FloatingWindowServiceNew : Service(),
             
             // 更新聊天窗口标题
             chatWindowManager.updateWindowTitle()
+
+            // === 新增：刷新勾选项内容 ===
+            val screenshotTime = getLatestScreenshotTimeString()
+            chatWindowManager.updateScreenshotInfo(screenshotTime)
+            updateClipboardUI()
+            
+            // 新增：初始状态下，确保输入框内容与勾选状态一致
+            // 如果有待处理的截图且未自动勾选，则勾选
+            val hasPendingScreenshot = pendingScreenshotBitmap != null && !pendingScreenshotBitmap!!.isRecycled
+            if (hasPendingScreenshot && !chatWindowManager.isSendScreenshotChecked()) {
+                chatWindowManager.setSendScreenshotChecked(true)
+            }
+            
+            // 新增：根据勾选项动态设置输入框hint
+            updateInputHintByCheckState()
         }
     }
     
@@ -1107,7 +1327,6 @@ class FloatingWindowServiceNew : Service(),
                 if (chatItems.isEmpty()) {
                     // 如果没有历史记录，添加欢迎消息
                     chatWindowManager.clearChatHistory()
-                    chatWindowManager.addSystemMessage("欢迎使用ReadAssist AI阅读助手")
                 } else {
                     // 更新聊天历史
                     chatWindowManager.updateChatHistory(chatItems)
@@ -1117,9 +1336,6 @@ class FloatingWindowServiceNew : Service(),
             Log.d(TAG, "聊天历史记录加载完成")
         } catch (e: Exception) {
             Log.e(TAG, "加载聊天历史失败", e)
-            withContext(Dispatchers.Main) {
-                chatWindowManager.addSystemMessage("❌ 加载历史记录失败: ${e.message}")
-            }
         }
     }
     
@@ -1131,20 +1347,10 @@ class FloatingWindowServiceNew : Service(),
     }
     
     override fun onMessageSend(message: String) {
+        Log.e(TAG, "!!! ✅ FloatingWindowServiceNew.onMessageSend CALLED with message: $message")
+        Log.e(TAG, "输入框内容: $message")
+        // 统一调用 sendUserMessage，由它来判断是发送图片还是文本
         sendUserMessage(message)
-    }
-    
-    override fun onAnalyzeButtonClick() {
-        val text = textSelectionManager.getLastDetectedText()
-        if (text.isNotEmpty()) {
-            sendTextMessageToAI(text)
-            textSelectionManager.clearSelectedText()
-            chatWindowManager.updateAnalyzeButton(null)
-        }
-    }
-    
-    override fun onScreenshotButtonClick() {
-        screenshotManager.requestScreenshotPermission()
     }
     
     override fun onNewChatButtonClick() {
@@ -1170,9 +1376,6 @@ class FloatingWindowServiceNew : Service(),
         
         // 清空聊天历史
         chatWindowManager.clearChatHistory()
-        
-        // 添加欢迎消息
-        chatWindowManager.addSystemMessage("✨ 新对话已开始")
     }
     
     override fun onConfigStatusClick(platform: com.readassist.model.AiPlatform?) {
@@ -1192,5 +1395,212 @@ class FloatingWindowServiceNew : Service(),
      */
     override fun onFloatingButtonClick() {
         handleFloatingButtonClick()
+    }
+
+    private suspend fun processScreenshotFromUri(uri: Uri) {
+        try {
+            val bitmap = withContext(Dispatchers.IO) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    ImageDecoder.decodeBitmap(ImageDecoder.createSource(contentResolver, uri))
+                } else {
+                    @Suppress("DEPRECATION")
+                    android.provider.MediaStore.Images.Media.getBitmap(contentResolver, uri)
+                }
+            }
+            onScreenshotSuccess(bitmap)
+
+            // Clean up the screenshot file after processing
+            withContext(Dispatchers.IO) {
+                try {
+                    val rowsDeleted = contentResolver.delete(uri, null, null)
+                    if (rowsDeleted > 0) {
+                        Log.d(TAG, "Screenshot file deleted successfully: $uri")
+                    } else {
+                        Log.d(TAG, "Screenshot file not found for deletion: $uri")
+                    }
+                } catch (e: SecurityException) {
+                    Log.e(TAG, "Failed to delete screenshot due to security exception: ${e.message}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to delete screenshot: ${e.message}")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to process screenshot from URI: $uri", e)
+            onScreenshotFailed("Failed to load screenshot from URI.")
+        }
+    }
+
+    /**
+     * 获取所有可能的截屏目录
+     */
+    private fun getScreenshotDirectories(): List<String> {
+        val dirs = mutableListOf(
+            "/storage/emulated/0/Pictures/Screenshots",
+            "/storage/emulated/0/DCIM/Screenshots",
+            "/storage/emulated/0/iReader/saveImage/tmp"
+        )
+        
+        // 添加Supernote设备的应用私有目录
+        getExternalFilesDir(null)?.let { appDir ->
+            dirs.add(appDir.absolutePath)
+            Log.d(TAG, "🔴 添加Supernote截屏目录: ${appDir.absolutePath}")
+        }
+        
+        return dirs
+    }
+
+    // 获取最近一张截屏图片的时间字符串（如无返回null）
+    private fun getLatestScreenshotTimeString(): String? {
+        val dirs = getScreenshotDirectories()
+        var latestFile: File? = null
+        
+        for (dirPath in dirs) {
+            val dir = File(dirPath)
+            if (dir.exists() && dir.isDirectory) {
+                val files = dir.listFiles { f -> 
+                    f.isFile && f.canRead() && 
+                    (f.name.endsWith(".png") || f.name.endsWith(".jpg")) &&
+                    (f.name.contains("screenshot") || f.name.contains("Screenshot"))
+                }
+                files?.forEach { file ->
+                    if (latestFile == null || file.lastModified() > latestFile!!.lastModified()) {
+                        latestFile = file
+                        Log.d(TAG, "🔴 找到截屏文件: ${file.absolutePath}, 修改时间: ${Date(file.lastModified())}")
+                    }
+                }
+            }
+        }
+        
+        return latestFile?.let {
+            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+            sdf.format(java.util.Date(it.lastModified()))
+        }
+    }
+
+    // 获取当天剪贴板内容（如无返回null）
+    private fun getTodayClipboardContent(): String? {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+        val clip = clipboard?.primaryClip
+        if (clip != null && clip.itemCount > 0) {
+            val text = clip.getItemAt(0).coerceToText(this).toString()
+            // 判断是否为今天的内容（简单判断：内容非空且不为默认提示）
+            if (text.isNotBlank()) {
+                // 返回完整内容
+                return text
+            }
+        }
+        return null
+    }
+
+    // 获取用于UI显示的剪贴板内容（截断显示）
+    private fun getClipboardContentForDisplay(): String? {
+        val fullContent = getTodayClipboardContent()
+        return if (fullContent != null && fullContent.length > 30) {
+            fullContent.take(30) + "..."
+        } else {
+            fullContent
+        }
+    }
+
+    // 更新剪贴板UI显示
+    private fun updateClipboardUI() {
+        val displayContent = getClipboardContentForDisplay()
+        chatWindowManager.updateClipboardInfo(displayContent)
+    }
+
+    private fun updateInputHintByCheckState() {
+        val sendScreenshot = chatWindowManager.isSendScreenshotChecked()
+        val sendClipboard = chatWindowManager.isSendClipboardChecked()
+        val hint = when {
+            sendScreenshot && sendClipboard -> "请分析发给你的图片和文字内容。"
+            sendScreenshot -> "请分析这张截屏图片："
+            sendClipboard -> "请分析这段文字："
+            else -> "请输入您的问题或内容"
+        }
+        
+        // 使用新方法同时更新输入框内容和提示文本
+        chatWindowManager.updateInputTextByCheckState(hint)
+    }
+
+    /**
+     * 尝试获取最近的截图文件并加载为Bitmap
+     */
+    private fun getRecentScreenshot() {
+        try {
+            // 获取最近的截图文件
+            val dirs = getScreenshotDirectories()
+            var latestFile: File? = null
+            
+            for (dirPath in dirs) {
+                val dir = File(dirPath)
+                if (dir.exists() && dir.isDirectory) {
+                    val files = dir.listFiles { f -> 
+                        f.isFile && f.canRead() && 
+                        (f.name.endsWith(".png") || f.name.endsWith(".jpg")) && 
+                        (f.name.contains("screenshot") || f.name.contains("Screenshot")) &&
+                        System.currentTimeMillis() - f.lastModified() < 24*60*60*1000 // 24小时内的文件
+                    }
+                    files?.forEach { file ->
+                        if (latestFile == null || file.lastModified() > latestFile!!.lastModified()) {
+                            latestFile = file
+                        }
+                    }
+                }
+            }
+            
+            if (latestFile != null && latestFile!!.exists()) {
+                Log.e(TAG, "找到最近的截图文件: ${latestFile!!.absolutePath}, 修改时间: ${Date(latestFile!!.lastModified())}")
+                try {
+                    // 加载图片
+                    val bitmap = BitmapFactory.decodeFile(latestFile!!.absolutePath)
+                    if (bitmap != null) {
+                        Log.e(TAG, "成功加载最近的截图，尺寸: ${bitmap.width}x${bitmap.height}")
+                        pendingScreenshotBitmap?.recycle()
+                        pendingScreenshotBitmap = bitmap
+                        // 新增：自动弹出聊天窗口
+                        onScreenshotSuccess(bitmap)
+                    } else {
+                        Log.e(TAG, "加载最近的截图失败，无法解码图片")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "加载最近的截图异常", e)
+                }
+            } else {
+                Log.e(TAG, "未找到最近的截图文件")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "获取最近的截图异常", e)
+        }
+    }
+
+    /**
+     * 开始新对话
+     */
+    private fun startNewChat() {
+        sessionManager.requestNewSession()
+        chatWindowManager.clearChatHistory()
+    }
+
+    /**
+     * 显示AI API Key对话框
+     */
+    private fun showApiKeyDialog(platform: com.readassist.model.AiPlatform) {
+        chatWindowManager.showApiKeyInputDialog(platform)
+    }
+
+    /**
+     * 获取勾选状态
+     */
+    private fun isSendScreenshotChecked(): Boolean = chatWindowManager.isSendScreenshotChecked()
+    private fun isSendClipboardChecked(): Boolean = chatWindowManager.isSendClipboardChecked()
+
+    /**
+     * 实现OnScreenshotMonitoringStateChangedListener接口的方法，
+     * 确保聊天窗口勾选状态与App设置同步
+     */
+    override fun onScreenshotMonitoringStateChanged(enabled: Boolean) {
+        Log.e(TAG, "截屏监控状态变更: $enabled")
+        // 保存设置到偏好
+        preferenceManager.setBoolean("screenshot_auto_popup", enabled)
     }
 } 

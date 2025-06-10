@@ -6,13 +6,33 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.database.ContentObserver
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.provider.MediaStore
+import android.app.Notification
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.readassist.utils.DeviceUtils
 import com.readassist.utils.PreferenceManager
+import com.readassist.service.managers.ScreenshotManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.cancel
+import java.io.File
+import android.database.Cursor
+import android.content.ContentUris
 
 class TextAccessibilityService : AccessibilityService() {
     
@@ -24,6 +44,9 @@ class TextAccessibilityService : AccessibilityService() {
         const val EXTRA_SOURCE_APP = "source_app"
         const val EXTRA_BOOK_NAME = "book_name"
         const val EXTRA_IS_SELECTION = "is_selection"
+        const val ACTION_TAKE_SCREENSHOT_VIA_ACCESSIBILITY = "com.readassist.service.TAKE_SCREENSHOT_VIA_ACCESSIBILITY"
+        const val ACTION_SCREENSHOT_TAKEN_VIA_ACCESSIBILITY = "com.readassist.SCREENSHOT_TAKEN_VIA_ACCESSIBILITY"
+        const val EXTRA_SCREENSHOT_URI = "screenshot_uri"
         
         // 支持的应用包名
         private val SUPPORTED_PACKAGES = setOf(
@@ -51,6 +74,12 @@ class TextAccessibilityService : AccessibilityService() {
     private var lastProcessedText: String = ""
     private var currentAppPackage: String = ""
     private var currentBookName: String = ""
+    private var context: Context = this
+    
+    private var screenshotObserver: ContentObserver? = null
+    private val deviceType by lazy { DeviceUtils.getDeviceType() }
+    
+    private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
     
     // 公开原始属性供调试
     val currentAppPackageRaw: String
@@ -71,6 +100,123 @@ class TextAccessibilityService : AccessibilityService() {
         }
     }
     
+    private val screenshotActionReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            Log.e(TAG, "onReceive: 收到广播 ${intent.action}")
+            
+            when (intent.action) {
+                ACTION_TAKE_SCREENSHOT_VIA_ACCESSIBILITY -> {
+                    Log.e(TAG, "收到截屏广播，开始处理")
+                    if (isServiceConnected) {
+                        Log.e(TAG, "服务已连接，开始执行截屏")
+                        performScreenshot()
+                    } else {
+                        Log.e(TAG, "❌ 服务未连接，无法执行截屏")
+                    }
+                }
+                "android.intent.action.SCREENSHOT_TAKEN",
+                "com.szzy.ireader.systemui.action.SCREENSHOT_TAKEN",
+                "com.zhangyue.iReader.Eink.action.SCREENSHOT_TAKEN" -> {
+                    Log.e(TAG, "📸 收到系统截屏完成广播")
+                    handleScreenshotTaken(intent)
+                }
+                "android.intent.action.SCREENSHOT_FAILED",
+                "com.szzy.ireader.systemui.action.SCREENSHOT_FAILED",
+                "com.zhangyue.iReader.Eink.action.SCREENSHOT_FAILED" -> {
+                    Log.e(TAG, "❌ 系统截屏失败")
+                    val intent = Intent("com.readassist.service.SCREENSHOT_FAILED")
+                    sendBroadcast(intent)
+                }
+                "android.intent.action.SCREENSHOT_CANCELLED",
+                "com.szzy.ireader.systemui.action.SCREENSHOT_CANCELLED",
+                "com.zhangyue.iReader.Eink.action.SCREENSHOT_CANCELLED" -> {
+                    Log.e(TAG, "❌ 系统截屏被取消")
+                    val intent = Intent("com.readassist.service.SCREENSHOT_CANCELLED")
+                    sendBroadcast(intent)
+                }
+                "com.zhangyue.iReader.Eink.MediaKeyCode" -> {
+                    Log.e(TAG, "📸 收到掌阅设备媒体按键广播")
+                    val keyCode = intent.getIntExtra("keyCode", -1)
+                    if (keyCode == 120) { // 假设120是截屏按键
+                        Log.e(TAG, "📸 检测到截屏按键")
+                        // 等待一小段时间，让系统完成截屏
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            checkIReaderScreenshot()
+                        }, 500) // 等待0.5秒
+                    }
+                }
+                "com.szzy.ireader.systemui.statusbar.BROADCAST_DISPLAYED_RING_MENU_WINDOW" -> {
+                    Log.e(TAG, "📸 掌阅设备：显示环形菜单")
+                    // 记录环形菜单窗口信息
+                    val windowInfo = intent.getStringExtra("window_info")
+                    Log.e(TAG, "环形菜单窗口信息: $windowInfo")
+                }
+                "com.szzy.ireader.systemui.statusbar.BROADCAST_DISAPPEARED_RING_MENU_WINDOW",
+                "szzy.ireader.systemui.action.HIDE_PANEL_WINDOW" -> {
+                    Log.e(TAG, "📸 掌阅设备：环形菜单消失")
+                    // 记录环形菜单消失原因
+                    val reason = intent.getStringExtra("reason")
+                    Log.e(TAG, "环形菜单消失原因: $reason")
+                    // 检查掌阅设备特有的截屏目录
+                    checkIReaderScreenshot()
+                }
+                "com.szzy.ireader.systemui.ACTION_RESUME_AUTO_HIDE_STATUS_BAR" -> {
+                    Log.e(TAG, "📸 收到系统UI状态栏广播")
+                    // 检查掌阅设备特有的截屏目录
+                    checkIReaderScreenshot()
+                }
+                "com.zhangyue.iReader.screenoff" -> {
+                    Log.e(TAG, "📸 收到掌阅设备屏幕关闭广播")
+                }
+                "com.zhangyue.iReader.screenlogo.show" -> {
+                    Log.e(TAG, "📸 收到掌阅设备屏幕Logo显示广播")
+                }
+                "android.intent.action.DREAMING_STARTED" -> {
+                    Log.e(TAG, "📸 收到系统休眠开始广播")
+                }
+                "android.intent.action.DREAMING_STOPPED" -> {
+                    Log.e(TAG, "📸 收到系统休眠结束广播")
+                }
+                "android.intent.action.CLOSE_SYSTEM_DIALOGS" -> {
+                    Log.e(TAG, "📸 收到系统对话框关闭广播")
+                    val reason = intent.getStringExtra("reason")
+                    Log.e(TAG, "关闭原因: $reason")
+                }
+                "com.szzy.ireader.systemui.action.RING_MENU_ITEM_CLICKED" -> {
+                    Log.e(TAG, "📋 环形菜单按钮被点击")
+                    // 打印所有extra内容
+                    intent.extras?.keySet()?.forEach { key ->
+                        Log.e(TAG, "[RING_MENU_ITEM_CLICKED] Intent extra: $key = ${intent.extras?.get(key)}")
+                    }
+                }
+                "com.szzy.ireader.systemui.action.RING_MENU_SCREENSHOT" -> {
+                    Log.e(TAG, "📸 环形菜单触发了截屏操作")
+                    intent.extras?.keySet()?.forEach { key ->
+                        Log.e(TAG, "[RING_MENU_SCREENSHOT] Intent extra: $key = ${intent.extras?.get(key)}")
+                    }
+                }
+                "com.android.systemui.action.SCREENSHOT" -> {
+                    Log.e(TAG, "📸 系统UI收到截屏命令")
+                    intent.extras?.keySet()?.forEach { key ->
+                        Log.e(TAG, "[SYSTEMUI_SCREENSHOT] Intent extra: $key = ${intent.extras?.get(key)}")
+                    }
+                }
+                "com.android.systemui.action.SCREENSHOT_TAKEN" -> {
+                    Log.e(TAG, "📸 系统UI截屏完成")
+                    intent.extras?.keySet()?.forEach { key ->
+                        Log.e(TAG, "[SCREENSHOT_TAKEN] Intent extra: $key = ${intent.extras?.get(key)}")
+                    }
+                }
+                else -> {
+                    Log.e(TAG, "未知广播类型: ${intent.action}")
+                }
+            }
+        }
+    }
+    
+    private var isServiceConnected = false
+    private var isWaitingForScreenshot = false
+    
     override fun onCreate() {
         super.onCreate()
         Log.i(TAG, "🚀 TextAccessibilityService onCreate() 开始")
@@ -80,6 +226,42 @@ class TextAccessibilityService : AccessibilityService() {
         
         // 监听剪贴板变化
         setupClipboardListener()
+
+        // 注册截屏动作广播接收器
+        val filter = IntentFilter().apply {
+            addAction(ACTION_TAKE_SCREENSHOT_VIA_ACCESSIBILITY)
+            addAction("android.intent.action.SCREENSHOT_TAKEN")
+            addAction("android.intent.action.SCREENSHOT_FAILED")
+            addAction("android.intent.action.SCREENSHOT_CANCELLED")
+            // 掌阅设备特有的广播
+            addAction("com.szzy.ireader.systemui.action.SCREENSHOT_TAKEN")
+            addAction("com.szzy.ireader.systemui.action.SCREENSHOT_FAILED")
+            addAction("com.szzy.ireader.systemui.action.SCREENSHOT_CANCELLED")
+            addAction("com.zhangyue.iReader.Eink.action.SCREENSHOT_TAKEN")
+            addAction("com.zhangyue.iReader.Eink.action.SCREENSHOT_FAILED")
+            addAction("com.zhangyue.iReader.Eink.action.SCREENSHOT_CANCELLED")
+            addAction("com.zhangyue.iReader.Eink.MediaKeyCode")
+            // 环形菜单相关广播
+            addAction("com.szzy.ireader.systemui.statusbar.BROADCAST_DISPLAYED_RING_MENU_WINDOW")
+            addAction("com.szzy.ireader.systemui.statusbar.BROADCAST_DISAPPEARED_RING_MENU_WINDOW")
+            addAction("szzy.ireader.systemui.action.HIDE_PANEL_WINDOW")
+            // 系统UI相关广播
+            addAction("com.szzy.ireader.systemui.ACTION_RESUME_AUTO_HIDE_STATUS_BAR")
+            addAction("com.zhangyue.iReader.screenoff")
+            addAction("com.zhangyue.iReader.screenlogo.show")
+            addAction("android.intent.action.DREAMING_STARTED")
+            addAction("android.intent.action.DREAMING_STOPPED")
+            addAction("android.intent.action.CLOSE_SYSTEM_DIALOGS")
+            addAction("com.szzy.ireader.systemui.action.RING_MENU_ITEM_CLICKED")
+            addAction("com.szzy.ireader.systemui.action.RING_MENU_SCREENSHOT")
+            addAction("com.android.systemui.action.SCREENSHOT")
+            addAction("com.android.systemui.action.SCREENSHOT_TAKEN")
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(screenshotActionReceiver, filter, RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(screenshotActionReceiver, filter)
+        }
         
         // 注册文本请求广播接收器
         val requestFilter = IntentFilter("com.readassist.REQUEST_SELECTED_TEXT")
@@ -98,7 +280,16 @@ class TextAccessibilityService : AccessibilityService() {
         // 启动悬浮窗服务
         startFloatingWindowService()
         
+        // 注册MediaStore截图监听器（无论设备类型都注册）
+        initScreenshotObserver()
+        
+        // 为iReader设备注册截图观察者（如有特殊逻辑可保留）
+        if (DeviceUtils.isIReaderDevice()) {
+            registerScreenshotObserver()
+        }
+        
         Log.i(TAG, "✅ onServiceConnected() 完成，开始监听事件")
+        isServiceConnected = true
     }
     
     override fun onDestroy() {
@@ -108,6 +299,9 @@ class TextAccessibilityService : AccessibilityService() {
         // 更新偏好设置
         preferenceManager.setAccessibilityEnabled(false)
         
+        // 注销截屏动作广播接收器
+        unregisterReceiver(screenshotActionReceiver)
+        
         // 注销广播接收器
         try {
             LocalBroadcastManager.getInstance(this).unregisterReceiver(textRequestReceiver)
@@ -115,8 +309,14 @@ class TextAccessibilityService : AccessibilityService() {
             Log.e(TAG, "Error unregistering text request receiver", e)
         }
         
+        // 注销截图观察者
+        unregisterScreenshotObserver()
+        
         // 停止悬浮窗服务
         stopFloatingWindowService()
+        isServiceConnected = false
+        
+        serviceScope.cancel()
     }
     
     override fun onInterrupt() {
@@ -125,39 +325,75 @@ class TextAccessibilityService : AccessibilityService() {
     
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) {
-            Log.d(TAG, "❌ 收到空的辅助功能事件")
             return
         }
         
         val eventPackageName = event.packageName?.toString() ?: return
         
-        // 对 Supernote 应用进行特殊日志记录
-        val isSupernoteApp = eventPackageName.contains("supernote") || eventPackageName.contains("ratta")
-        val logLevel = if (isSupernoteApp) "🔴🔴🔴" else "🎯"
+        // 记录所有事件类型，帮助调试
+        Log.e(TAG, "📱 收到事件: type=${event.eventType}, package=$eventPackageName")
         
-        Log.d(TAG, "$logLevel 收到辅助功能事件: ${getEventTypeName(event.eventType)} from $eventPackageName")
-
-        // 只处理支持的应用
-        if (!SUPPORTED_PACKAGES.contains(eventPackageName)) {
-            if (isSupernoteApp) {
-                Log.w(TAG, "🔴🔴🔴 Supernote相关应用未被识别为支持的应用: $eventPackageName")
-                
-                // 对于疑似 Supernote 应用，尝试强制处理
-                Log.d(TAG, "🔴 尝试强制处理 Supernote 应用: $eventPackageName")
-                updateCurrentAppInfo(eventPackageName, event)
-            } else {
-                // Log.d(TAG, "⚠️ 跳过不支持的应用: $eventPackageName") // 减少不必要的日志
-            }
-            return
+        // 监听窗口变化事件，可能包含截屏完成通知
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED) {
+            Log.e(TAG, "检测到窗口变化事件: ${event.eventType}")
+            
+            // 窗口变化可能是截屏完成后的通知
+            // 延迟一小段时间后检查是否有新截图
+            Handler(Looper.getMainLooper()).postDelayed({
+                checkIReaderScreenshot()
+            }, 500)
         }
         
-        // 更新当前应用信息（主要为了获取包名，书名提取可以按需保留或移除）
-        updateCurrentAppInfo(eventPackageName, event)
-        
-        // 核心修改：只对特定类型的事件做最基础的处理，主要依赖剪贴板
         when (event.eventType) {
+            AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED -> {
+                Log.e(TAG, "📱 收到通知状态变化事件")
+                val notification = event.parcelableData as? Notification
+                if (notification != null) {
+                    val extras = notification.extras
+                    val title = extras?.getString(Notification.EXTRA_TITLE)
+                    val text = extras?.getString(Notification.EXTRA_TEXT)
+                    Log.e(TAG, "📱 通知详情: title=$title, text=$text")
+                    
+                    // 检查是否是截屏相关的通知
+                    if (title?.contains("Screenshot", ignoreCase = true) == true ||
+                        text?.contains("Screenshot", ignoreCase = true) == true) {
+                        Log.e(TAG, "📸 检测到截屏相关通知")
+                        if (text?.contains("saved", ignoreCase = true) == true) {
+                            Log.e(TAG, "📸 截屏已保存")
+                            // 获取截屏目录
+                            val screenshotDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+                            val screenshotsDir = File(screenshotDir, "Screenshots")
+                            if (screenshotsDir.exists()) {
+                                Log.e(TAG, "📸 截屏目录存在: ${screenshotsDir.absolutePath}")
+                                // 获取最新的截屏文件
+                                val latestFile = screenshotsDir.listFiles()
+                                    ?.filter { it.name.endsWith(".png") }
+                                    ?.maxByOrNull { it.lastModified() }
+                                
+                                if (latestFile != null) {
+                                    val uri = Uri.fromFile(latestFile)
+                                    Log.e(TAG, "📸 找到截屏文件: $uri")
+                                    // 通知截屏完成
+                                    val intent = Intent("com.readassist.service.SCREENSHOT_COMPLETED")
+                                    intent.putExtra("screenshot_uri", uri)
+                                    sendBroadcast(intent)
+                                    Log.e(TAG, "📸 已发送截屏完成广播")
+                                } else {
+                                    Log.e(TAG, "❌ 未找到截屏文件")
+                                }
+                            } else {
+                                Log.e(TAG, "❌ 截屏目录不存在: ${screenshotsDir.absolutePath}")
+                            }
+                        } else if (text?.contains("failed", ignoreCase = true) == true) {
+                            Log.e(TAG, "❌ 截屏失败")
+                        }
+                    }
+                } else {
+                    Log.e(TAG, "❌ 通知对象为空")
+                }
+            }
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
-                if (isSupernoteApp) {
+                if (event.className?.contains("supernote") == true || event.className?.contains("ratta") == true) {
                     Log.d(TAG, "🔴 Supernote窗口状态变更: $eventPackageName")
                     Log.d(TAG, "🔴 窗口标题: ${event.className}")
                     Log.d(TAG, "🔴 窗口文本: ${event.text}")
@@ -177,9 +413,48 @@ class TextAccessibilityService : AccessibilityService() {
                     Log.d(TAG, "Window state changed: $eventPackageName")
                 }
             }
-            // 移除大部分其他事件类型的主动文本提取和广播
+            AccessibilityEvent.TYPE_VIEW_CLICKED,
+            AccessibilityEvent.TYPE_VIEW_LONG_CLICKED,
+            AccessibilityEvent.TYPE_VIEW_SELECTED,
+            AccessibilityEvent.TYPE_VIEW_FOCUSED,
+            AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED,
+            AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED,
+            AccessibilityEvent.TYPE_VIEW_HOVER_ENTER,
+            AccessibilityEvent.TYPE_VIEW_HOVER_EXIT,
+            AccessibilityEvent.TYPE_TOUCH_EXPLORATION_GESTURE_START,
+            AccessibilityEvent.TYPE_TOUCH_EXPLORATION_GESTURE_END,
+            AccessibilityEvent.TYPE_GESTURE_DETECTION_START,
+            AccessibilityEvent.TYPE_GESTURE_DETECTION_END,
+            AccessibilityEvent.TYPE_TOUCH_INTERACTION_START,
+            AccessibilityEvent.TYPE_TOUCH_INTERACTION_END,
+            AccessibilityEvent.TYPE_VIEW_CONTEXT_CLICKED,
+            AccessibilityEvent.TYPE_ASSIST_READING_CONTEXT,
+            0x00000080,
+            0x00000100,
+            0x00000200,
+            0x00000400,
+            0x00000800,
+            0x00001000,
+            0x00002000,
+            0x00004000,
+            0x00008000,
+            128,
+            256,
+            512,
+            1024,
+            2048,
+            4096,
+            8192,
+            16384,
+            32768 -> {
+                if (event.packageName?.contains("supernote") == true || event.packageName?.contains("ratta") == true) {
+                    Log.d(TAG, "🔴 Supernote其他事件: ${getEventTypeName(event.eventType)}")
+                } else {
+                    Log.d(TAG, "🔍 其他事件 (仅记录，不主动提取文本): ${getEventTypeName(event.eventType)} from $eventPackageName")
+                }
+            }
             else -> {
-                if (isSupernoteApp) {
+                if (event.packageName?.contains("supernote") == true || event.packageName?.contains("ratta") == true) {
                     Log.d(TAG, "🔴 Supernote其他事件: ${getEventTypeName(event.eventType)}")
                 } else {
                     Log.d(TAG, "🔍 其他事件 (仅记录，不主动提取文本): ${getEventTypeName(event.eventType)} from $eventPackageName")
@@ -1103,11 +1378,11 @@ class TextAccessibilityService : AccessibilityService() {
                 findAllTexts(rootNode, texts)
                 
                 // 3. 尝试识别文件路径
-                val pdfFilePaths = texts.filter { 
-                    it.contains("/storage/") && 
-                    (it.contains(".pdf", true) || 
-                     it.contains(".mark", true) || 
-                     it.contains(".epub", true))
+                val pdfFilePaths = texts.filter { it -> 
+                    it?.contains("/storage/") == true && 
+                    (it?.contains(".pdf", true) == true || 
+                     it?.contains(".mark", true) == true || 
+                     it?.contains(".epub", true) == true)
                 }
                 
                 if (pdfFilePaths.isNotEmpty()) {
@@ -1159,6 +1434,357 @@ class TextAccessibilityService : AccessibilityService() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "查找文本时出错", e)
+        }
+    }
+
+    private fun registerScreenshotObserver() {
+        if (screenshotObserver != null) return
+        screenshotObserver = object : ContentObserver(mainHandler) {
+            override fun onChange(selfChange: Boolean, uri: Uri?) {
+                super.onChange(selfChange, uri)
+                uri?.let { handleScreenshotUri(it) }
+            }
+        }
+        contentResolver.registerContentObserver(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            true,
+            screenshotObserver!!
+        )
+        Log.d(TAG, "Screenshot observer registered.")
+    }
+
+    private fun unregisterScreenshotObserver() {
+        screenshotObserver?.let {
+            contentResolver.unregisterContentObserver(it)
+            screenshotObserver = null
+            Log.d(TAG, "Screenshot observer unregistered.")
+        }
+    }
+
+    private var lastScreenshotTime = 0L
+    private fun handleScreenshotUri(uri: Uri) {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastScreenshotTime < 2000) {
+            Log.d(TAG, "Screenshot received too quickly, skipping.")
+            return
+        }
+        lastScreenshotTime = currentTime
+
+        Log.d(TAG, "New screenshot detected: $uri")
+
+        if (uri.scheme != "content" || uri.authority?.startsWith("media") != true) {
+            Log.w(TAG, "URI scheme or authority does not look like a media URI, skipping: $uri")
+            return
+        }
+
+        mainHandler.post {
+            contentResolver.query(uri, arrayOf(MediaStore.Images.Media.DISPLAY_NAME, MediaStore.Images.Media.RELATIVE_PATH), null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val displayName = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME))
+                    val relativePath = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.RELATIVE_PATH))
+
+                    Log.d(TAG, "Screenshot details - DisplayName: $displayName, Path: $relativePath")
+
+                    if (displayName?.contains("screenshot", ignoreCase = true) == true || relativePath?.contains("screenshot", ignoreCase = true) == true) {
+                        val intent = Intent(ACTION_SCREENSHOT_TAKEN_VIA_ACCESSIBILITY).apply {
+                            putExtra(EXTRA_SCREENSHOT_URI, uri.toString())
+                            setPackage(packageName)
+                        }
+                        context.sendBroadcast(intent)
+                        Log.d(TAG, "Broadcast sent for screenshot taken via accessibility: $uri")
+                    } else {
+                        Log.d(TAG, "Image is not a screenshot, skipping.")
+                    }
+                }
+            }
+        }
+    }
+
+    private fun performScreenshot() {
+        Log.e(TAG, "开始执行辅助功能截屏")
+        
+        // 设置等待截图状态
+        isWaitingForScreenshot = true
+        
+        // 方法1：尝试使用模拟按键KEYCODE_SYSRQ (120)触发截屏
+        try {
+            val runtime = Runtime.getRuntime()
+            runtime.exec("input keyevent 120")
+            Log.e(TAG, "✅ 已模拟系统截屏键(KEYCODE_SYSRQ=120)")
+            
+            // 给截屏操作15秒超时
+            Handler(Looper.getMainLooper()).postDelayed({
+                if (isWaitingForScreenshot) {
+                    Log.e(TAG, "⚠️ 截图监听超时，尝试备用检查方法")
+                    isWaitingForScreenshot = false
+                    
+                    // 备用：检查文件系统
+                    checkIReaderScreenshot()
+                    checkStandardScreenshotDirectory()
+                }
+            }, 15000)
+            
+            return
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ 模拟系统截屏键失败: ${e.message}")
+            isWaitingForScreenshot = false
+        }
+        
+        // 方法2：使用辅助功能API (Android 9+推荐方法)
+        Log.e(TAG, "使用辅助功能API GLOBAL_ACTION_TAKE_SCREENSHOT")
+        isWaitingForScreenshot = true
+        val result = performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT)
+        if (result) {
+            Log.e(TAG, "✅ 系统截屏操作已成功触发")
+            
+            // 给截屏操作15秒超时
+            Handler(Looper.getMainLooper()).postDelayed({
+                if (isWaitingForScreenshot) {
+                    Log.e(TAG, "⚠️ 截图监听超时，尝试备用检查方法")
+                    isWaitingForScreenshot = false
+                    
+                    // 备用：检查文件系统
+                    checkIReaderScreenshot()
+                    checkStandardScreenshotDirectory()
+                }
+            }, 15000)
+        } else {
+            Log.e(TAG, "❌ 系统截屏操作失败，尝试备用方法")
+            isWaitingForScreenshot = false
+            
+            // 尝试备用方法
+            try {
+                val intent = Intent()
+                intent.setClassName(
+                    "com.android.systemui",
+                    "com.android.systemui.screenshot.TakeScreenshotService"
+                )
+                // 添加Android标准截屏服务所需的参数
+                intent.putExtra("source", "accessibility_service")
+                intent.putExtra("mode", 1) // 1=全屏截图
+                
+                startService(intent)
+                Log.e(TAG, "✅ 已调用系统截屏服务")
+                
+                isWaitingForScreenshot = true
+                // 给截屏操作15秒超时
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if (isWaitingForScreenshot) {
+                        Log.e(TAG, "⚠️ 截图监听超时，尝试备用检查方法")
+                        isWaitingForScreenshot = false
+                        
+                        // 备用：检查文件系统
+                        checkIReaderScreenshot()
+                        checkStandardScreenshotDirectory()
+                    }
+                }, 15000)
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ 所有截屏方法均失败: ${e.message}")
+                isWaitingForScreenshot = false
+            }
+        }
+    }
+
+    private fun checkStandardScreenshotDirectory() {
+        Log.e(TAG, "开始检查标准截屏目录")
+        val standardDir = File("/sdcard/Pictures/Screenshots")
+        if (standardDir.exists()) {
+            Log.e(TAG, "✅ 标准截屏目录存在")
+            val files = standardDir.listFiles()
+            Log.e(TAG, "目录中的文件数量: ${files?.size ?: 0}")
+            
+            // 记录当前时间
+            val currentTime = System.currentTimeMillis()
+            Log.e(TAG, "当前时间戳: $currentTime")
+            
+            files?.forEach { file ->
+                val timeDiff = currentTime - file.lastModified()
+                Log.e(TAG, "文件: ${file.name}, 大小: ${file.length()}, 修改时间: ${file.lastModified()}, 时间差: ${timeDiff}ms")
+            }
+            
+            // 只查找最近5秒内创建的文件
+            val latestFile = files
+                ?.filter { it.name.endsWith(".png") && (currentTime - it.lastModified()) < 5000 }
+                ?.maxByOrNull { it.lastModified() }
+            
+            if (latestFile != null) {
+                val fileUri = Uri.fromFile(latestFile)
+                Log.e(TAG, "📸 从标准截屏目录找到新的截屏文件: $fileUri")
+                val intent = Intent("com.readassist.service.SCREENSHOT_COMPLETED")
+                intent.putExtra("screenshot_uri", fileUri)
+                sendBroadcast(intent)
+            } else {
+                Log.e(TAG, "❌ 未在标准截屏目录找到新的截屏文件")
+            }
+        } else {
+            Log.e(TAG, "❌ 标准截屏目录不存在")
+        }
+    }
+
+    private fun handleScreenshotTaken(intent: Intent) {
+        // 尝试从不同位置获取 URI
+        val uri = intent.getParcelableExtra<Uri>("android.intent.extra.SCREENSHOT_URI")
+        
+        if (uri != null) {
+            Log.e(TAG, "📸 系统截屏已保存: $uri")
+            // 通知截屏完成
+            val intent = Intent("com.readassist.service.SCREENSHOT_COMPLETED")
+            intent.putExtra("screenshot_uri", uri)
+            sendBroadcast(intent)
+        } else {
+            Log.e(TAG, "❌ 系统截屏URI为空，尝试从文件系统获取")
+            checkLatestScreenshot()
+        }
+    }
+
+    private fun checkIReaderScreenshot() {
+        Log.e(TAG, "开始检查掌阅设备特有目录")
+        val iReaderDir = File("/storage/emulated/0/iReader/saveImage/tmp")
+        if (iReaderDir.exists()) {
+            Log.e(TAG, "✅ 掌阅设备特有目录存在")
+            val files = iReaderDir.listFiles()
+            Log.e(TAG, "目录中的文件数量: ${files?.size ?: 0}")
+            
+            // 记录当前时间
+            val currentTime = System.currentTimeMillis()
+            Log.e(TAG, "当前时间戳: $currentTime")
+            
+            files?.forEach { file ->
+                val timeDiff = currentTime - file.lastModified()
+                Log.e(TAG, "文件: ${file.name}, 大小: ${file.length()}, 修改时间: ${file.lastModified()}, 时间差: ${timeDiff}ms")
+            }
+            
+            // 只查找最近5秒内创建的文件
+            val latestFile = files
+                ?.filter { it.name.endsWith(".png") && (currentTime - it.lastModified()) < 5000 }
+                ?.maxByOrNull { it.lastModified() }
+            
+            if (latestFile != null) {
+                val fileUri = Uri.fromFile(latestFile)
+                Log.e(TAG, "📸 从掌阅设备特有目录找到新的截屏文件: $fileUri")
+                val intent = Intent("com.readassist.service.SCREENSHOT_COMPLETED")
+                intent.putExtra("screenshot_uri", fileUri)
+                sendBroadcast(intent)
+            } else {
+                Log.e(TAG, "❌ 未在掌阅设备特有目录找到新的截屏文件")
+            }
+        } else {
+            Log.e(TAG, "❌ 掌阅设备特有目录不存在")
+        }
+    }
+
+    private fun checkLatestScreenshot() {
+        Log.e(TAG, "开始检查标准截屏目录")
+        val screenshotDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+        val screenshotsDir = File(screenshotDir, "Screenshots")
+        if (screenshotsDir.exists()) {
+            Log.e(TAG, "✅ 标准截屏目录存在")
+            val files = screenshotsDir.listFiles()
+            Log.e(TAG, "目录中的文件数量: ${files?.size ?: 0}")
+            files?.forEach { file ->
+                Log.e(TAG, "文件: ${file.name}, 大小: ${file.length()}, 修改时间: ${file.lastModified()}")
+            }
+            
+            val latestFile = files
+                ?.filter { it.name.endsWith(".png") }
+                ?.maxByOrNull { it.lastModified() }
+            
+            if (latestFile != null) {
+                val fileUri = Uri.fromFile(latestFile)
+                Log.e(TAG, "📸 从标准目录找到截屏文件: $fileUri")
+                val intent = Intent("com.readassist.service.SCREENSHOT_COMPLETED")
+                intent.putExtra("screenshot_uri", fileUri)
+                sendBroadcast(intent)
+            } else {
+                Log.e(TAG, "❌ 未在标准目录找到截屏文件")
+            }
+        } else {
+            Log.e(TAG, "❌ 标准截屏目录不存在")
+        }
+    }
+
+    private fun initScreenshotObserver() {
+        // 创建并注册媒体观察器
+        if (screenshotObserver == null) {
+            val observer = MediaContentObserver(Handler(mainLooper))
+            screenshotObserver = observer
+            contentResolver.registerContentObserver(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                true,
+                observer
+            )
+            Log.e(TAG, "已注册媒体内容观察器，可以监听新增的图片")
+        }
+    }
+
+    // 媒体内容观察器，用于监听新图片插入
+    inner class MediaContentObserver(handler: Handler) : ContentObserver(handler) {
+        override fun onChange(selfChange: Boolean, uri: Uri?) {
+            super.onChange(selfChange, uri)
+            uri ?: return
+            
+            // 只在等待截图期间处理
+            if (!isWaitingForScreenshot) return
+            
+            Log.e(TAG, "检测到媒体内容变化: $uri")
+            
+            try {
+                // 检查这个URI是否是图片
+                val isImage = uri.toString().startsWith(MediaStore.Images.Media.EXTERNAL_CONTENT_URI.toString())
+                if (!isImage) return
+                
+                // 获取图片信息
+                val projection = arrayOf(
+                    MediaStore.Images.Media._ID,
+                    MediaStore.Images.Media.DISPLAY_NAME,
+                    MediaStore.Images.Media.DATE_ADDED,
+                    MediaStore.Images.Media.DATA
+                )
+                
+                contentResolver.query(
+                    uri,
+                    projection,
+                    null,
+                    null,
+                    null
+                )?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+                        val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
+                        val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
+                        val dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
+                        
+                        val id = cursor.getLong(idColumn)
+                        val name = cursor.getString(nameColumn)
+                        val dateAdded = cursor.getLong(dateColumn)
+                        val filePath = cursor.getString(dataColumn)
+                        
+                        val currentTime = System.currentTimeMillis() / 1000
+                        val timeDiff = currentTime - dateAdded
+                        
+                        Log.e(TAG, "新图片: id=$id, name=$name, dateAdded=$dateAdded, 时间差=${timeDiff}s, 路径=$filePath")
+                        
+                        // 判断是否是截图：名称包含screenshot或者在最近5秒添加的
+                        val isScreenshot = (name.contains("screenshot", ignoreCase = true) || 
+                                          name.contains("截图", ignoreCase = true) ||
+                                          timeDiff < 5)
+                        
+                        if (isScreenshot) {
+                            Log.e(TAG, "✅ 检测到新截图: $name")
+                            
+                            // 发送广播通知
+                            val intent = Intent("com.readassist.service.SCREENSHOT_COMPLETED")
+                            intent.putExtra("screenshot_uri", uri)
+                            sendBroadcast(intent)
+                            
+                            // 重置等待状态
+                            isWaitingForScreenshot = false
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "处理媒体变化异常: ${e.message}")
+            }
         }
     }
 } 

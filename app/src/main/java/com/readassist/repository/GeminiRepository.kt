@@ -57,6 +57,7 @@ class GeminiRepository(private val preferenceManager: PreferenceManager) {
         
         // 构建请求
         val request = buildTextRequest(userText, context)
+        Log.d(TAG, "发送给API的请求内容: $request")
         
         return executeRequest(apiKey, request, cacheKey)
     }
@@ -339,10 +340,11 @@ class GeminiRepository(private val preferenceManager: PreferenceManager) {
         // 添加图片分析的专门指引
         val imageAnalysisGuidance = """
 
-请按以下要求分析截图：
+如果发给你信息里有图片，请按以下要求分析截图：
 1. 如果截图有高亮选择，请先输出高亮部分的文字然后解读，如果没有则对全屏文字进行解读，不需要全文输出，只针对你认为重要的句子进行原文输出即可。
-2. 为避免触发版权保护机制，请不要一整段原文输出。
-3. 整体回答要简要明了，不要超过300字。"""
+2. 请不要解读截图上操作界面/阅读界面上的功能按钮。
+3. 为避免触发版权保护机制，请不要一整段原文输出。
+4. 整体回答要简要明了，不要超过300字。"""
 
         val finalPrompt = basePrompt + imageAnalysisGuidance
         

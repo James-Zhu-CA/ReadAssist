@@ -78,6 +78,12 @@ class AiCommunicationManager(
     ): ApiResult<String> {
         return withContext(Dispatchers.IO) {
             try {
+                Log.e(TAG, "🚀🚀🚀 AI通信管理器: sendImageMessage 收到请求 🚀🚀🚀")
+                Log.e(TAG, "🖼️ 最终验证 - 图片尺寸: ${bitmap.width}x${bitmap.height}")
+                Log.e(TAG, "🖼️ 最终验证 - 图片HashCode: ${bitmap.hashCode()}")
+                Log.e(TAG, "🖼️ 最终验证 - 图片是否已回收: ${bitmap.isRecycled}")
+                Log.e(TAG, "🪜 调用栈: ${Throwable().stackTraceToString()}")
+                
                 Log.d(TAG, "=== 开始发送图片消息 ===")
                 Log.d(TAG, "发送图片消息 - 会话ID: $sessionId, 应用: $appPackage, 书籍: $bookName")
                 Log.d(TAG, "消息内容: ${message.take(100)}...")

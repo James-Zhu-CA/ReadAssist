@@ -13,8 +13,8 @@ android {
         applicationId "com.readassist"
         minSdk 21  // 支持 Android 5.0+，兼容 A5X 的 Android 8.1
         targetSdk 34
-        versionCode 2
-        versionName "1.1"
+        versionCode 5
+        versionName "1.5"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         
@@ -69,8 +69,8 @@ android {
     configurations.all {
         resolutionStrategy {
             // 强制使用指定版本的依赖，避免版本冲突
-            force 'androidx.activity:activity-ktx:1.7.2'
-            force 'androidx.activity:activity:1.7.2'
+            // force 'androidx.activity:activity-ktx:1.7.2'
+            // force 'androidx.activity:activity:1.7.2'
             force 'androidx.fragment:fragment-ktx:1.6.1'
             force 'androidx.fragment:fragment:1.6.1'
             force 'androidx.core:core-ktx:1.10.1'

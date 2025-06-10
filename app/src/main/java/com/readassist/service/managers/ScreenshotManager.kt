@@ -5,9 +5,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Rect
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
+import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import android.os.Handler
@@ -17,12 +19,20 @@ import android.widget.Toast
 import com.readassist.ReadAssistApplication
 import com.readassist.service.ScreenshotService
 import com.readassist.utils.PreferenceManager
+import com.readassist.utils.DeviceUtils
+import com.readassist.utils.DeviceType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
+import java.io.File
+import java.io.FileOutputStream
+import android.os.FileObserver
+import android.os.Environment
 
 /**
  * 管理截屏功能
@@ -37,6 +47,8 @@ class ScreenshotManager(
         private const val TAG = "ScreenshotManager"
         private const val PERMISSION_REQUEST_COOLDOWN = 3000L // 权限请求冷却时间，3秒
     }
+    
+    private val deviceType = DeviceUtils.getDeviceType()
     
     // 截屏服务相关
     private var screenshotService: ScreenshotService? = null
@@ -59,6 +71,63 @@ class ScreenshotManager(
     private var mediaProjection: MediaProjection? = null
     private var virtualDisplay: android.hardware.display.VirtualDisplay? = null
     private var imageReader: android.media.ImageReader? = null
+    
+    private var pendingScreenshotUri: Uri? = null
+
+    // 新增：统一的文件观察器
+    private var fileObserver: FileObserver? = null
+    
+    private val screenshotReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                "com.readassist.service.SCREENSHOT_COMPLETED" -> {
+                    val uri = intent.getParcelableExtra<Uri>("screenshot_uri")
+                    if (uri != null) {
+                        Log.e(TAG, "📸 收到截屏完成通知: $uri")
+                        // 保存截屏
+                        pendingScreenshotUri = uri
+                        // 通知截屏完成
+                        handleScreenshotComplete(uri)
+                    } else {
+                        Log.e(TAG, "❌ 截屏URI为空")
+                    }
+                }
+            }
+        }
+    }
+    
+    init {
+        // 注册截屏广播接收器
+        try {
+            // 创建IntentFilter，过滤截屏广播
+            val filter = IntentFilter().apply {
+                addAction("android.intent.action.SCREENSHOT")
+                addAction("com.readassist.SCREENSHOT_TAKEN")
+            }
+            
+            // 注册广播接收器
+            context.registerReceiver(screenshotReceiver, filter)
+            Log.d(TAG, "成功注册截屏广播接收器")
+            
+            // 根据偏好设置决定是否自动启动监控
+            val autoMonitor = preferenceManager.getBoolean("screenshot_auto_popup", true)
+            if (autoMonitor) {
+                startMonitoring()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "注册截屏广播接收器失败", e)
+        }
+    }
+    
+    fun destroy() {
+        try {
+            context.unregisterReceiver(screenshotReceiver)
+            fileObserver?.stopWatching()
+            Log.e(TAG, "已注销截屏完成广播接收器和文件监控器")
+        } catch (e: Exception) {
+            Log.e(TAG, "注销资源失败", e)
+        }
+    }
     
     /**
      * 初始化截屏服务
@@ -125,6 +194,12 @@ class ScreenshotManager(
      * 初始化截屏权限
      */
     private fun initializeScreenshotPermission() {
+        if (deviceType == DeviceType.IREADER) {
+            Log.d(TAG, "掌阅设备，跳过MediaProjection权限初始化")
+            isScreenshotPermissionGranted = true // 假定权限已授予，因为我们将使用辅助功能
+            return
+        }
+
         // 检查是否已经有保存的截屏权限
         val hasPermission = preferenceManager.isScreenshotPermissionGranted()
         isScreenshotPermissionGranted = hasPermission
@@ -171,6 +246,13 @@ class ScreenshotManager(
      */
     fun requestScreenshotPermission() {
         Log.d(TAG, "=== 请求截屏权限 ===")
+        
+        if (deviceType == DeviceType.IREADER) {
+            Log.d(TAG, "掌阅设备：通过辅助功能触发截屏")
+            val intent = Intent("com.readassist.service.TAKE_SCREENSHOT_VIA_ACCESSIBILITY")
+            context.sendBroadcast(intent)
+            return
+        }
         
         // 如果已经在请求权限，不重复请求
         if (isRequestingPermission) {
@@ -223,7 +305,16 @@ class ScreenshotManager(
      * 执行截屏
      */
     fun performScreenshot() {
-        Log.d(TAG, "=== 执行截屏 ===")
+        Log.e(TAG, "=== 执行截屏 ===")
+        
+        if (deviceType == DeviceType.IREADER) {
+            Log.e(TAG, "掌阅设备：通过辅助功能触发截屏")
+            Log.e(TAG, "掌阅设备：发送广播 com.readassist.service.TAKE_SCREENSHOT_VIA_ACCESSIBILITY")
+            val intent = Intent("com.readassist.service.TAKE_SCREENSHOT_VIA_ACCESSIBILITY")
+            context.sendBroadcast(intent)
+            Log.e(TAG, "掌阅设备：广播已发送，等待辅助功能服务处理")
+            return
+        }
         
         // 检查权限状态
         if (!preferenceManager.isScreenshotPermissionGranted()) {
@@ -260,12 +351,12 @@ class ScreenshotManager(
                     return@launch
                 }
                 
-                Log.d(TAG, "开始执行实际截屏操作...")
+                Log.e(TAG, "开始执行实际截屏操作...")
                 
                 // 在后台线程中执行截屏
                 withContext(Dispatchers.IO) {
-                    // 使用新的快速截屏方法
-                    service.captureScreenFast()
+                    // 使用超快速截屏方法
+                    service.captureScreenUltraFast()
                 }
             } catch (e: Exception) {
                 // 捕获截屏过程中的异常
@@ -983,6 +1074,8 @@ class ScreenshotManager(
         fun onPermissionGranted()
         fun onPermissionDenied()
         fun onScreenshotMessage(message: String)
+        fun onScreenshotComplete(uri: Uri)
+        fun onScreenshotTaken(uri: Uri)
     }
     
     /**
@@ -1187,5 +1280,173 @@ class ScreenshotManager(
             Log.e(TAG, "❌ 压缩图片异常", e)
             return original
         }
+    }
+
+    fun handleScreenshotComplete(uri: Uri) {
+        Log.e(TAG, "📸 收到截屏完成回调: $uri")
+        pendingScreenshotUri = uri
+
+        // 统一所有设备的截屏完成回调
+        Log.e(TAG, "统一回调 -> 调用 onScreenshotComplete")
+        callbacks.onScreenshotComplete(uri)
+    }
+
+    private fun processScreenshot(uri: Uri) {
+        Log.e(TAG, "📸 开始处理截屏: $uri")
+        try {
+            // 保存调试信息
+            val debugDir = File(context.getExternalFilesDir(null), "debug")
+            if (!debugDir.exists()) {
+                debugDir.mkdirs()
+            }
+            
+            // 复制图片到debug目录
+            val timestamp = System.currentTimeMillis()
+            val debugImageFile = File(debugDir, "screenshot_debug_$timestamp.png")
+            
+            Log.e(TAG, "📸 开始复制图片到调试目录: ${debugImageFile.absolutePath}")
+            
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                FileOutputStream(debugImageFile).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            
+            // 输出图片信息
+            Log.e(TAG, """
+                📸 发送给AI的图片信息:
+                - 原始URI: $uri
+                - 调试文件路径: ${debugImageFile.absolutePath}
+                - 文件大小: ${debugImageFile.length()} bytes
+                - 时间戳: $timestamp
+                - 文件存在: ${debugImageFile.exists()}
+            """.trimIndent())
+            
+            // 继续原有的处理逻辑
+            val bitmap = context.contentResolver.openInputStream(uri)?.use { input ->
+                BitmapFactory.decodeStream(input)
+            }
+            
+            if (bitmap == null) {
+                Log.e(TAG, "❌ 无法解码截屏图片")
+                callbacks.onScreenshotFailed("无法解码截屏图片")
+                return
+            }
+            
+            Log.e(TAG, "✅ 成功解码截屏图片: ${bitmap.width}x${bitmap.height}")
+            
+            // ... existing code ...
+        } catch (e: Exception) {
+            Log.e(TAG, "处理截屏失败", e)
+            callbacks.onScreenshotFailed("截屏处理失败：${e.message}")
+        }
+    }
+
+    fun onScreenshotTaken(uri: Uri) {
+        Log.e(TAG, "📸 收到截屏完成通知: $uri")
+        callbacks.onScreenshotTaken(uri)
+        Log.e(TAG, "📸 收到截屏完成回调: $uri")
+        
+        // 添加调试信息
+        try {
+            val file = File(uri.path!!)
+            Log.e(TAG, """
+                📸 截屏文件信息:
+                - URI: $uri
+                - 路径: ${uri.path}
+                - 文件存在: ${file.exists()}
+                - 文件大小: ${file.length()}
+                - 最后修改时间: ${file.lastModified()}
+            """.trimIndent())
+        } catch (e: Exception) {
+            Log.e(TAG, "获取截屏文件信息失败", e)
+        }
+        
+        processScreenshot(uri)
+    }
+
+    /**
+     * 开始监控截屏目录，这是自动检测系统截屏的核心
+     */
+    fun startMonitoring() {
+        try {
+            fileObserver?.stopWatching() // 停止任何旧的观察器
+
+            val dirToWatch = when (DeviceUtils.getDeviceType()) {
+                DeviceType.IREADER -> {
+                    File("/storage/emulated/0/iReader/saveImage/tmp")
+                }
+                DeviceType.SUPERNOTE -> {
+                    // Supernote设备截屏保存在应用私有目录
+                    File(context.getExternalFilesDir(null), "")
+                }
+                else -> {
+                    // 其他设备回退到标准的系统截图目录
+                    File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Screenshots")
+                }
+            }
+
+            if (!dirToWatch.exists()) {
+                if (!dirToWatch.mkdirs()) {
+                    Log.w(TAG, "截图监控目录不存在且无法创建: ${dirToWatch.absolutePath}")
+                    return
+                }
+            }
+            
+            fileObserver = object : FileObserver(dirToWatch, CLOSE_WRITE) {
+                private var lastProcessedPath: String? = null
+                private var lastProcessedTime: Long = 0
+
+                override fun onEvent(event: Int, path: String?) {
+                    if (path == null) return
+
+                    val currentTime = System.currentTimeMillis()
+                    // 防抖：2秒内同一个文件的事件只处理一次
+                    if (path == lastProcessedPath && (currentTime - lastProcessedTime) < 2000) {
+                        return
+                    }
+                    
+                    Log.d(TAG, "[FileObserver] 检测到文件写入事件: $path")
+                    lastProcessedPath = path
+                    lastProcessedTime = currentTime
+
+                    // 延迟处理以确保文件写入完成
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        val file = File(dirToWatch, path)
+                        if (file.exists()) {
+                            Log.d(TAG, "[FileObserver] 新截图文件确认: ${file.absolutePath}")
+                            // 直接调用主回调接口，触发后续弹窗逻辑
+                            callbacks.onScreenshotComplete(Uri.fromFile(file))
+                        }
+                    }, 500)
+                }
+            }
+            
+            Log.d(TAG, "✅ 开始监控系统截屏目录: ${dirToWatch.absolutePath}")
+            fileObserver?.startWatching()
+
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ 启动截屏文件监控失败", e)
+        }
+    }
+    
+    /**
+     * 停止监控截屏目录
+     */
+    fun stopMonitoring() {
+        try {
+            Log.d(TAG, "停止监控截屏目录")
+            fileObserver?.stopWatching()
+        } catch (e: Exception) {
+            Log.e(TAG, "停止截屏监控失败", e)
+        }
+    }
+
+    /**
+     * 处理新的截屏
+     */
+    private fun onNewScreenshot(uri: Uri) {
+        Log.d(TAG, "处理新的截屏: $uri")
+        // 保留空实现，因为截图处理逻辑已经移到 processScreenshot 方法中
     }
 } 

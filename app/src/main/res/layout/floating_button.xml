@@ -7,4 +7,8 @@
     android:textColor="#000000"
     android:background="@drawable/floating_button_background"
     android:elevation="0dp"
-    android:stateListAnimator="@null" /> 
+    android:stateListAnimator="@null"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="@null"
+    android:backgroundTint="@null" /> 

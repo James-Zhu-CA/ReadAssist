@@ -15,14 +15,31 @@
         android:gravity="center_vertical"
         android:paddingBottom="8dp">
 
-        <TextView
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@string/floating_window_title"
-            android:textSize="18sp"
-            android:textColor="#000000"
-            android:textStyle="bold" />
+            android:orientation="vertical">
+            
+            <TextView
+                android:id="@+id/titleText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/floating_window_title"
+                android:textSize="18sp"
+                android:textColor="#000000"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- 自动触发弹屏勾选项 -->
+        <CheckBox
+            android:id="@+id/checkAutoPopup"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="自动触发弹屏"
+            android:textSize="12sp"
+            android:checked="true"
+            android:layout_marginEnd="8dp" />
 
         <!-- 新对话按钮 -->
         <Button
@@ -30,26 +47,17 @@
             android:layout_width="56dp"
             android:layout_height="32dp"
             android:text="新对话"
-            android:textSize="10sp"
-            android:textColor="#000000"
-            android:background="#E8F4FD"
-            android:layout_marginEnd="4dp" />
-
-        <Button
-            android:id="@+id/minimizeButton"
-            android:layout_width="48dp"
-            android:layout_height="32dp"
-            android:text="@string/minimize"
             android:textSize="12sp"
             android:textColor="#000000"
-            android:background="#F0F0F0"
+            android:background="#E8F4FD"
             android:layout_marginEnd="8dp" />
 
+        <!-- 关闭按钮 -->
         <Button
             android:id="@+id/closeButton"
             android:layout_width="48dp"
             android:layout_height="32dp"
-            android:text="@string/close"
+            android:text="关闭"
             android:textSize="12sp"
             android:textColor="#000000"
             android:background="#F0F0F0" />
@@ -74,40 +82,63 @@
         android:listSelector="@android:color/transparent"
         android:cacheColorHint="@android:color/transparent" />
 
-    <!-- 功能按钮区域 -->
+    <!-- 新增勾选项区域 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp">
+        android:paddingStart="0dp"
+        android:paddingLeft="0dp"
+        android:paddingEnd="0dp"
+        android:paddingRight="0dp"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp"
+        android:gravity="center_vertical">
 
-        <!-- 分析文本按钮 -->
-        <Button
-            android:id="@+id/analyzeButton"
+        <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="40dp"
-            android:layout_weight="1"
-            android:text="@string/analyze_text"
-            android:textSize="12sp"
-            android:textColor="#000000"
-            android:background="#F5F5F5"
-            android:visibility="gone"
-            android:layout_marginEnd="4dp" />
+            android:layout_height="wrap_content"
+            android:layout_weight="2"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="0dp"
+            android:paddingLeft="0dp">
+            <CheckBox
+                android:id="@+id/checkSendScreenshot"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="发送截屏图片"
+                android:textSize="12sp" />
+            <TextView
+                android:id="@+id/tvScreenshotTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="#666666"
+                android:layout_marginStart="4dp" />
+        </LinearLayout>
 
-        <!-- 截屏分析按钮 -->
-        <Button
-            android:id="@+id/screenshotButton"
+        <CheckBox
+            android:id="@+id/checkSendClipboard"
             android:layout_width="0dp"
-            android:layout_height="40dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="截屏分析"
+            android:text="发送剪贴板内容"
             android:textSize="12sp"
-            android:textColor="#000000"
-            android:background="#E8F4FD"
-            android:layout_marginStart="4dp"
-            android:visibility="gone" />
+            android:visibility="visible"
+            android:layout_marginStart="-12dp" />
 
+        <TextView
+            android:id="@+id/tvClipboardContent"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="12sp"
+            android:textColor="#666666"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:visibility="visible"
+            android:layout_marginStart="-12dp" />
     </LinearLayout>
 
     <!-- AI平台和模型选择器 -->
@@ -116,9 +147,11 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingTop="4dp"
-        android:paddingBottom="4dp"
-        android:background="#F8F8F8">
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp"
+        android:background="#F8F8F8"
+        android:paddingStart="0dp"
+        android:paddingLeft="0dp">
 
         <TextView
             android:layout_width="wrap_content"
@@ -135,7 +168,8 @@
             android:layout_height="32dp"
             android:layout_weight="1"
             android:background="#FFFFFF"
-            android:layout_marginEnd="4dp" />
+            android:layout_marginEnd="4dp"
+            android:tag="ireader" />
 
         <!-- AI模型选择器 -->
         <Spinner
@@ -144,7 +178,8 @@
             android:layout_height="32dp"
             android:layout_weight="1.5"
             android:background="#FFFFFF"
-            android:layout_marginEnd="4dp" />
+            android:layout_marginEnd="4dp"
+            android:tag="ireader" />
 
         <!-- 配置状态指示器 -->
         <TextView
@@ -152,7 +187,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="✓"
-            android:textSize="14sp"
+            android:textSize="12sp"
             android:textColor="#4CAF50"
             android:background="#E8F5E8"
             android:padding="4dp"
@@ -167,7 +202,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingTop="8dp">
+        android:paddingTop="2dp">
 
         <EditText
             android:id="@+id/inputEditText"
@@ -176,7 +211,7 @@
             android:minLines="3"
             android:layout_weight="1"
             android:hint="@string/input_hint"
-            android:textSize="14sp"
+            android:textSize="12sp"
             android:textColor="#000000"
             android:textColorHint="#666666"
             android:background="#F5F5F5"
@@ -201,7 +236,7 @@
             android:layout_width="60dp"
             android:layout_height="40dp"
             android:text="@string/send"
-            android:textSize="14sp"
+            android:textSize="12sp"
             android:textColor="#000000"
             android:background="#F0F0F0"
             android:layout_marginStart="8dp" />

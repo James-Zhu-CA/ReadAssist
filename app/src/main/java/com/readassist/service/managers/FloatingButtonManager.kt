@@ -54,34 +54,55 @@ class FloatingButtonManager(
      * 创建并显示悬浮按钮
      */
     fun createButton() {
+        Log.e(TAG, "createButton called")
         if (floatingButton != null) return
         
         try {
+            // 判断是否为掌阅设备，动态调整按钮尺寸
+            val isIReader = com.readassist.utils.DeviceUtils.isIReaderDevice()
+            val sizeDp = if (isIReader) (FLOATING_BUTTON_SIZE * 0.6f).toInt() else FLOATING_BUTTON_SIZE
+
             // 创建按钮视图
             floatingButton = LayoutInflater.from(context).inflate(R.layout.floating_button, null)
+            Log.e(TAG, "floatingButton inflated")
+            
+            // 动态设置按钮宽高（防止布局文件覆盖）
+            floatingButton?.let { btn ->
+                // 创建新的布局参数
+                val params = android.widget.FrameLayout.LayoutParams(
+                    dpToPx(sizeDp),
+                    dpToPx(sizeDp)
+                )
+                btn.layoutParams = params
+            }
             
             // 设置透明度为50%
             floatingButton?.alpha = 0.5f
             
             // 设置按钮点击事件
             floatingButton?.setOnClickListener {
+                Log.e(TAG, "Floating button clicked")
                 callbacks.onFloatingButtonClick()
             }
+            Log.e(TAG, "setOnClickListener set")
             
             // 设置按钮拖拽功能
             setupButtonDrag()
+            Log.e(TAG, "setupButtonDrag called")
             
             // 创建布局参数
             val windowType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Log.e(TAG, "Using TYPE_APPLICATION_OVERLAY for window type")
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             } else {
+                Log.e(TAG, "Using TYPE_PHONE for window type")
                 @Suppress("DEPRECATION")
                 WindowManager.LayoutParams.TYPE_PHONE
             }
             
             floatingButtonParams = WindowManager.LayoutParams(
-                dpToPx(FLOATING_BUTTON_SIZE),
-                dpToPx(FLOATING_BUTTON_SIZE),
+                dpToPx(sizeDp),
+                dpToPx(sizeDp),
                 windowType,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 PixelFormat.TRANSLUCENT
@@ -91,8 +112,8 @@ class FloatingButtonManager(
                 val displayMetrics = context.resources.displayMetrics
                 
                 // 计算边缘位置（屏幕右侧边缘中间，一半在屏幕外）
-                edgeButtonX = displayMetrics.widthPixels - dpToPx(FLOATING_BUTTON_SIZE / 2)
-                edgeButtonY = displayMetrics.heightPixels / 2 - dpToPx(FLOATING_BUTTON_SIZE / 2)
+                edgeButtonX = displayMetrics.widthPixels - dpToPx(sizeDp / 2)
+                edgeButtonY = displayMetrics.heightPixels / 2 - dpToPx(sizeDp / 2)
                 
                 // 从偏好设置恢复位置
                 val savedX = preferenceManager.getFloatingButtonX()
@@ -108,7 +129,7 @@ class FloatingButtonManager(
                     isButtonAtEdge = isAtEdgePosition
                     isButtonMoved = !isAtEdgePosition
                     
-                    Log.d(TAG, "📍 恢复保存位置: ($savedX, $savedY), 是否在边缘: $isButtonAtEdge")
+                    Log.e(TAG, "📍 恢复保存位置: ($savedX, $savedY), 是否在边缘: $isButtonAtEdge")
                 } else {
                     // 没有保存位置，使用默认边缘位置
                     x = edgeButtonX
@@ -116,7 +137,7 @@ class FloatingButtonManager(
                     isButtonAtEdge = true
                     isButtonMoved = false
                     
-                    Log.d(TAG, "📍 使用默认边缘位置: ($x, $y)")
+                    Log.e(TAG, "📍 使用默认边缘位置: ($x, $y)")
                 }
                 
                 // 保存原始位置（用于其他逻辑）
@@ -126,7 +147,7 @@ class FloatingButtonManager(
             
             // 添加到窗口管理器
             windowManager.addView(floatingButton, floatingButtonParams)
-            Log.d(TAG, "Floating button created")
+            Log.e(TAG, "addView success, Floating button created")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to create floating button", e)
         }
@@ -141,7 +162,7 @@ class FloatingButtonManager(
                 windowManager.removeView(button)
                 floatingButton = null
                 floatingButtonParams = null
-                Log.d(TAG, "Floating button removed")
+                Log.e(TAG, "Floating button removed")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to remove floating button", e)
             }
@@ -152,6 +173,7 @@ class FloatingButtonManager(
      * 设置按钮拖拽功能
      */
     private fun setupButtonDrag() {
+        Log.e(TAG, "setupButtonDrag entry")
         var initialX = 0
         var initialY = 0
         var initialTouchX = 0f
@@ -237,19 +259,19 @@ class FloatingButtonManager(
                         }
                     } else if (moveDistance >= 10) {
                         // 用户进行了拖拽操作，更新按钮状态
-                        Log.d(TAG, "📍 用户拖拽了按钮，更新位置状态")
+                        Log.e(TAG, "📍 用户拖拽了按钮，更新位置状态")
                         
                         // 保存新位置到偏好设置
                         floatingButtonParams?.let { params ->
                             preferenceManager.setFloatingButtonPosition(params.x, params.y)
-                            Log.d(TAG, "📍 保存拖拽后位置: (${params.x}, ${params.y})")
+                            Log.e(TAG, "📍 保存拖拽后位置: (${params.x}, ${params.y})")
                         }
                         
                         // 更新按钮状态：不再在边缘
                         isButtonAtEdge = false
                         isButtonMoved = true
                         
-                        Log.d(TAG, "📍 按钮状态已更新: isButtonAtEdge=$isButtonAtEdge, isButtonMoved=$isButtonMoved")
+                        Log.e(TAG, "📍 按钮状态已更新: isButtonAtEdge=$isButtonAtEdge, isButtonMoved=$isButtonMoved")
                     }
                     true
                 }
@@ -300,7 +322,7 @@ class FloatingButtonManager(
                     }
                 }
                 
-                Log.d(TAG, "📸 截屏分析指示器已显示")
+                Log.e(TAG, "📸 截屏分析指示器已显示")
             }
         } catch (e: Exception) {
             Log.e(TAG, "显示截屏分析指示器失败", e)
@@ -332,7 +354,7 @@ class FloatingButtonManager(
                     text = "AI"
                 }
                 
-                Log.d(TAG, "🔄 按钮已恢复默认状态")
+                Log.e(TAG, "🔄 按钮已恢复默认状态")
             }
         } catch (e: Exception) {
             Log.e(TAG, "恢复按钮默认状态失败", e)
@@ -348,14 +370,14 @@ class FloatingButtonManager(
             floatingButton?.let { button ->
                 if (visible) {
                     if (button.visibility != View.VISIBLE) {
-                        Log.d(TAG, "设置按钮可见")
+                        Log.e(TAG, "设置按钮可见")
                         button.visibility = View.VISIBLE
                         // 恢复默认样式
                         restoreDefaultState()
                     }
                 } else {
                     if (button.visibility != View.INVISIBLE) {
-                        Log.d(TAG, "设置按钮不可见")
+                        Log.e(TAG, "设置按钮不可见")
                         button.visibility = View.INVISIBLE // 使用INVISIBLE而不是GONE，保留布局位置
                     }
                 }
@@ -373,7 +395,7 @@ class FloatingButtonManager(
         
         // 只有在边缘状态时才移动按钮
         if (!isButtonAtEdge) {
-            Log.d(TAG, "📍 按钮不在边缘状态，跳过移动到选择区域")
+            Log.e(TAG, "📍 按钮不在边缘状态，跳过移动到选择区域")
             return
         }
         
@@ -393,12 +415,12 @@ class FloatingButtonManager(
                     dpToPx(60), 
                     displayMetrics.heightPixels - dpToPx(60)
                 )
-                Log.d(TAG, "📍 根据选择位置移动按钮: 选择位置(${selectionPosition.first}, ${selectionPosition.second}) -> 按钮位置($newX, $newY)")
+                Log.e(TAG, "📍 根据选择位置移动按钮: 选择位置(${selectionPosition.first}, ${selectionPosition.second}) -> 按钮位置($newX, $newY)")
             } else {
                 // 如果无法获取选择位置，移动到屏幕中心偏右
                 newX = (displayMetrics.widthPixels * 0.75).toInt()
                 newY = (displayMetrics.heightPixels * 0.4).toInt()
-                Log.d(TAG, "📍 使用默认位置移动按钮: ($newX, $newY)")
+                Log.e(TAG, "📍 使用默认位置移动按钮: ($newX, $newY)")
             }
             
             floatingButtonParams?.apply {
@@ -410,7 +432,7 @@ class FloatingButtonManager(
             isButtonMoved = true
             isButtonAtEdge = false
             
-            Log.d(TAG, "📍 按钮已移动到选择区域: ($newX, $newY)")
+            Log.e(TAG, "📍 按钮已移动到选择区域: ($newX, $newY)")
         } catch (e: Exception) {
             Log.e(TAG, "移动按钮失败", e)
         }
@@ -424,7 +446,7 @@ class FloatingButtonManager(
         
         // 只有在按钮被移动过的情况下才恢复
         if (!isButtonMoved) {
-            Log.d(TAG, "📍 按钮未被移动，无需恢复")
+            Log.e(TAG, "📍 按钮未被移动，无需恢复")
             return
         }
         
@@ -438,7 +460,7 @@ class FloatingButtonManager(
             isButtonMoved = false
             isButtonAtEdge = true
             
-            Log.d(TAG, "📍 按钮已恢复到边缘位置: ($edgeButtonX, $edgeButtonY)")
+            Log.e(TAG, "📍 按钮已恢复到边缘位置: ($edgeButtonX, $edgeButtonY)")
         } catch (e: Exception) {
             Log.e(TAG, "恢复按钮位置失败", e)
         }
@@ -462,7 +484,7 @@ class FloatingButtonManager(
                     .setDuration(200)
                     .start()
                 
-                Log.d(TAG, "🎨 按钮外观已更新为选择模式")
+                Log.e(TAG, "🎨 按钮外观已更新为选择模式")
             } else {
                 // 普通模式：恢复原始外观
                 button.alpha = 0.5f
@@ -472,7 +494,7 @@ class FloatingButtonManager(
                     .setDuration(200)
                     .start()
                 
-                Log.d(TAG, "🎨 按钮外观已恢复为普通模式")
+                Log.e(TAG, "🎨 按钮外观已恢复为普通模式")
             }
         }
     }

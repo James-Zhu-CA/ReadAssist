@@ -1751,11 +1751,11 @@ class FloatingWindowService : Service(), ScreenshotService.ScreenshotCallback {
                 // 3. 最小延迟等待UI更新
                 kotlinx.coroutines.delay(50) // 从100ms优化为50ms
                 
-                // 4. 使用快速截屏服务
+                // 4. 使用超快速截屏服务
                 val service = screenshotService
                 if (service != null) {
-                    Log.d(TAG, "使用快速截屏服务")
-                    service.captureScreenFast() // 使用新的快速截屏方法
+                    Log.d(TAG, "使用超快速截屏服务")
+                    service.captureScreenUltraFast() // 使用超快速截屏方法
                 } else {
                     Log.w(TAG, "ScreenshotService不可用")
                     restoreUIAfterScreenshot()

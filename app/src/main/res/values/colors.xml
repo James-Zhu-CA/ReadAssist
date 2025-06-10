@@ -19,7 +19,7 @@
     <color name="eink_text">#FF000000</color>
     <color name="eink_border">#FF666666</color>
     <color name="eink_button">#FFE0E0E0</color>
-    <color name="ic_launcher_background">#FFB3D9FF</color>
+    <color name="ic_launcher_background">#AED7F4</color>
 
     <!-- Custom colors for status text -->
     <color name="text_success">#4CAF50</color> <!-- Green -->

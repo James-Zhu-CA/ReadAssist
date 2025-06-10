@@ -1,0 +1,13 @@
+=== 应用状态 ===
+ReadAssist PID: 20062
+应用是否安装: package:com.readassist
+
+=== 辅助功能服务状态 ===
+com.readassist/com.readassist.service.TextAccessibilityService
+
+=== 截屏目录检查 ===
+标准截屏目录:
+total 0
+
+iReader截屏目录:
+

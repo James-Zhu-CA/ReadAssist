@@ -1,0 +1,64 @@
+06-07 20:50:48.092   882  6213 E AppOps  : Operation not started: uid=10137 pkg=com.readassist(null) op=SYSTEM_ALERT_WINDOW
+06-07 22:54:03.796   882   966 E InputDispatcher: dispatchPointerDownOutsideFocus to  Window{b815616 u0 com.readassist/com.readassist.ui.MainActivity} and focus is :Window{b815616 u0 com.readassist/com.readassist.ui.MainActivity}
+06-07 22:54:03.938   530   563 I mtkpower@impl: [notifyAppState] pc:0, com.readassist => com.android.settings
+06-07 22:54:04.355   540   862 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=com.readassist/com.readassist.ui.MainActivity#0 layer visible:0
+06-07 22:57:17.011   530   593 I libPowerHal: [perfNotifyAppState] foreground:com.readassist, pid:16950, uid:10137
+06-07 22:57:17.012   530   563 I mtkpower@impl: [notifyAppState] pc:0, com.android.settings => com.readassist
+06-07 22:57:22.179   882   966 E InputDispatcher: dispatchPointerDownOutsideFocus to  Window{b815616 u0 com.readassist/com.readassist.ui.MainActivity} and focus is :Window{b815616 u0 com.readassist/com.readassist.ui.MainActivity}
+06-07 22:57:22.383   530   563 I mtkpower@impl: [notifyAppState] pc:0, com.readassist => com.android.settings
+06-07 22:57:22.805   540   857 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=com.readassist/com.readassist.ui.MainActivity#0 layer visible:0
+06-07 22:58:36.952   530   593 I libPowerHal: [perfNotifyAppState] foreground:com.readassist, pid:16950, uid:10137
+06-07 22:58:36.953   530   563 I mtkpower@impl: [notifyAppState] pc:0, com.android.settings => com.readassist
+06-07 22:59:55.933   882   966 E InputDispatcher: dispatchPointerDownOutsideFocus to  Window{b815616 u0 com.readassist/com.readassist.ui.MainActivity} and focus is :Window{b815616 u0 com.readassist/com.readassist.ui.MainActivity}
+06-07 22:59:56.059   530   563 I mtkpower@impl: [notifyAppState] pc:0, com.readassist => com.android.settings
+06-07 22:59:56.449   540   862 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=com.readassist/com.readassist.ui.MainActivity#0 layer visible:0
+06-07 23:00:18.391   530   593 I libPowerHal: [perfNotifyAppState] foreground:com.readassist, pid:16950, uid:10137
+06-07 23:00:18.391   530   563 I mtkpower@impl: [notifyAppState] pc:0, com.android.settings => com.readassist
+06-07 23:00:55.535   882   966 E InputDispatcher: dispatchPointerDownOutsideFocus to  Window{b815616 u0 com.readassist/com.readassist.ui.MainActivity} and focus is :Window{b815616 u0 com.readassist/com.readassist.ui.MainActivity}
+06-07 23:00:55.623   530   563 I mtkpower@impl: [notifyAppState] pc:0, com.readassist => com.android.settings
+06-07 23:00:55.999   540   642 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=com.readassist/com.readassist.ui.MainActivity#0 layer visible:0
+06-07 23:00:59.162   530   593 I libPowerHal: [perfNotifyAppState] foreground:com.readassist, pid:16950, uid:10137
+06-07 23:00:59.163   530   563 I mtkpower@impl: [notifyAppState] pc:0, com.android.settings => com.readassist
+06-07 23:02:59.617   882   966 E InputDispatcher: dispatchPointerDownOutsideFocus to  Window{b815616 u0 com.readassist/com.readassist.ui.MainActivity} and focus is :Window{b815616 u0 com.readassist/com.readassist.ui.MainActivity}
+06-07 23:02:59.761   530   563 I mtkpower@impl: [notifyAppState] pc:0, com.readassist => com.android.settings
+06-07 23:03:00.227   540   862 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=com.readassist/com.readassist.ui.MainActivity#0 layer visible:0
+06-07 23:03:03.461   530   593 I libPowerHal: [perfNotifyAppState] foreground:com.readassist, pid:16950, uid:10137
+06-07 23:03:03.462   530   563 I mtkpower@impl: [notifyAppState] pc:0, com.android.settings => com.readassist
+06-07 23:04:06.016   882   966 E InputDispatcher: dispatchPointerDownOutsideFocus to  Window{b815616 u0 com.readassist/com.readassist.ui.MainActivity} and focus is :Window{b815616 u0 com.readassist/com.readassist.ui.MainActivity}
+06-07 23:04:06.157   530   563 I mtkpower@impl: [notifyAppState] pc:0, com.readassist => com.zhangyue.iReader.Eink
+06-07 23:04:06.232   530   563 I mtkpower@impl: [notifyAppState] act com.readassist.ui.MainActivity => com.szzy.iReader.ink.mainhost.page.ActivityMainHost
+06-07 23:04:07.482   540   643 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=com.readassist/com.readassist.ui.MainActivity#0 layer visible:0
+06-07 23:04:15.846   530   593 I libPowerHal: [perfNotifyAppState] pack:com.readassist, pid:16950, STATE_DEAD
+06-07 23:04:15.851   540   857 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=b815616 com.readassist/com.readassist.ui.MainActivity#0 layer visible:0
+06-07 23:04:15.855   540   858 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=ActivityRecord{f3c93ab u0 com.readassist/.ui.MainActivity#0 layer visible:0
+06-07 23:04:15.914   882   966 E InputDispatcher: channel '26a9c61 com.readassist (server)' ~ Channel is unrecoverably broken and will be disposed!
+06-07 23:04:15.935   540   862 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=26a9c61 com.readassist#0 layer visible:0
+06-07 23:04:27.831   530   593 I libPowerHal: [perfNotifyAppState] foreground:com.readassist, pid:17722, uid:10138
+06-07 23:04:27.833   530   563 I mtkpower@impl: [notifyAppState] pc:1, com.zhangyue.iReader.Eink => com.readassist
+06-07 23:04:29.636   540   643 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=a0e56ad Splash Screen com.readassist#0 layer visible:0
+06-07 23:04:29.636   540   642 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=Splash Screen com.readassist#0 layer visible:0
+06-07 23:04:29.636   540   643 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=Surface(name=a0e56ad Splash Screen com.readassist)/@0x70e71be - animation-leash#0 layer visible:0
+06-07 23:04:29.639   540   643 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=Surface(name=c509286 com.readassist/com.readassist.ui.MainActivity)/@0x92713d4 - animation-leash#0 layer visible:0
+06-07 23:04:33.333   882   966 E InputDispatcher: dispatchPointerDownOutsideFocus to  Window{c509286 u0 com.readassist/com.readassist.ui.MainActivity} and focus is :Window{c509286 u0 com.readassist/com.readassist.ui.MainActivity}
+06-07 23:04:33.561   540   858 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=c509286 com.readassist/com.readassist.ui.MainActivity#0 layer visible:0
+06-07 23:04:33.561   540   858 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=Surface(name=c509286 com.readassist/com.readassist.ui.MainActivity)/@0x92713d4 - animation-leash#0 layer visible:0
+06-07 23:04:33.561   540   858 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=com.readassist/com.readassist.ui.MainActivity#0 layer visible:0
+06-07 23:04:34.953   882   966 E InputDispatcher: dispatchPointerDownOutsideFocus to  Window{a810c34 u0 com.readassist/com.readassist.ui.MainActivity} and focus is :Window{a810c34 u0 com.readassist/com.readassist.ui.MainActivity}
+06-07 23:04:35.121   540   642 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=com.readassist/com.readassist.ui.MainActivity#2 layer visible:1
+06-07 23:04:35.124   540   642 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=a810c34 com.readassist/com.readassist.ui.MainActivity#0 layer visible:0
+06-07 23:04:35.669   540   862 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=Surface(name=956e5df com.readassist/com.readassist.ui.MainActivity)/@0x61bc8e2 - animation-leash#0 layer visible:0
+06-07 23:04:36.892   882   966 E InputDispatcher: dispatchPointerDownOutsideFocus to  Window{956e5df u0 com.readassist/com.readassist.ui.MainActivity} and focus is :Window{956e5df u0 com.readassist/com.readassist.ui.MainActivity}
+06-07 23:04:39.206   882   966 E InputDispatcher: dispatchPointerDownOutsideFocus to  Window{40722a5 u0 PopupWindow:3e73211} and focus is :Window{956e5df u0 com.readassist/com.readassist.ui.MainActivity}
+06-07 23:04:40.623   882   966 E InputDispatcher: dispatchPointerDownOutsideFocus to  Window{956e5df u0 com.readassist/com.readassist.ui.MainActivity} and focus is :Window{956e5df u0 com.readassist/com.readassist.ui.MainActivity}
+06-07 23:04:40.761   540   643 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=956e5df com.readassist/com.readassist.ui.MainActivity#0 layer visible:0
+06-07 23:04:40.761   540   643 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=Surface(name=956e5df com.readassist/com.readassist.ui.MainActivity)/@0x61bc8e2 - animation-leash#0 layer visible:0
+06-07 23:04:40.762   540   643 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=com.readassist/com.readassist.ui.MainActivity#0 layer visible:0
+06-07 23:04:41.292   530   563 I mtkpower@impl: [notifyAppState] pc:0, com.readassist => com.android.settings
+06-07 23:04:41.777   540   643 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=com.readassist/com.readassist.ui.MainActivity#1 layer visible:0
+06-07 23:04:53.622   530   593 I libPowerHal: [perfNotifyAppState] foreground:com.readassist, pid:17722, uid:10138
+06-07 23:04:53.623   530   563 I mtkpower@impl: [notifyAppState] pc:0, com.android.settings => com.readassist
+06-07 23:04:57.645   882   966 E InputDispatcher: dispatchPointerDownOutsideFocus to  Window{9dfa90e u0 com.readassist/com.readassist.ui.MainActivity} and focus is :Window{9dfa90e u0 com.readassist/com.readassist.ui.MainActivity}
+06-07 23:04:57.785   530   563 I mtkpower@impl: [notifyAppState] pc:0, com.readassist => com.android.settings
+06-07 23:04:58.143   540   642 E SurfaceFlinger: SurfaceFlinger::onHandleDestroyed debug.opt.layer.destory layerName=com.readassist/com.readassist.ui.MainActivity#0 layer visible:0
+06-07 23:05:05.258   530   593 I libPowerHal: [perfNotifyAppState] foreground:com.readassist, pid:17722, uid:10138
+06-07 23:05:05.259   530   563 I mtkpower@impl: [notifyAppState] pc:0, com.android.settings => com.readassist
