@@ -20,6 +20,9 @@ android {
         
         // 启用 multidex 支持
         multiDexEnabled true
+        
+        // Play Store 要求：设置版本名称格式
+        setProperty("archivesBaseName", "ReadAssist-v$versionName")
     }
 
     signingConfigs {
@@ -33,14 +36,26 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            shrinkResources false
+            // Play Store 推荐：启用代码混淆和优化
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release
+            
+            // 生成 AAB 格式优化
+            debuggable false
+            jniDebuggable false
+            renderscriptDebuggable false
+            
+            // 性能优化
+            zipAlignEnabled true
+            crunchPngs true
         }
         debug {
             minifyEnabled false
             debuggable true
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
         }
     }
 
@@ -56,21 +71,50 @@ android {
     buildFeatures {
         viewBinding true
         dataBinding true
+        // 减少APK大小
+        buildConfig true
+    }
+
+    // Play Store 优化：Bundle 配置
+    bundle {
+        language {
+            // 启用语言分包，减少下载大小
+            enableSplit = true
+        }
+        density {
+            // 启用密度分包
+            enableSplit = true
+        }
+        abi {
+            // 启用架构分包
+            enableSplit = true
+        }
     }
 
     // APK 大小优化
     packagingOptions {
         resources {
-            excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE', 'META-INF/LICENSE.txt', 'META-INF/NOTICE', 'META-INF/NOTICE.txt']
+            excludes += [
+                'META-INF/DEPENDENCIES', 
+                'META-INF/LICENSE', 
+                'META-INF/LICENSE.txt', 
+                'META-INF/NOTICE', 
+                'META-INF/NOTICE.txt',
+                'META-INF/ASL2.0',
+                'META-INF/*.kotlin_module',
+                '**/kotlin/**',
+                '**/*.txt',
+                '**/*.xml'
+            ]
         }
+        // 移除未使用的本地库
+        pickFirst '**/libc++_shared.so'
+        pickFirst '**/libjsc.so'
     }
     
     // 解决重复类的问题
     configurations.all {
         resolutionStrategy {
-            // 强制使用指定版本的依赖，避免版本冲突
-            // force 'androidx.activity:activity-ktx:1.7.2'
-            // force 'androidx.activity:activity:1.7.2'
             force 'androidx.fragment:fragment-ktx:1.6.1'
             force 'androidx.fragment:fragment:1.6.1'
             force 'androidx.core:core-ktx:1.10.1'
