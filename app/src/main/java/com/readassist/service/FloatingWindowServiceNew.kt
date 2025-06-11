@@ -550,8 +550,8 @@ class FloatingWindowServiceNew : Service(),
             floatingButtonManager.restoreDefaultState()
         } else {
             // 非掌阅设备：保持原有逻辑，先截屏再显示窗口
-            Log.e(TAG, "[日志追踪] 即将执行 performScreenshotFirst()，此时不会直接弹出对话窗口")
-            performScreenshotFirst()
+                            Log.e(TAG, "[统一流程] 即将执行 performScreenshotFirst()，使用统一弹窗机制")
+                performScreenshotFirst()
         }
     }
     
@@ -636,65 +636,52 @@ class FloatingWindowServiceNew : Service(),
     }
     
     /**
-     * 先执行截屏，再显示聊天窗口
+     * 执行截屏分析 - 统一流程版本
+     * 所有设备都只执行截屏，不立即弹窗，让目录监控统一处理弹窗逻辑
      */
     private fun performScreenshotFirst() {
-        Log.e(TAG, "[日志追踪] performScreenshotFirst 开始执行")
+        Log.e(TAG, "[统一流程] performScreenshotFirst 开始执行 - 只截屏不弹窗")
         
-        // 执行截屏前不显示聊天窗口
+        // 显示截屏分析状态，给用户反馈
         floatingButtonManager.showScreenshotAnalysisState()
         
         // 使用协程避免阻塞UI线程
         serviceScope.launch {
             try {
-                // 对于掌阅设备，不需要检查截屏权限
-                if (!DeviceUtils.isIReaderDevice()) {
-                    // 预先准备权限状态(如果需要)，尝试在后台初始化
-                    if (!screenshotManager.isScreenshotServiceReady()) {
-                        Log.e(TAG, "[日志追踪] 截屏服务未就绪，重新检查权限")
-                        screenshotManager.recheckScreenshotPermission()
-                    }
+                // 预先检查权限状态
+                if (!screenshotManager.isScreenshotServiceReady()) {
+                    Log.e(TAG, "[统一流程] 截屏服务未就绪，重新检查权限")
+                    screenshotManager.recheckScreenshotPermission()
                 }
                 
-                // 执行截屏
+                // 执行截屏 - 关键：不再立即弹窗
                 withContext(Dispatchers.Main) {
-                    Log.e(TAG, "[日志追踪] 开始执行截屏")
+                    Log.e(TAG, "[统一流程] 开始执行截屏，等待目录监控触发弹窗")
                     screenshotManager.performScreenshot()
                     
-                    // 对于掌阅设备，需要等待辅助功能服务完成截屏
-                    if (DeviceUtils.isIReaderDevice()) {
-                        Log.e(TAG, "[日志追踪] 掌阅设备：等待辅助功能服务完成截屏")
-                        // 等待辅助功能服务完成截屏
-                        var retryCount = 0
-                        while (retryCount < 10) {
-                            delay(200)
-                            val pendingScreenshot = screenshotManager.getPendingScreenshot()
-                            if (pendingScreenshot != null) {
-                                Log.e(TAG, "[日志追踪] 掌阅设备：截屏成功，图片尺寸: ${pendingScreenshot.width}x${pendingScreenshot.height}")
+                    // 统一流程：不立即处理截屏结果，让目录监控统一触发
+                    // 添加一个超时保护机制，防止截屏失败时用户无反馈
+                    serviceScope.launch {
+                        delay(5000) // 5秒超时
+                        
+                        // 检查是否还在截屏状态且没有弹窗
+                        if (!chatWindowManager.isVisible()) {
+                            Log.e(TAG, "[统一流程] 截屏超时，可能失败，强制恢复UI并弹窗")
+                            withContext(Dispatchers.Main) {
+                                floatingButtonManager.restoreDefaultState()
+                                // 显示一个提示弹窗告知用户
                                 chatWindowManager.showChatWindow()
-                                return@withContext
+                                chatWindowManager.addSystemMessage("截屏可能失败，请重试或检查权限设置")
                             }
-                            retryCount++
-                        }
-                        Log.e(TAG, "[日志追踪] 掌阅设备：截屏超时")
-                        chatWindowManager.showChatWindow()
-                    } else {
-                        // Supernote设备保持原有逻辑
-                        val pendingScreenshot = screenshotManager.getPendingScreenshot()
-                        if (pendingScreenshot != null) {
-                            Log.e(TAG, "[日志追踪] Supernote设备：截屏成功，图片尺寸: ${pendingScreenshot.width}x${pendingScreenshot.height}")
-                            chatWindowManager.showChatWindow()
-                        } else {
-                            Log.e(TAG, "[日志追踪] Supernote设备：截屏失败，pendingScreenshot为null")
-                            chatWindowManager.showChatWindow()
                         }
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "截屏处理异常", e)
+                Log.e(TAG, "[统一流程] 截屏处理异常", e)
                 withContext(Dispatchers.Main) {
-                    chatWindowManager.showChatWindow()
                     floatingButtonManager.restoreDefaultState()
+                    chatWindowManager.showChatWindow()
+                    chatWindowManager.addSystemMessage("截屏失败：${e.message}")
                 }
             }
         }
@@ -1059,52 +1046,35 @@ class FloatingWindowServiceNew : Service(),
     // === ScreenshotManager.ScreenshotCallbacks 实现 ===
     
     override fun onScreenshotStarted() {
-        // 隐藏悬浮按钮
-        floatingButtonManager.setButtonVisibility(false)
+        // 截屏时不隐藏悬浮按钮，保持可见状态
+        // floatingButtonManager.setButtonVisibility(false)
     }
     
     override fun onScreenshotSuccess(bitmap: Bitmap) {
-        Log.e(TAG, "📸 截屏成功 (onScreenshotSuccess)，保存新的待处理图片。尺寸: ${bitmap.width}x${bitmap.height}")
+        Log.e(TAG, "📸 [统一流程] 截屏成功，仅保存图片不弹窗。尺寸: ${bitmap.width}x${bitmap.height}")
+        
         // 回收旧的图片（如果有），并保存新的图片
         pendingScreenshotBitmap?.recycle()
         pendingScreenshotBitmap = bitmap
 
-        // 关键：检查是否应该自动弹窗
+        // 检查是否应该自动弹窗
         val autoPopup = preferenceManager.getBoolean("screenshot_auto_popup", true)
         if (!autoPopup) {
             Log.d(TAG, "🚫 用户已关闭截屏后自动弹窗功能，仅保存截图。")
-            // 虽然不弹窗，但可以给一个Toast提示
             Toast.makeText(this, "截屏已保存，点击悬浮窗手动分析", Toast.LENGTH_SHORT).show()
-            // 恢复悬浮窗状态
             floatingButtonManager.restoreDefaultState()
-            return // 提前返回，不执行后续弹窗逻辑
+            return
         }
 
-        // 恢复界面显示
+        // 统一流程：恢复UI状态，但不立即弹窗
+        // 弹窗将由FileObserver检测到文件后统一触发
         floatingButtonManager.setButtonVisibility(true)
         floatingButtonManager.restoreDefaultState()
         
-        // 截屏成功后再显示聊天窗口
-        chatWindowManager.showChatWindow()
+        Log.d(TAG, "✅ [统一流程] 截屏图片已保存，等待FileObserver触发弹窗")
         
-        // 设置输入框提示
-        val selectedText = textSelectionManager.getLastDetectedText()
-        val hasSelectedText = selectedText.isNotEmpty() && selectedText.length > 10
-        
-        val promptText = if (hasSelectedText) {
-            "选中文本：$selectedText\n\n请分析这张截屏图片："
-        } else {
-            "请分析这张截屏图片："
-        }
-        
-        // 导入提示文本到输入框
-        chatWindowManager.importTextToInputField(promptText)
-        
-        // 新增：自动勾选"发送截图"选项
-        chatWindowManager.setSendScreenshotChecked(true)
-        
-        // 新增：检查剪贴板内容并更新UI
-        updateClipboardUI()
+        // 注意：这里故意不调用 chatWindowManager.showChatWindow()
+        // 让FileObserver的processScreenshot统一处理弹窗逻辑
     }
     
     override fun onScreenshotComplete(uri: Uri) {
@@ -1120,40 +1090,127 @@ class FloatingWindowServiceNew : Service(),
     
     private fun processScreenshot(uri: Uri) {
         Log.e(TAG, "📸 开始处理截屏: $uri")
-        try {
-            // 直接从URI解码图片
-            val bitmap = contentResolver.openInputStream(uri)?.use { inputStream ->
-                BitmapFactory.decodeStream(inputStream)
-            }
-            if (bitmap == null) {
-                Log.e(TAG, "❌ 无法从URI解码截屏图片: $uri")
-                onScreenshotFailed("无法解码截屏图片")
-                return
-            }
-            Log.e(TAG, "✅ 成功从URI解码截屏图片: ${bitmap.width}x${bitmap.height}")
+        
+        // 使用协程进行异步处理，避免阻塞主线程
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                // 智能重试机制：尝试解码图片，确保文件完整性
+                val bitmap = decodeScreenshotWithRetry(uri, maxRetries = 3)
+                
+                if (bitmap == null) {
+                    Log.e(TAG, "❌ 重试后仍无法解码截屏图片: $uri")
+                    withContext(Dispatchers.Main) {
+                        onScreenshotFailed("无法解码截屏图片")
+                    }
+                    return@launch
+                }
+                
+                Log.e(TAG, "✅ 成功解码截屏图片: ${bitmap.width}x${bitmap.height}")
 
-            // 新增：在处理新截屏前，删除上一次的截屏文件
-            lastScreenshotFile?.let { file ->
-                if (file.exists()) {
-                    val deleted = file.delete()
-                    Log.e(TAG, "🗑️ 删除上一次截屏文件: ${file.absolutePath}, 结果: $deleted")
+                withContext(Dispatchers.Main) {
+                    // 在处理新截屏前，删除上一次的截屏文件
+                    lastScreenshotFile?.let { file ->
+                        if (file.exists()) {
+                            val deleted = file.delete()
+                            Log.e(TAG, "🗑️ 删除上一次截屏文件: ${file.absolutePath}, 结果: $deleted")
+                        }
+                    }
+
+                    // 记录本次截屏文件
+                    if (uri.scheme == "file") {
+                        lastScreenshotFile = File(uri.path!!)
+                    } else {
+                        lastScreenshotFile = null // content uri 不处理
+                    }
+
+                    // 统一流程：通过FileObserver触发的弹窗逻辑
+                    Log.e(TAG, "📢 [统一流程] FileObserver触发弹窗，开始完整处理")
+                    
+                    // 保存或更新截屏图片
+                    pendingScreenshotBitmap?.recycle()
+                    pendingScreenshotBitmap = bitmap
+                    
+                    // 检查是否应该自动弹窗
+                    val autoPopup = preferenceManager.getBoolean("screenshot_auto_popup", true)
+                    if (!autoPopup) {
+                        Log.d(TAG, "🚫 用户已关闭截屏后自动弹窗功能")
+                        Toast.makeText(this@FloatingWindowServiceNew, "截屏已保存，点击悬浮窗手动分析", Toast.LENGTH_SHORT).show()
+                        return@withContext
+                    }
+
+                    // 显示聊天窗口
+                    chatWindowManager.showChatWindow()
+                    
+                    // 设置输入框提示
+                    val selectedText = textSelectionManager.getLastDetectedText()
+                    val hasSelectedText = selectedText.isNotEmpty() && selectedText.length > 10
+                    
+                    val promptText = if (hasSelectedText) {
+                        "选中文本：$selectedText\n\n请分析这张截屏图片："
+                    } else {
+                        "请分析这张截屏图片："
+                    }
+                    
+                    // 导入提示文本到输入框
+                    chatWindowManager.importTextToInputField(promptText)
+                    
+                    // 自动勾选"发送截图"选项
+                    chatWindowManager.setSendScreenshotChecked(true)
+                    
+                    // 检查剪贴板内容并更新UI
+                    updateClipboardUI()
+                    
+                    Log.d(TAG, "✅ [统一流程] FileObserver弹窗处理完成")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "处理截屏失败", e)
+                withContext(Dispatchers.Main) {
+                    onScreenshotFailed("截屏处理失败：${e.message}")
                 }
             }
-
-            // 记录本次截屏文件
-            if (uri.scheme == "file") {
-                lastScreenshotFile = File(uri.path!!)
-            } else {
-                lastScreenshotFile = null // content uri 不处理
-            }
-
-            // 关键：只要解码成功就调用onScreenshotSuccess
-            Log.e(TAG, "📢 调用onScreenshotSuccess，弹出聊天窗口")
-            onScreenshotSuccess(bitmap)
-        } catch (e: Exception) {
-            Log.e(TAG, "处理截屏失败", e)
-            onScreenshotFailed("截屏处理失败：${e.message}")
         }
+    }
+    
+    /**
+     * 智能重试解码截屏图片
+     * 这是确保文件完整性的关键方法
+     */
+    private suspend fun decodeScreenshotWithRetry(uri: Uri, maxRetries: Int = 3): Bitmap? {
+        repeat(maxRetries) { attempt ->
+            try {
+                Log.d(TAG, "尝试解码截屏图片 (第${attempt + 1}次): $uri")
+                
+                val bitmap = contentResolver.openInputStream(uri)?.use { inputStream ->
+                    // 检查输入流是否有效
+                    if (inputStream.available() == 0) {
+                        Log.w(TAG, "输入流为空，可能文件还在写入中")
+                        return@use null
+                    }
+                    
+                    // 尝试解码
+                    BitmapFactory.decodeStream(inputStream)
+                }
+                
+                if (bitmap != null && bitmap.width > 0 && bitmap.height > 0) {
+                    Log.d(TAG, "✅ 第${attempt + 1}次尝试成功解码: ${bitmap.width}x${bitmap.height}")
+                    return bitmap
+                } else {
+                    Log.w(TAG, "第${attempt + 1}次尝试解码失败，图片可能损坏或未完全写入")
+                }
+                
+            } catch (e: Exception) {
+                Log.w(TAG, "第${attempt + 1}次尝试解码异常: ${e.message}")
+            }
+            
+            // 如果不是最后一次尝试，等待一小段时间再重试
+            if (attempt < maxRetries - 1) {
+                Log.d(TAG, "等待100ms后重试...")
+                delay(100) // 比500ms延迟更短且更有针对性
+            }
+        }
+        
+        Log.e(TAG, "❌ 经过${maxRetries}次尝试仍无法解码图片")
+        return null
     }
     
     override fun onScreenshotFailed(error: String) {

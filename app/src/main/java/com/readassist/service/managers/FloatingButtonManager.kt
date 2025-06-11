@@ -76,8 +76,8 @@ class FloatingButtonManager(
                 btn.layoutParams = params
             }
             
-            // 设置透明度为50%
-            floatingButton?.alpha = 0.5f
+            // 设置透明度为0.8（统一透明度）
+            floatingButton?.alpha = 0.8f
             
             // 设置按钮点击事件
             floatingButton?.setOnClickListener {
@@ -233,7 +233,7 @@ class FloatingButtonManager(
                     v.animate()
                         .scaleX(1.0f)
                         .scaleY(1.0f)
-                        .alpha(0.7f)
+                        .alpha(0.8f)  // 统一透明度为0.8
                         .setDuration(150)
                         .start()
                     
@@ -288,25 +288,13 @@ class FloatingButtonManager(
         try {
             // 更新悬浮按钮外观，显示分析状态
             floatingButton?.apply {
-                // 立即显示短暂的脉冲动画作为点击反馈
-                animate()
-                    .scaleX(1.3f)
-                    .scaleY(1.3f)
-                    .alpha(1.0f)
-                    .setDuration(100)
-                    .withEndAction {
-                        // 脉冲结束后恢复到稍大的状态
-                        animate()
-                            .scaleX(1.1f)
-                            .scaleY(1.1f)
-                            .alpha(0.9f)
-                            .setDuration(100)
-                            .start()
-                    }
-                    .start()
+                // 移除所有动画效果，直接设置状态
+                // 不使用缩放动画
+                scaleX = 1.0f
+                scaleY = 1.0f
+                alpha = 0.8f // 统一透明度为0.8
                 
-                // 更改颜色为绿色，表示活跃状态
-                setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#4CAF50"))) // 绿色表示分析中
+                // 不再设置背景色，使用XML中定义的白色背景和圆圈边框
                 if (this is Button) {
                     text = "AI"
                 }
@@ -340,16 +328,12 @@ class FloatingButtonManager(
                     visibility = View.VISIBLE
                 }
                 
-                // 平滑过渡回默认颜色和状态
-                animate()
-                    .scaleX(1.0f)
-                    .scaleY(1.0f)
-                    .alpha(0.8f)
-                    .setDuration(200)
-                    .start()
+                // 移除动画效果，直接设置状态
+                scaleX = 1.0f
+                scaleY = 1.0f
+                alpha = 0.8f
                 
-                // 恢复默认背景色
-                setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#2196F3"))) // 恢复蓝色
+                // 不再设置背景色，使用XML中定义的白色背景和圆圈边框
                 if (this is Button) {
                     text = "AI"
                 }
@@ -369,17 +353,13 @@ class FloatingButtonManager(
             // 仅改变可见性，不要移除或重新创建按钮
             floatingButton?.let { button ->
                 if (visible) {
-                    if (button.visibility != View.VISIBLE) {
-                        Log.e(TAG, "设置按钮可见")
-                        button.visibility = View.VISIBLE
-                        // 恢复默认样式
-                        restoreDefaultState()
-                    }
+                    Log.e(TAG, "设置按钮可见")
+                    button.visibility = View.VISIBLE
+                    // 总是恢复默认样式，确保按钮状态正确
+                    restoreDefaultState()
                 } else {
-                    if (button.visibility != View.INVISIBLE) {
-                        Log.e(TAG, "设置按钮不可见")
-                        button.visibility = View.INVISIBLE // 使用INVISIBLE而不是GONE，保留布局位置
-                    }
+                    Log.e(TAG, "设置按钮不可见")
+                    button.visibility = View.INVISIBLE // 使用INVISIBLE而不是GONE，保留布局位置
                 }
             }
         } catch (e: Exception) {
@@ -472,27 +452,21 @@ class FloatingButtonManager(
     fun updateAppearanceForSelection(isSelectionMode: Boolean) {
         floatingButton?.let { button ->
             if (isSelectionMode) {
-                // 选择模式：更明显的外观
-                button.alpha = 0.9f
-                button.scaleX = 1.2f
-                button.scaleY = 1.2f
+                // 选择模式：移除动画效果，直接设置状态
+                button.alpha = 0.8f // 统一透明度为0.8
+                button.scaleX = 1.0f
+                button.scaleY = 1.0f
                 
-                // 可以考虑改变背景色或添加动画
-                button.animate()
-                    .scaleX(1.1f)
-                    .scaleY(1.1f)
-                    .setDuration(200)
-                    .start()
+                // 不再设置背景色，使用XML中定义的白色背景和圆圈边框
                 
                 Log.e(TAG, "🎨 按钮外观已更新为选择模式")
             } else {
-                // 普通模式：恢复原始外观
-                button.alpha = 0.5f
-                button.animate()
-                    .scaleX(1.0f)
-                    .scaleY(1.0f)
-                    .setDuration(200)
-                    .start()
+                // 普通模式：移除动画效果，直接设置状态
+                button.alpha = 0.8f // 统一透明度为0.8
+                button.scaleX = 1.0f
+                button.scaleY = 1.0f
+                
+                // 不再设置背景色，使用XML中定义的白色背景和圆圈边框
                 
                 Log.e(TAG, "🎨 按钮外观已恢复为普通模式")
             }

@@ -355,8 +355,9 @@ class ScreenshotManager(
                 
                 // 在后台线程中执行截屏
                 withContext(Dispatchers.IO) {
-                    // 使用超快速截屏方法
-                    service.captureScreenUltraFast()
+                    // 统一使用 VirtualDisplay ➜ ImageReader 方案（所有设备）
+                    Log.d(TAG, "🎯 使用 VirtualDisplay ➜ ImageReader 方案")
+                    service.captureScreen()
                 }
             } catch (e: Exception) {
                 // 捕获截屏过程中的异常
@@ -1366,87 +1367,125 @@ class ScreenshotManager(
     }
 
     /**
-     * 开始监控截屏目录，这是自动检测系统截屏的核心
+     * 开始监控截屏目录 - 统一流程版本
+     * 支持所有设备类型的截屏目录监控，不区分设备类型
      */
     fun startMonitoring() {
         try {
             fileObserver?.stopWatching() // 停止任何旧的观察器
 
-            val dirToWatch = when (DeviceUtils.getDeviceType()) {
-                DeviceType.IREADER -> {
-                    File("/storage/emulated/0/iReader/saveImage/tmp")
-                }
-                DeviceType.SUPERNOTE -> {
-                    // Supernote设备截屏保存在应用私有目录
-                    File(context.getExternalFilesDir(null), "")
-                }
-                else -> {
-                    // 其他设备回退到标准的系统截图目录
-                    File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Screenshots")
-                }
+            // 统一监控方案：同时监控所有可能的截屏目录
+            val directoriesToWatch = listOf(
+                // 标准Android截屏目录
+                File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Screenshots"),
+                // DCIM截屏目录
+                File(Environment.getExternalStorageDirectory(), "DCIM/Screenshots"),
+                // 掌阅设备截屏目录
+                File("/storage/emulated/0/iReader/saveImage/tmp"),
+                // Supernote设备应用私有目录
+                context.getExternalFilesDir(null)?.let { File(it, "") }
+            ).filterNotNull()
+
+            Log.d(TAG, "✅ [统一流程] 开始监控多个截屏目录:")
+            directoriesToWatch.forEach { dir ->
+                Log.d(TAG, "   - ${dir.absolutePath} (存在: ${dir.exists()})")
             }
 
-            if (!dirToWatch.exists()) {
-                if (!dirToWatch.mkdirs()) {
-                    Log.w(TAG, "截图监控目录不存在且无法创建: ${dirToWatch.absolutePath}")
-                    return
-                }
-            }
+            // 为每个目录创建监控器
+            val observers = mutableListOf<FileObserver>()
             
-            fileObserver = object : FileObserver(dirToWatch, CLOSE_WRITE) {
-                private var lastProcessedPath: String? = null
-                private var lastProcessedTime: Long = 0
-
-                override fun onEvent(event: Int, path: String?) {
-                    if (path == null) return
-
-                    val currentTime = System.currentTimeMillis()
-                    // 防抖：2秒内同一个文件的事件只处理一次
-                    if (path == lastProcessedPath && (currentTime - lastProcessedTime) < 2000) {
-                        return
+            directoriesToWatch.forEach { dirToWatch ->
+                if (!dirToWatch.exists()) {
+                    if (dirToWatch.mkdirs()) {
+                        Log.d(TAG, "创建监控目录: ${dirToWatch.absolutePath}")
+                    } else {
+                        Log.w(TAG, "无法创建监控目录: ${dirToWatch.absolutePath}")
+                        return@forEach // 跳过这个目录
                     }
-                    
-                    Log.d(TAG, "[FileObserver] 检测到文件写入事件: $path")
-                    lastProcessedPath = path
-                    lastProcessedTime = currentTime
-
-                    // 延迟处理以确保文件写入完成
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        val file = File(dirToWatch, path)
-                        if (file.exists()) {
-                            Log.d(TAG, "[FileObserver] 新截图文件确认: ${file.absolutePath}")
-                            // 直接调用主回调接口，触发后续弹窗逻辑
-                            callbacks.onScreenshotComplete(Uri.fromFile(file))
-                        }
-                    }, 500)
                 }
+                
+                val observer = object : FileObserver(dirToWatch, CLOSE_WRITE) {
+                    private var lastProcessedPath: String? = null
+                    private var lastProcessedTime: Long = 0
+
+                    override fun onEvent(event: Int, path: String?) {
+                        if (path == null) return
+
+                        val currentTime = System.currentTimeMillis()
+                        val fullPath = File(dirToWatch, path).absolutePath
+                        
+                        // 防抖：2秒内同一个文件的事件只处理一次
+                        if (fullPath == lastProcessedPath && (currentTime - lastProcessedTime) < 2000) {
+                            return
+                        }
+                        
+                        // 文件名过滤：只处理截屏相关文件
+                        if (!isScreenshotFile(path)) {
+                            return
+                        }
+                        
+                        Log.d(TAG, "[统一流程] 检测到截屏文件写入: $fullPath")
+                        lastProcessedPath = fullPath
+                        lastProcessedTime = currentTime
+
+                                                 // 立即处理，在解码时确保文件完整性
+                         val file = File(dirToWatch, path)
+                         if (file.exists() && isRecentFile(file)) {
+                             Log.d(TAG, "[统一流程] 立即处理新截屏文件: ${file.absolutePath}")
+                             // 统一回调接口，触发弹窗逻辑
+                             callbacks.onScreenshotComplete(Uri.fromFile(file))
+                         }
+                    }
+                }
+                
+                observer.startWatching()
+                observers.add(observer)
+                Log.d(TAG, "✅ 开始监控目录: ${dirToWatch.absolutePath}")
             }
             
-            Log.d(TAG, "✅ 开始监控系统截屏目录: ${dirToWatch.absolutePath}")
-            fileObserver?.startWatching()
+            // 保存所有观察器（需要修改变量类型来支持多个观察器）
+            fileObservers = observers
 
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 启动截屏文件监控失败", e)
+            Log.e(TAG, "❌ 启动统一截屏文件监控失败", e)
         }
     }
     
     /**
-     * 停止监控截屏目录
+     * 判断是否为截屏文件
+     */
+    private fun isScreenshotFile(fileName: String): Boolean {
+        val lowerName = fileName.lowercase()
+        return (lowerName.endsWith(".png") || lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg")) &&
+               (lowerName.contains("screenshot") || lowerName.contains("screen") || 
+                lowerName.contains("capture") || lowerName.contains("snap"))
+    }
+    
+    /**
+     * 判断是否为最近文件（24小时内）
+     */
+    private fun isRecentFile(file: File): Boolean {
+        val currentTime = System.currentTimeMillis()
+        val fileTime = file.lastModified()
+        val timeDiff = currentTime - fileTime
+        return timeDiff < 24 * 60 * 60 * 1000 // 24小时
+    }
+    
+    /**
+     * 停止监控截屏目录 - 统一流程版本
      */
     fun stopMonitoring() {
         try {
-            Log.d(TAG, "停止监控截屏目录")
-            fileObserver?.stopWatching()
+            Log.d(TAG, "[统一流程] 停止监控所有截屏目录")
+            fileObservers?.forEach { observer ->
+                observer.stopWatching()
+            }
+            fileObservers?.clear()
         } catch (e: Exception) {
             Log.e(TAG, "停止截屏监控失败", e)
         }
     }
 
-    /**
-     * 处理新的截屏
-     */
-    private fun onNewScreenshot(uri: Uri) {
-        Log.d(TAG, "处理新的截屏: $uri")
-        // 保留空实现，因为截图处理逻辑已经移到 processScreenshot 方法中
-    }
+    // 需要在类顶部添加新的变量定义
+    private var fileObservers: MutableList<FileObserver>? = null
 } 

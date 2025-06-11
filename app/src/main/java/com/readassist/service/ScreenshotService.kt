@@ -426,6 +426,19 @@ class ScreenshotService : Service() {
                     
                     if (bitmap != null) {
                         Log.d(TAG, "✅ 截屏处理完成，Bitmap尺寸: ${bitmap.width}x${bitmap.height}")
+                        
+                        // 保存截屏文件到磁盘，触发FileObserver
+                        try {
+                            val timestamp = System.currentTimeMillis()
+                            val testFile = java.io.File("${applicationContext.getExternalFilesDir(null)?.absolutePath}/screenshot_$timestamp.png")
+                            val outputStream = java.io.FileOutputStream(testFile)
+                            bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+                            outputStream.close()
+                            Log.d(TAG, "📁 ImageReader截屏已保存到: ${testFile.absolutePath}")
+                        } catch (e: Exception) {
+                            Log.w(TAG, "⚠️ 保存ImageReader截屏文件失败", e)
+                        }
+                        
                         screenshotCallback?.onScreenshotSuccess(bitmap)
                     } else {
                         Log.e(TAG, "❌ 图像转换失败")
@@ -1243,7 +1256,7 @@ class ScreenshotService : Service() {
                 Log.d(TAG, "开始超快速截屏...")
                 
                 // 直接使用优化版PixelCopy，不进行重试
-                val resultBitmap = withTimeoutOrNull(3000) { // 3秒超时
+                val resultBitmap = withTimeoutOrNull(5000) { // 增加到5秒超时，确保有足够时间完成截屏
                     captureWithPixelCopyOptimized()
                 }
                 

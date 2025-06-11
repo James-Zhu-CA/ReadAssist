@@ -19,7 +19,16 @@ fi
 
 echo ""
 echo "📱 安装应用到设备..."
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+
+# 动态查找APK文件
+APK_FILE=$(find app/build/outputs/apk/debug/ -name "*.apk" | head -1)
+if [ -z "$APK_FILE" ]; then
+    echo "❌ 找不到调试APK文件"
+    exit 1
+fi
+
+echo "找到APK文件: $APK_FILE"
+adb install -r "$APK_FILE"
 if [ $? -ne 0 ]; then
     echo "❌ 安装失败，请检查设备连接"
     exit 1

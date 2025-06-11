@@ -2,6 +2,10 @@
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="oval">
     
+    <!-- 白色填充背景 -->
+    <solid android:color="#FFFFFF" />
+    
+    <!-- 黑色圆圈边框 -->
     <stroke
         android:width="1dp"
         android:color="#000000" />

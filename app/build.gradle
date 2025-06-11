@@ -13,8 +13,8 @@ android {
         applicationId "com.readassist"
         minSdk 21  // 支持 Android 5.0+，兼容 A5X 的 Android 8.1
         targetSdk 34
-        versionCode 5
-        versionName "1.5"
+        versionCode 6
+        versionName "1.5.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         
