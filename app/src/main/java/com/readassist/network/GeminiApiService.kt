@@ -1,5 +1,6 @@
 package com.readassist.network
 
+import androidx.annotation.Keep
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -24,17 +25,20 @@ interface GeminiApiService {
 /**
  * Gemini API 请求数据类
  */
+@Keep
 data class GeminiRequest(
     val contents: List<Content>,
     val generationConfig: GenerationConfig? = null,
     val safetySettings: List<SafetySetting>? = null
 )
 
+@Keep
 data class Content(
     val parts: List<Part>,
     val role: String = "user"
 )
 
+@Keep
 data class Part(
     val text: String? = null,
     val inlineData: InlineData? = null
@@ -61,12 +65,14 @@ data class SafetySetting(
 /**
  * Gemini API 响应数据类
  */
+@Keep
 data class GeminiResponse(
     val candidates: List<Candidate>?,
     val promptFeedback: PromptFeedback? = null,
     val error: GeminiError? = null
 )
 
+@Keep
 data class Candidate(
     val content: Content?,
     val finishReason: String? = null,

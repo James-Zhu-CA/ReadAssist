@@ -353,13 +353,13 @@ class FloatingButtonManager(
             // 仅改变可见性，不要移除或重新创建按钮
             floatingButton?.let { button ->
                 if (visible) {
-                    Log.e(TAG, "设置按钮可见")
-                    button.visibility = View.VISIBLE
+                        Log.e(TAG, "设置按钮可见")
+                        button.visibility = View.VISIBLE
                     // 总是恢复默认样式，确保按钮状态正确
-                    restoreDefaultState()
+                        restoreDefaultState()
                 } else {
-                    Log.e(TAG, "设置按钮不可见")
-                    button.visibility = View.INVISIBLE // 使用INVISIBLE而不是GONE，保留布局位置
+                        Log.e(TAG, "设置按钮不可见")
+                        button.visibility = View.INVISIBLE // 使用INVISIBLE而不是GONE，保留布局位置
                 }
             }
         } catch (e: Exception) {

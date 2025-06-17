@@ -114,6 +114,8 @@ class MainActivity : AppCompatActivity() {
         // 首次打开时刷新悬浮窗状态
         updateFloatingServiceStatus()
         
+
+        
         // 注册广播接收器
         registerReceiver(overlayPermissionReceiver, IntentFilter("com.readassist.OVERLAY_PERMISSION_DENIED"))
     }
@@ -122,18 +124,9 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         Log.e(TAG, "MainActivity.onResume() 被调用，开始检查权限状态")
         
-        // 判断是否为掌阅设备，尤其是X3 Pro
-        if (isIReaderX3Pro()) {
-            binding.tvScreenshotStatus.text = "截屏权限：您的设备是掌阅公司的，请使用右上角弧形菜单里截屏命令截屏"
-            binding.tvScreenshotStatus.setTextColor(getColor(R.color.text_default))
-            binding.btnScreenshotPermission.visibility = View.GONE
-            // 也可以隐藏其他相关UI
-            return
-        }
-        
-        // 直接检查并记录所有文件访问权限状态
-        val hasAllFiles = hasAllFilesAccess()
-        Log.e(TAG, "所有文件访问权限状态: $hasAllFiles")
+        // 直接检查并记录存储权限状态
+        val storageStatus = PermissionUtils.hasStoragePermissions(this)
+        Log.e(TAG, "存储权限状态: ${storageStatus.allGranted}, 缺失权限: ${storageStatus.missingPermissions}")
         
         // 每次回到前台都检查状态
         viewModel.checkPermissions()
@@ -149,8 +142,8 @@ class MainActivity : AppCompatActivity() {
             sendBroadcast(intent)
         }
         
-        // 强制刷新权限UI显示
-        updatePermissionStatusUI()
+        // 强制刷新权限UI显示 - 通过ViewModel触发Observer更新
+        viewModel.checkPermissions()
     }
     
     /**
@@ -219,6 +212,8 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, com.readassist.ui.HistoryActivity::class.java))
         }
         
+
+        
         // 清除数据按钮
         binding.btnClearData.setOnClickListener {
             showClearDataDialog()
@@ -271,7 +266,7 @@ class MainActivity : AppCompatActivity() {
     private fun showWelcomeDialog() {
         AlertDialog.Builder(this)
             .setTitle("欢迎使用 ReadAssist")
-            .setMessage("ReadAssist 是专为 Supernote A5X 设计的智能阅读助手。\n\n首次使用需要配置AI服务：\n\n1. 选择AI平台（Gemini 或 SiliconFlow）\n2. 配置对应的API Key\n3. 授予必要权限\n4. 开始智能阅读！\n\n点击\"开始配置\"进入设置向导。")
+            .setMessage("ReadAssist 是专为超级笔记、掌阅等电纸书设计的智能阅读助手。\n\n首次使用需要配置AI服务：\n\n1. 选择AI平台（Gemini 或 SiliconFlow）\n2. 申请并配置对应的API Key\n3. 授权必要权限（无障碍服务、存储和截屏权限）\n4. 开始智能阅读！\n\n点击\"开始配置\"进入设置向导。")
             .setPositiveButton("开始配置") { _, _ ->
                 if (!app.preferenceManager.isAiSetupCompleted()) {
                     try {
@@ -283,10 +278,6 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     // requestPermissions()
                 }
-            }
-            .setNeutralButton("手动设置") { _, _ ->
-                // 直接跳转到设置页面作为备选方案
-                startActivity(Intent(this, SettingsActivity::class.java))
             }
             .setNegativeButton("稍后设置", null)
             .show()
@@ -376,11 +367,6 @@ class MainActivity : AppCompatActivity() {
                 .setNegativeButton("❌ 取消") { dialog, _ ->
                     android.util.Log.d("MainActivity", "用户取消设置")
                     dialog.dismiss()
-                }
-                .setNeutralButton("⚙️ 手动设置") { dialog, _ ->
-                    android.util.Log.d("MainActivity", "跳转到设置页面")
-                    dialog.dismiss()
-                    startActivity(Intent(this, SettingsActivity::class.java))
                 }
                 .setCancelable(true)
                 .create()
@@ -587,40 +573,100 @@ class MainActivity : AppCompatActivity() {
     }
     
     /**
-     * 更新权限状态的UI显示
+     * 更新权限状态显示 - 改进截屏权限说明
      */
     private fun updatePermissionStatus(status: MainViewModel.PermissionStates) {
-        Log.d(TAG, "Updating permission status UI for state: $status")
+        Log.d(TAG, "更新权限状态显示")
 
         val overlayGranted = PermissionUtils.hasOverlayPermission(this)
         val accessibilityGranted = PermissionUtils.hasAccessibilityPermission(this)
-        val storageGranted = PermissionUtils.hasStoragePermissions(this).allGranted
+        val storageStatus = PermissionUtils.hasStoragePermissions(this)
         val screenshotGranted = app.preferenceManager.isScreenshotPermissionGranted()
-        val allFilesGranted = hasAllFilesAccess()
         val floatingServiceRunning = isFloatingWindowServiceRunning()
-        // 你可以根据实际需要添加其他服务的运行状态检测
 
-        // 统一格式：权限名称：状态
-        // 存储权限
-        if (allFilesGranted) {
-            binding.tvStoragePermissionStatus.text = "存储权限：已授予所有文件访问权限"
+        // 获取StorageAccessManager来检查掌阅截屏目录权限
+        val storageAccessManager = com.readassist.utils.StorageAccessManager(this, app.preferenceManager)
+        val isIReaderDevice = com.readassist.utils.DeviceUtils.isIReaderDevice()
+        val hasIReaderDirectoryAccess = if (isIReaderDevice) storageAccessManager.hasIReaderDirectoryAccess() else true
+        
+        // 存储权限状态显示 - 墨水屏优化，统一使用黑色文字
+        if (storageStatus.allGranted) {
+            binding.tvStoragePermissionStatus.text = "存储权限：已授予（读写外部存储）"
             binding.tvStoragePermissionStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
             binding.btnRequestStoragePermission.visibility = View.GONE
         } else {
-            binding.tvStoragePermissionStatus.text = "存储权限：未授权所有文件访问"
+            val missingPerms = storageStatus.missingPermissions.joinToString(", ") { 
+                when(it) {
+                    android.Manifest.permission.READ_EXTERNAL_STORAGE -> "读取存储"
+                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE -> "写入存储"
+                    else -> it
+                }
+            }
+            binding.tvStoragePermissionStatus.text = "存储权限：缺少 ($missingPerms)"
             binding.tvStoragePermissionStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
             binding.btnRequestStoragePermission.visibility = View.VISIBLE
-            binding.btnRequestStoragePermission.text = "授权所有文件访问"
+            binding.btnRequestStoragePermission.text = "授予存储权限"
             binding.btnRequestStoragePermission.setOnClickListener {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-                    intent.data = Uri.parse("package:" + packageName)
-                    startActivity(intent)
-                }
+                viewModel.requestStoragePermissions(this@MainActivity)
             }
         }
 
-        // 无障碍服务权限
+        // 掌阅设备截屏文件目录权限状态显示（仅掌阅设备显示）
+        if (isIReaderDevice) {
+            // 显示截屏文件目录权限状态
+            binding.tvIReaderDirectoryStatus.visibility = View.VISIBLE
+            binding.btnRequestIReaderDirectory.visibility = View.VISIBLE
+            
+            if (hasIReaderDirectoryAccess) {
+                binding.tvIReaderDirectoryStatus.text = "掌阅截屏文件目录：已授予"
+                binding.tvIReaderDirectoryStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
+                binding.btnRequestIReaderDirectory.visibility = View.GONE
+            } else {
+                binding.tvIReaderDirectoryStatus.text = "掌阅截屏文件目录：未授予"
+                binding.tvIReaderDirectoryStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
+                binding.btnRequestIReaderDirectory.visibility = View.VISIBLE
+                binding.btnRequestIReaderDirectory.text = "配置目录权限"
+                binding.btnRequestIReaderDirectory.setOnClickListener {
+                    // 启动掌阅设备配置Activity
+                    startActivity(Intent(this@MainActivity, com.readassist.ui.IReaderSetupActivity::class.java))
+                }
+            }
+            
+            // 如果是掌阅设备，修改截屏权限提示
+            binding.tvScreenshotStatus.text = "截屏权限：您的设备是掌阅公司的，建议将按键长按设置为截屏，使用会更便捷"
+            binding.tvScreenshotStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
+            binding.btnScreenshotPermission.visibility = View.GONE
+        } else {
+            // 非掌阅设备，隐藏掌阅特定的权限显示
+            binding.tvIReaderDirectoryStatus.visibility = View.GONE
+            binding.btnRequestIReaderDirectory.visibility = View.GONE
+            
+            // 非掌阅设备的截屏权限显示 - 改进说明
+            if (screenshotGranted) {
+                // 验证权限是否真正有效
+                val resultCode = app.preferenceManager.getScreenshotResultCode()
+                val resultDataUri = app.preferenceManager.getScreenshotResultDataUri()
+                
+                if (resultCode != -1 && resultDataUri != null) {
+                    binding.tvScreenshotStatus.text = "截屏权限：已授予（重启后需重新授权）"
+                    binding.tvScreenshotStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
+                    binding.btnScreenshotPermission.visibility = View.VISIBLE
+                    binding.btnScreenshotPermission.text = "重新授权"
+                } else {
+                    binding.tvScreenshotStatus.text = "截屏权限：已失效（请重新授权）"
+                    binding.tvScreenshotStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
+                    binding.btnScreenshotPermission.visibility = View.VISIBLE
+                    binding.btnScreenshotPermission.text = "授权截屏权限"
+                }
+            } else {
+                binding.tvScreenshotStatus.text = "截屏权限：未授予"
+                binding.tvScreenshotStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
+                binding.btnScreenshotPermission.visibility = View.VISIBLE
+                binding.btnScreenshotPermission.text = "授权截屏权限"
+            }
+        }
+
+        // 无障碍服务权限 - 统一使用黑色文字
         if (accessibilityGranted) {
             binding.tvAccessibilityPermissionStatus.text = "无障碍服务权限：已授予"
             binding.tvAccessibilityPermissionStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
@@ -636,33 +682,19 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // 截屏权限，掌阅设备特殊提示
-        if (com.readassist.utils.DeviceUtils.isIReaderDevice()) {
-            binding.tvScreenshotStatus.text = "截屏权限：您的设备是掌阅公司的，请使用右上角弧形菜单里的截屏命令来截屏"
-            binding.tvScreenshotStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
-            binding.btnScreenshotPermission.visibility = View.GONE
-        } else {
-            if (screenshotGranted) {
-                binding.tvScreenshotStatus.text = "截屏权限：已授予"
-                binding.tvScreenshotStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
-                binding.btnScreenshotPermission.visibility = View.GONE
-            } else {
-                binding.tvScreenshotStatus.text = "截屏权限：未授权"
-                binding.tvScreenshotStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
-                binding.btnScreenshotPermission.visibility = View.VISIBLE
-                binding.btnScreenshotPermission.text = "授予截屏权限"
-            }
-        }
-
         // Log the final state of UI elements for debugging
         Log.d(TAG, "tvScreenshotStatus: ${binding.tvScreenshotStatus.text}")
         Log.d(TAG, "btnScreenshotPermission visible: ${binding.btnScreenshotPermission.visibility == View.VISIBLE}")
         Log.d(TAG, "tvStoragePermissionStatus: ${binding.tvStoragePermissionStatus.text}")
         Log.d(TAG, "btnRequestStoragePermission visible: ${binding.btnRequestStoragePermission.visibility == View.VISIBLE}")
+        if (isIReaderDevice) {
+            Log.d(TAG, "tvIReaderDirectoryStatus: ${binding.tvIReaderDirectoryStatus.text}")
+            Log.d(TAG, "btnRequestIReaderDirectory visible: ${binding.btnRequestIReaderDirectory.visibility == View.VISIBLE}")
+        }
     }
     
     /**
-     * 更新 API Key 状态显示
+     * 更新 API Key 状态显示 - 墨水屏优化，统一使用黑色文字
      */
     private fun updateApiKeyStatus(hasKey: Boolean) {
         val app = application as com.readassist.ReadAssistApplication
@@ -672,15 +704,15 @@ class MainActivity : AppCompatActivity() {
         
         if (isConfigured && hasKey && currentModel != null) {
             binding.tvApiKeyStatus.text = "✓ ${currentPlatform.displayName} - ${currentModel.displayName}"
-            binding.tvApiKeyStatus.setTextColor(0xFF4CAF50.toInt())
+            binding.tvApiKeyStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
             binding.btnApiKey.text = "重新配置"
         } else if (app.preferenceManager.isAiSetupCompleted()) {
             binding.tvApiKeyStatus.text = "⚠ 配置不完整或无效"
-            binding.tvApiKeyStatus.setTextColor(0xFFFF9800.toInt())
+            binding.tvApiKeyStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
             binding.btnApiKey.text = "修复配置"
         } else {
             binding.tvApiKeyStatus.text = "❌ 未配置AI服务"
-            binding.tvApiKeyStatus.setTextColor(0xFFF44336.toInt())
+            binding.tvApiKeyStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
             binding.btnApiKey.text = "开始配置"
         }
     }
@@ -779,17 +811,17 @@ class MainActivity : AppCompatActivity() {
     }
     
     /**
-     * 更新悬浮窗服务状态显示
+     * 更新悬浮窗服务状态显示 - 墨水屏优化，统一使用黑色文字
      */
     private fun updateFloatingServiceStatus() {
         val isServiceRunning = isFloatingWindowServiceRunning()
         if (isServiceRunning) {
             binding.tvFloatingWindowStatus.text = "✓ 悬浮按钮运行中"
-            binding.tvFloatingWindowStatus.setTextColor(getColor(R.color.text_success))
+            binding.tvFloatingWindowStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
             binding.btnFloatingWindow.text = "停止悬浮按钮"
         } else {
             binding.tvFloatingWindowStatus.text = "- 悬浮按钮已停止"
-            binding.tvFloatingWindowStatus.setTextColor(getColor(R.color.text_default))
+            binding.tvFloatingWindowStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
             binding.btnFloatingWindow.text = "启动悬浮按钮"
         }
     }
@@ -848,39 +880,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 检查是否有所有文件访问权限
-    private fun hasAllFilesAccess(): Boolean {
-        val hasAccess = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val result = Environment.isExternalStorageManager()
-            Log.e(TAG, "检查所有文件访问权限结果: $result (API ${Build.VERSION.SDK_INT})")
-            result
-        } else {
-            Log.e(TAG, "API等级低于30，默认拥有所有文件访问权限")
-            true
-        }
-        return hasAccess
-    }
 
-    // 添加强制刷新UI的方法
-    private fun updatePermissionStatusUI() {
-        Log.e(TAG, "强制刷新权限UI显示")
-        // 获取存储权限状态
-        val hasAllFilesAccess = hasAllFilesAccess()
-        
-        // 更新存储权限状态显示
-        binding.tvStoragePermissionStatus.text = if (hasAllFilesAccess) {
-            "已授予所有文件访问权限"
-        } else {
-            "未授权所有文件访问"
-        }
-        
-        // 更新存储权限按钮状态
-        binding.btnRequestStoragePermission.visibility = if (hasAllFilesAccess) {
-            View.GONE
-        } else {
-            View.VISIBLE
-        }
-    }
+
+
 
     private fun isIReaderX3Pro(): Boolean {
         val manufacturer = Build.MANUFACTURER?.lowercase() ?: ""
@@ -903,6 +905,8 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("取消", null)
             .show()
     }
+
+
 
     override fun onDestroy() {
         super.onDestroy()

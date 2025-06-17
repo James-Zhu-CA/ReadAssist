@@ -26,4 +26,6 @@
     <color name="text_error">#F44336</color>   <!-- Red -->
     <color name="text_warning">#FF9800</color> <!-- Orange -->
     <color name="text_default">#333333</color> <!-- Dark Gray -->
+    <color name="text_hint">#999999</color>    <!-- Light Gray -->
+    <color name="background_color">#FFFFFF</color> <!-- White Background -->
 </resources> 

@@ -138,10 +138,11 @@ class ChatWindowManager(
             currentText == "请分析这段文字：" ||
             currentText == "请分析发给你的图片和文字内容。" ||
             currentText == "请输入您的问题或内容" ||
+            currentText.contains("请输入您的问题或内容") ||
             currentText.startsWith("请分析")
         
-        // 特殊情况：如果新提示是"请输入您的问题或内容"，只设置hint不改变内容
-        if (newHint == "请输入您的问题或内容") {
+        // 特殊情况：如果新提示是默认输入提示（包含"请输入您的问题或内容"），只设置hint不改变内容
+        if (newHint.contains("请输入您的问题或内容")) {
             Log.e(TAG, "[日志追踪] 提示为默认输入提示，只设置hint不改变内容")
             // 如果当前内容也是提示文本，则清空输入框
             if (isDefaultPrompt) {
@@ -285,7 +286,8 @@ class ChatWindowManager(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
             windowType,
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or 
+            WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.CENTER
@@ -878,48 +880,29 @@ class ChatAdapter(
         
         val item = getItem(position)
         val messageTextView = view.findViewById<TextView>(R.id.messageTextView)
+        val senderLabel = view.findViewById<TextView>(R.id.senderLabel)
+        val timestampLabel = view.findViewById<TextView>(R.id.timestampLabel)
         
         // 确保文字可选择和复制
         messageTextView.setTextIsSelectable(true)
         messageTextView.isFocusable = true
         messageTextView.isFocusableInTouchMode = true
         
-        // 设置自定义的文本选择动作模式回调，添加复制功能
+        // 设置自定义的文本选择行为：长按已选择的文字时复制选中内容
         messageTextView.customSelectionActionModeCallback = object : ActionMode.Callback {
             override fun onCreateActionMode(mode: ActionMode?, menu: Menu?): Boolean {
-                // 添加复制选项
-                menu?.add(0, android.R.id.copy, 0, "复制")?.setIcon(android.R.drawable.ic_menu_save)
+                // 保留系统默认的复制菜单
                 return true
             }
             
             override fun onPrepareActionMode(mode: ActionMode?, menu: Menu?): Boolean {
-                // 移除默认的选择全部等选项，只保留复制
-                menu?.clear()
-                menu?.add(0, android.R.id.copy, 0, "复制")
+                // 保留系统默认的菜单项
                 return true
             }
             
             override fun onActionItemClicked(mode: ActionMode?, item: MenuItem?): Boolean {
-                return when (item?.itemId) {
-                    android.R.id.copy -> {
-                        // 获取选中的文本
-                        val start = messageTextView.selectionStart
-                        val end = messageTextView.selectionEnd
-                        val selectedText = messageTextView.text.substring(start, end)
-                        
-                        // 复制到剪贴板
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                        val clip = android.content.ClipData.newPlainText("聊天内容", selectedText)
-                        clipboard.setPrimaryClip(clip)
-                        
-                        // 显示提示
-                        Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
-                        
-                        mode?.finish()
-                        true
-                    }
-                    else -> false
-                }
+                // 让系统处理默认的复制操作
+                return false
             }
             
             override fun onDestroyActionMode(mode: ActionMode?) {
@@ -927,10 +910,46 @@ class ChatAdapter(
             }
         }
         
+        // 添加长按监听器：当有文字被选中时，长按复制选中的文字
+        messageTextView.setOnLongClickListener { textView ->
+            val tv = textView as TextView
+            val start = tv.selectionStart
+            val end = tv.selectionEnd
+            
+            // 如果有文字被选中，复制选中的文字
+            if (start >= 0 && end >= 0 && start != end) {
+                val selectedText = tv.text.substring(start, end)
+                if (selectedText.isNotEmpty()) {
+                    // 复制选中的文本到剪贴板
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    val clip = android.content.ClipData.newPlainText("选中文字", selectedText)
+                    clipboard.setPrimaryClip(clip)
+                    
+                    // 显示提示
+                    Toast.makeText(context, "已复制选中文字", Toast.LENGTH_SHORT).show()
+                    
+                    // 清除选择状态
+                    tv.clearFocus()
+                    return@setOnLongClickListener true
+                }
+            }
+            
+            // 如果没有选中文字，返回false让系统处理默认的长按行为（开始文字选择）
+            false
+        }
+        
+        // 格式化时间戳
+        val timestamp = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
+            .format(java.util.Date())
+        
         when {
             item.isUserMessage -> {
+                senderLabel.text = "👤 用户"
+                senderLabel.setTextColor(0xFF2196F3.toInt()) // 蓝色
                 messageTextView.text = item.userMessage
-                messageTextView.setBackgroundColor(0xFFF5F5F5.toInt()) // 浅灰背景
+                messageTextView.setBackgroundColor(0xFFE3F2FD.toInt()) // 浅蓝背景
+                messageTextView.setTextColor(0xFF000000.toInt())
+                timestampLabel.text = timestamp
                 view.findViewById<View>(R.id.messageContainer)?.apply {
                     (layoutParams as? ViewGroup.MarginLayoutParams)?.apply {
                         leftMargin = 0
@@ -940,20 +959,30 @@ class ChatAdapter(
             }
             
             item.isLoading -> {
-                messageTextView.text = "⏳ ${item.aiMessage}"
+                senderLabel.text = "🤖 AI (思考中...)"
+                senderLabel.setTextColor(0xFF4CAF50.toInt()) // 绿色
+                messageTextView.text = item.aiMessage
                 messageTextView.setBackgroundColor(0xFFFFFFFF.toInt()) // 白色背景
+                messageTextView.setTextColor(0xFF666666.toInt())
+                timestampLabel.text = timestamp
             }
             
             item.isError -> {
-                messageTextView.text = "❌ ${item.aiMessage}"
-                messageTextView.setTextColor(0xFF666666.toInt()) // 灰色文字表示错误
-                messageTextView.setBackgroundColor(0xFFFFFFFF.toInt())
+                senderLabel.text = "❌ 系统错误"
+                senderLabel.setTextColor(0xFFF44336.toInt()) // 红色
+                messageTextView.text = item.aiMessage
+                messageTextView.setTextColor(0xFFF44336.toInt()) // 红色文字表示错误
+                messageTextView.setBackgroundColor(0xFFFFEBEE.toInt()) // 浅红背景
+                timestampLabel.text = timestamp
             }
             
             else -> {
+                senderLabel.text = "🤖 AI助手"
+                senderLabel.setTextColor(0xFF4CAF50.toInt()) // 绿色
                 messageTextView.text = item.aiMessage
-                messageTextView.setBackgroundColor(0xFFFFFFFF.toInt()) // 白色背景
+                messageTextView.setBackgroundColor(0xFFF1F8E9.toInt()) // 浅绿背景
                 messageTextView.setTextColor(0xFF000000.toInt()) // 黑色文字
+                timestampLabel.text = timestamp
             }
         }
         

@@ -33,6 +33,8 @@ import java.io.File
 import java.io.FileOutputStream
 import android.os.FileObserver
 import android.os.Environment
+import com.readassist.utils.StorageAccessManager
+import androidx.documentfile.provider.DocumentFile
 
 /**
  * 管理截屏功能
@@ -76,6 +78,9 @@ class ScreenshotManager(
 
     // 新增：统一的文件观察器
     private var fileObserver: FileObserver? = null
+    
+    // SAF管理器（用于掌阅设备）
+    private val storageAccessManager = StorageAccessManager(context, preferenceManager)
     
     private val screenshotReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -1395,30 +1400,30 @@ class ScreenshotManager(
             val observers = mutableListOf<FileObserver>()
             
             directoriesToWatch.forEach { dirToWatch ->
-                if (!dirToWatch.exists()) {
+            if (!dirToWatch.exists()) {
                     if (dirToWatch.mkdirs()) {
                         Log.d(TAG, "创建监控目录: ${dirToWatch.absolutePath}")
                     } else {
                         Log.w(TAG, "无法创建监控目录: ${dirToWatch.absolutePath}")
                         return@forEach // 跳过这个目录
-                    }
                 }
-                
+            }
+            
                 val observer = object : FileObserver(dirToWatch, CLOSE_WRITE) {
-                    private var lastProcessedPath: String? = null
-                    private var lastProcessedTime: Long = 0
+                private var lastProcessedPath: String? = null
+                private var lastProcessedTime: Long = 0
 
-                    override fun onEvent(event: Int, path: String?) {
-                        if (path == null) return
+                override fun onEvent(event: Int, path: String?) {
+                    if (path == null) return
 
-                        val currentTime = System.currentTimeMillis()
+                    val currentTime = System.currentTimeMillis()
                         val fullPath = File(dirToWatch, path).absolutePath
                         
-                        // 防抖：2秒内同一个文件的事件只处理一次
+                    // 防抖：2秒内同一个文件的事件只处理一次
                         if (fullPath == lastProcessedPath && (currentTime - lastProcessedTime) < 2000) {
-                            return
-                        }
-                        
+                        return
+                    }
+                    
                         // 文件名过滤：只处理截屏相关文件
                         if (!isScreenshotFile(path)) {
                             return
@@ -1426,18 +1431,18 @@ class ScreenshotManager(
                         
                         Log.d(TAG, "[统一流程] 检测到截屏文件写入: $fullPath")
                         lastProcessedPath = fullPath
-                        lastProcessedTime = currentTime
+                    lastProcessedTime = currentTime
 
                                                  // 立即处理，在解码时确保文件完整性
-                         val file = File(dirToWatch, path)
+                        val file = File(dirToWatch, path)
                          if (file.exists() && isRecentFile(file)) {
                              Log.d(TAG, "[统一流程] 立即处理新截屏文件: ${file.absolutePath}")
                              // 统一回调接口，触发弹窗逻辑
-                             callbacks.onScreenshotComplete(Uri.fromFile(file))
-                         }
-                    }
+                            callbacks.onScreenshotComplete(Uri.fromFile(file))
+                        }
                 }
-                
+            }
+            
                 observer.startWatching()
                 observers.add(observer)
                 Log.d(TAG, "✅ 开始监控目录: ${dirToWatch.absolutePath}")
@@ -1445,6 +1450,11 @@ class ScreenshotManager(
             
             // 保存所有观察器（需要修改变量类型来支持多个观察器）
             fileObservers = observers
+            
+            // 如果是掌阅设备，同时启动SAF监控
+            if (DeviceUtils.isIReaderDevice()) {
+                startSAFMonitoring()
+            }
 
         } catch (e: Exception) {
             Log.e(TAG, "❌ 启动统一截屏文件监控失败", e)
@@ -1481,6 +1491,9 @@ class ScreenshotManager(
                 observer.stopWatching()
             }
             fileObservers?.clear()
+            
+            // 停止SAF监控
+            stopSAFMonitoring()
         } catch (e: Exception) {
             Log.e(TAG, "停止截屏监控失败", e)
         }
@@ -1488,4 +1501,70 @@ class ScreenshotManager(
 
     // 需要在类顶部添加新的变量定义
     private var fileObservers: MutableList<FileObserver>? = null
+    
+    // SAF监控相关
+    private var safMonitoringJob: Job? = null
+    
+    /**
+     * 开始SAF监控（专门用于掌阅设备）
+     */
+    private fun startSAFMonitoring() {
+        if (!DeviceUtils.isIReaderDevice()) {
+            return
+        }
+        
+        if (!storageAccessManager.hasIReaderDirectoryAccess()) {
+            Log.d(TAG, "掌阅设备未配置SAF权限，跳过SAF监控")
+            return
+        }
+        
+        safMonitoringJob?.cancel()
+        safMonitoringJob = coroutineScope.launch {
+            Log.d(TAG, "✅ 开始SAF监控掌阅截屏目录")
+            
+            while (true) {
+                try {
+                    val recentScreenshots = storageAccessManager.findRecentScreenshots(5000)
+                    if (recentScreenshots.isNotEmpty()) {
+                        val latestScreenshot = recentScreenshots.first()
+                        Log.d(TAG, "📸 SAF检测到新截屏: ${latestScreenshot.name}")
+                        
+                        // 转换为URI并触发回调
+                        latestScreenshot.uri?.let { uri ->
+                            withContext(Dispatchers.Main) {
+                                callbacks.onScreenshotComplete(uri)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "SAF监控异常", e)
+                }
+                
+                delay(1000) // 每秒检查一次
+            }
+        }
+    }
+    
+    /**
+     * 停止SAF监控
+     */
+    private fun stopSAFMonitoring() {
+        safMonitoringJob?.cancel()
+        safMonitoringJob = null
+        Log.d(TAG, "已停止SAF监控")
+    }
+    
+    /**
+     * 检查掌阅设备是否需要配置SAF权限
+     */
+    fun checkIReaderSetupRequired(): Boolean {
+        return DeviceUtils.isIReaderDevice() && !storageAccessManager.hasIReaderDirectoryAccess()
+    }
+    
+    /**
+     * 获取SAF管理器（供外部使用）
+     */
+    fun getStorageAccessManager(): StorageAccessManager {
+        return storageAccessManager
+    }
 } 

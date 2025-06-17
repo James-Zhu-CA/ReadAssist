@@ -74,6 +74,31 @@
                 android:visibility="gone"/>
         </LinearLayout>
 
+        <!-- iReader Directory Permission Status (Only for iReader devices) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="4dp">
+            <TextView
+                android:id="@+id/tvIReaderDirectoryStatus"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="掌阅截屏文件目录：未知"
+                android:textSize="16sp"
+                android:textColor="#333333"
+                android:lineSpacingExtra="8dp"
+                android:visibility="gone" />
+            <Button
+                android:id="@+id/btnRequestIReaderDirectory"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="配置目录权限"
+                android:visibility="gone"/>
+        </LinearLayout>
+
         <!-- Accessibility Permission Status -->
         <LinearLayout
             android:layout_width="match_parent"
@@ -270,6 +295,8 @@
             android:textColor="#000000"
             android:background="#F5F5F5"
             android:layout_marginBottom="8dp" />
+
+
 
         <!-- 危险操作区域 -->
         <View

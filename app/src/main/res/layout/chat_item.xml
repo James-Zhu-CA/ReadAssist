@@ -5,6 +5,19 @@
     android:orientation="vertical"
     android:padding="8dp">
 
+    <!-- 消息发送者标识 -->
+    <TextView
+        android:id="@+id/senderLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="用户"
+        android:textSize="12sp"
+        android:textColor="#666666"
+        android:textStyle="bold"
+        android:layout_marginBottom="4dp"
+        android:paddingStart="4dp"
+        android:paddingLeft="4dp" />
+
     <LinearLayout
         android:id="@+id/messageContainer"
         android:layout_width="match_parent"
@@ -28,5 +41,17 @@
             android:focusableInTouchMode="true" />
 
     </LinearLayout>
+
+    <!-- 时间戳 -->
+    <TextView
+        android:id="@+id/timestampLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="2024-01-01 12:00"
+        android:textSize="10sp"
+        android:textColor="#999999"
+        android:layout_marginTop="2dp"
+        android:paddingStart="4dp"
+        android:paddingLeft="4dp" />
 
 </LinearLayout> 

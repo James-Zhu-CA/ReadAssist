@@ -27,7 +27,7 @@ chmod +x quick_extract_logs.sh
 
 #### 最重要的ReadAssist应用日志：
 ```bash
-adb logcat -d -v time TextAccessibilityService:* ScreenshotManager:* FloatingWindowServiceNew:* ChatWindowManager:* SessionManager:* AiCommunicationManager:* *:S
+adb logcat -d -v time 'TextAccessibilityService:*' 'ScreenshotManager:*' 'FloatingWindowServiceNew:*' 'ChatWindowManager:*' 'SessionManager:*' 'AiCommunicationManager:*' '*:S'
 ```
 
 #### 实时监控ReadAssist应用：

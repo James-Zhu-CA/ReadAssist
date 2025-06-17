@@ -13,8 +13,8 @@ android {
         applicationId "com.readassist"
         minSdk 21  // 支持 Android 5.0+，兼容 A5X 的 Android 8.1
         targetSdk 34
-        versionCode 6
-        versionName "1.5.1"
+        versionCode 7
+        versionName "1.6.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         
@@ -36,9 +36,9 @@ android {
 
     buildTypes {
         release {
-            // Play Store 推荐：启用代码混淆和优化
-            minifyEnabled true
-            shrinkResources true
+            // 暂时禁用混淆来解决网络问题
+            minifyEnabled false
+            shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release
             

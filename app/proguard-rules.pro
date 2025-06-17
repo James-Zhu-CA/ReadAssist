@@ -68,21 +68,108 @@
 # ===============================================
 # 第三方库保护
 # ===============================================
-# Gson
+# Gson - 增强保护
 -keepattributes Signature
 -keepattributes *Annotation*
+-keepattributes RuntimeVisibleAnnotations
+-keepattributes RuntimeInvisibleAnnotations
+-keepattributes RuntimeVisibleParameterAnnotations
+-keepattributes RuntimeInvisibleParameterAnnotations
+-keepattributes AnnotationDefault
+
 -dontwarn sun.misc.**
 -keep class com.google.gson.** { *; }
 -keep class * implements com.google.gson.TypeAdapterFactory
 -keep class * implements com.google.gson.JsonSerializer
 -keep class * implements com.google.gson.JsonDeserializer
 
-# Retrofit
+# 保护所有网络数据类的字段和构造函数
+-keep class com.readassist.network.** { *; }
+-keepclassmembers class com.readassist.network.** {
+    <fields>;
+    <init>(...);
+}
+
+# 特别保护Gemini和SiliconFlow的响应类
+-keep class com.readassist.network.GeminiResponse { *; }
+-keep class com.readassist.network.GeminiRequest { *; }
+-keep class com.readassist.network.Content { *; }
+-keep class com.readassist.network.Part { *; }
+-keep class com.readassist.network.Candidate { *; }
+-keep class com.readassist.network.SiliconFlowResponse { *; }
+-keep class com.readassist.network.SiliconFlowRequest { *; }
+
+# 防止泛型类型擦除
+-keepattributes Signature,InnerClasses,EnclosingMethod
+
+# 额外保护：防止ParameterizedType相关问题
+-keep class java.lang.reflect.** { *; }
+-keep class java.lang.reflect.Type { *; }
+-keep class java.lang.reflect.ParameterizedType { *; }
+-keep class java.lang.reflect.GenericArrayType { *; }
+-keep class java.lang.reflect.WildcardType { *; }
+-keep class java.lang.reflect.TypeVariable { *; }
+
+# 完全禁用对反射相关类的混淆 - 暂时注释以避免其他问题
+# -keep class sun.reflect.generics.reflectiveObjects.** { *; }
+-dontwarn sun.reflect.generics.reflectiveObjects.**
+
+# 保护Gson的TypeToken和所有相关类
+-keep class com.google.gson.reflect.** { *; }
+-keep class com.google.gson.internal.** { *; }
+-keep class com.google.gson.stream.** { *; }
+-keepclassmembers class * extends com.google.gson.reflect.TypeToken {
+    <fields>;
+    <methods>;
+}
+
+# 注释掉过于激进的规则
+# -keep class **$* { *; }
+
+# 保护Gson反序列化器可能使用的类
+-keep class * implements java.lang.reflect.Type { *; }
+
+# 保护所有的data class 
+-keepclassmembers class com.readassist.network.** {
+    <init>(...);
+    *** component*(...);
+    *** copy(...);
+    *** copy$default(...);
+}
+
+# 保护序列化相关的字段名
+-keepclassmembers class com.readassist.network.** {
+    @com.google.gson.annotations.SerializedName <fields>;
+    @com.google.gson.annotations.Expose <fields>;
+}
+
+# Retrofit - 增强保护
 -keepattributes Signature, InnerClasses, EnclosingMethod
 -keepattributes RuntimeVisibleAnnotations, RuntimeVisibleParameterAnnotations
 -keepclassmembers,allowshrinking,allowobfuscation interface * {
     @retrofit2.http.* <methods>;
 }
+
+# 保护API服务接口
+-keep interface com.readassist.network.GeminiApiService { *; }
+-keep interface com.readassist.network.SiliconFlowApiService { *; }
+
+# 保护Retrofit相关类
+-keep class retrofit2.** { *; }
+-keep class retrofit2.Response { *; }
+-keep class retrofit2.Call { *; }
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep class * extends com.google.gson.reflect.TypeToken
+
+# 特别保护Response<T>泛型类型
+-keepclassmembers class * {
+    @retrofit2.http.* <methods>;
+}
+-keep class retrofit2.Response
+-keepclassmembers class retrofit2.Response {
+    *;
+}
+
 -dontwarn org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement
 -dontwarn javax.annotation.**
 -dontwarn kotlin.Unit
@@ -134,7 +221,7 @@
 }
 
 # ===============================================
-# 移除日志（生产版本）
+# 移除日志（生产版本）- 保留错误日志用于调试
 # ===============================================
 -assumenosideeffects class android.util.Log {
     public static boolean isLoggable(java.lang.String, int);
@@ -142,7 +229,8 @@
     public static int i(...);
     public static int w(...);
     public static int d(...);
-    public static int e(...);
+    # 保留错误日志用于调试网络问题
+    # public static int e(...);
 }
 
 # ===============================================

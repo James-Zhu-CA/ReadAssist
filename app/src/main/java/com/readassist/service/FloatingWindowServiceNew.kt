@@ -63,6 +63,7 @@ import com.readassist.utils.PreferenceManager
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import java.util.Date
 import java.util.Locale
+import com.readassist.ui.IReaderSetupActivity
 
 /**
  * 重构后的悬浮窗服务
@@ -171,6 +172,36 @@ class FloatingWindowServiceNew : Service(),
     // 新增：记录上一次截屏的文件路径
     private var lastScreenshotFile: File? = null
     
+    /**
+     * 检查掌阅设备是否需要配置SAF权限
+     */
+    private fun checkIReaderSetup() {
+        if (screenshotManager.checkIReaderSetupRequired()) {
+            serviceScope.launch {
+                delay(2000) // 延迟2秒显示提示，避免与其他启动流程冲突
+                
+                Toast.makeText(
+                    this@FloatingWindowServiceNew,
+                    "📱 检测到掌阅设备，建议配置截屏目录以获得更好体验",
+                    Toast.LENGTH_LONG
+                ).show()
+                
+                // 可选：自动打开设置界面
+                // showIReaderSetupDialog()
+            }
+        }
+    }
+    
+    /**
+     * 显示掌阅设备设置对话框
+     */
+    private fun showIReaderSetupDialog() {
+        val intent = Intent(this, IReaderSetupActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        startActivity(intent)
+    }
+    
     override fun onCreate() {
         super.onCreate()
         Log.e("FloatingWindowServiceNew", "onCreate called")
@@ -191,6 +222,9 @@ class FloatingWindowServiceNew : Service(),
         
         // 创建通知渠道和前台服务通知
         setupForegroundService()
+        
+        // 检查掌阅设备是否需要配置SAF权限
+        checkIReaderSetup()
         
         // 检查截屏权限状态，如果处于中间状态则重置
         serviceScope.launch {
@@ -1572,7 +1606,7 @@ class FloatingWindowServiceNew : Service(),
             sendScreenshot && sendClipboard -> "请分析发给你的图片和文字内容。"
             sendScreenshot -> "请分析这张截屏图片："
             sendClipboard -> "请分析这段文字："
-            else -> "请输入您的问题或内容"
+            else -> "请输入您的问题或内容，选择对话文本后长按可自动复制到此处"
         }
         
         // 使用新方法同时更新输入框内容和提示文本

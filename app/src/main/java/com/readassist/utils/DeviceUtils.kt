@@ -69,6 +69,20 @@ object DeviceUtils {
                Build.MODEL.lowercase().contains("libre") ||
                Build.DEVICE.lowercase().contains("libre")
     }
+
+    /**
+     * 获取掌阅设备的可能截屏目录路径
+     */
+    fun getIReaderScreenshotPaths(): List<String> {
+        return listOf(
+            "/storage/emulated/0/iReader/Screenshots",
+            "/storage/emulated/0/iReader/saveImage/tmp",
+            "/storage/emulated/0/iReader/Pictures",
+            "/sdcard/iReader/Screenshots",
+            "/sdcard/iReader/saveImage/tmp",
+            "/sdcard/iReader/Pictures"
+        )
+    }
 }
 
 enum class DeviceType {
