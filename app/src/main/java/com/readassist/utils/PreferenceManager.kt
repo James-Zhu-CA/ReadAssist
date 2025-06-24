@@ -96,7 +96,7 @@ class PreferenceManager(private val context: Context) {
      * 获取当前AI模型ID
      */
     fun getCurrentAiModelId(): String {
-        return normalPrefs.getString(KEY_CURRENT_AI_MODEL, "gemini-2.0-flash") ?: "gemini-2.0-flash"
+        return normalPrefs.getString(KEY_CURRENT_AI_MODEL, "gemini-2.5-flash") ?: "gemini-2.5-flash"
     }
     
     /**

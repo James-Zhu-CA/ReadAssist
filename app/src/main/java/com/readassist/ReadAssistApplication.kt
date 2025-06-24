@@ -59,8 +59,8 @@ class ReadAssistApplication : Application() {
             // 先清除旧的权限数据
             preferenceManager.clearScreenshotPermission()
             
-            // 转换Intent为Uri格式存储
-            val resultDataUri = data.toUri(Intent.URI_INTENT_SCHEME)
+            // 转换Intent为简洁的Uri格式存储 - 使用FLAG 0而不是URI_INTENT_SCHEME
+            val resultDataUri = data.toUri(0)
             Log.d(TAG, "权限数据Uri: $resultDataUri")
             
             // 保存权限状态

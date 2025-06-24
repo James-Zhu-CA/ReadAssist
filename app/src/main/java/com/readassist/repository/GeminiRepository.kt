@@ -181,7 +181,12 @@ class GeminiRepository(private val preferenceManager: PreferenceManager) {
                 Log.d(TAG, "🔑 API Key长度: ${apiKey.length}")
                 Log.d(TAG, "📦 请求内容数量: ${request.contents.size}")
                 
-                val response = apiService.generateContent(apiKey, request)
+                // 获取当前选择的模型
+                val currentModel = preferenceManager.getCurrentAiModel()
+                val modelId = currentModel?.id ?: "gemini-2.5-flash"
+                
+                Log.d(TAG, "🎯 使用模型: $modelId")
+                val response = apiService.generateContent(modelId, apiKey, request)
                 
                 Log.d(TAG, "📡 响应状态码: ${response.code()}")
                 Log.d(TAG, "📡 响应消息: ${response.message()}")
@@ -628,7 +633,8 @@ class GeminiRepository(private val preferenceManager: PreferenceManager) {
                     Content(parts = listOf(Part("测试连接")), role = "user")
                 )
             )
-            val response = apiService.generateContent(apiKey, testRequest)
+            // 使用默认模型进行测试
+            val response = apiService.generateContent("gemini-2.5-flash", apiKey, testRequest)
             response.isSuccessful
         } catch (e: Exception) {
             false

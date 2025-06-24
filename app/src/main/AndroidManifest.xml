@@ -99,9 +99,9 @@
             </intent-filter>
         </activity>
 
-        <!-- 掌阅设备配置 Activity -->
+        <!-- 通用设备配置 Activity -->
         <activity
-            android:name=".ui.IReaderSetupActivity"
+            android:name=".ui.DeviceSetupActivity"
             android:exported="false"
             android:theme="@style/Theme.ReadAssist"
             android:launchMode="singleTop"

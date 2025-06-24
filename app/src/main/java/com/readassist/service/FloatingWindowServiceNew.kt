@@ -24,6 +24,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.ServiceConnection
+import android.content.ContentUris
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
@@ -63,7 +64,9 @@ import com.readassist.utils.PreferenceManager
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import java.util.Date
 import java.util.Locale
-import com.readassist.ui.IReaderSetupActivity
+import java.text.SimpleDateFormat
+import android.os.Environment
+import com.readassist.ui.DeviceSetupActivity
 
 /**
  * 重构后的悬浮窗服务
@@ -196,7 +199,7 @@ class FloatingWindowServiceNew : Service(),
      * 显示掌阅设备设置对话框
      */
     private fun showIReaderSetupDialog() {
-        val intent = Intent(this, IReaderSetupActivity::class.java).apply {
+        val intent = Intent(this, DeviceSetupActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         startActivity(intent)
@@ -1085,30 +1088,13 @@ class FloatingWindowServiceNew : Service(),
     }
     
     override fun onScreenshotSuccess(bitmap: Bitmap) {
-        Log.e(TAG, "📸 [统一流程] 截屏成功，仅保存图片不弹窗。尺寸: ${bitmap.width}x${bitmap.height}")
+        Log.e(TAG, "📸 [统一流程] 截屏成功，保存到文件系统等待FileObserver触发。尺寸: ${bitmap.width}x${bitmap.height}")
         
-        // 回收旧的图片（如果有），并保存新的图片
-        pendingScreenshotBitmap?.recycle()
-        pendingScreenshotBitmap = bitmap
-
-        // 检查是否应该自动弹窗
-        val autoPopup = preferenceManager.getBoolean("screenshot_auto_popup", true)
-        if (!autoPopup) {
-            Log.d(TAG, "🚫 用户已关闭截屏后自动弹窗功能，仅保存截图。")
-            Toast.makeText(this, "截屏已保存，点击悬浮窗手动分析", Toast.LENGTH_SHORT).show()
-            floatingButtonManager.restoreDefaultState()
-            return
-        }
-
-        // 统一流程：恢复UI状态，但不立即弹窗
-        // 弹窗将由FileObserver检测到文件后统一触发
+        // 恢复UI状态
         floatingButtonManager.setButtonVisibility(true)
         floatingButtonManager.restoreDefaultState()
         
-        Log.d(TAG, "✅ [统一流程] 截屏图片已保存，等待FileObserver触发弹窗")
-        
-        // 注意：这里故意不调用 chatWindowManager.showChatWindow()
-        // 让FileObserver的processScreenshot统一处理弹窗逻辑
+        Log.d(TAG, "✅ [统一流程] 截屏成功，PixelCopy已保存到系统目录，等待FileObserver触发弹窗")
     }
     
     override fun onScreenshotComplete(uri: Uri) {
@@ -1194,6 +1180,20 @@ class FloatingWindowServiceNew : Service(),
                     // 检查剪贴板内容并更新UI
                     updateClipboardUI()
                     
+                    // 最后：使用文件的实际时间更新截屏信息（覆盖showChatWindow中的通用扫描结果）
+                    if (uri.scheme == "file") {
+                        val file = File(uri.path!!)
+                        if (file.exists()) {
+                            chatWindowManager.updateScreenshotInfoDirect(file.absolutePath, file.lastModified())
+                        } else {
+                            // 如果文件不存在，使用当前时间
+                            chatWindowManager.updateScreenshotInfoDirect(uri.path!!, System.currentTimeMillis())
+                        }
+                    } else {
+                        // 对于content URI，使用当前时间
+                        chatWindowManager.updateScreenshotInfoDirect(uri.toString(), System.currentTimeMillis())
+                    }
+                    
                     Log.d(TAG, "✅ [统一流程] FileObserver弹窗处理完成")
                 }
             } catch (e: Exception) {
@@ -1206,46 +1206,111 @@ class FloatingWindowServiceNew : Service(),
     }
     
     /**
-     * 智能重试解码截屏图片
-     * 这是确保文件完整性的关键方法
+     * 解码截屏图片
+     * 优先使用SAF访问，确保权限兼容性
      */
-    private suspend fun decodeScreenshotWithRetry(uri: Uri, maxRetries: Int = 3): Bitmap? {
+    private suspend fun decodeScreenshotWithRetry(uri: Uri, maxRetries: Int = 2): Bitmap? {
         repeat(maxRetries) { attempt ->
             try {
                 Log.d(TAG, "尝试解码截屏图片 (第${attempt + 1}次): $uri")
                 
-                val bitmap = contentResolver.openInputStream(uri)?.use { inputStream ->
-                    // 检查输入流是否有效
-                    if (inputStream.available() == 0) {
-                        Log.w(TAG, "输入流为空，可能文件还在写入中")
-                        return@use null
+                val bitmap = when {
+                    // 对于file://类型的URI，优先使用SAF访问
+                    uri.scheme == "file" -> {
+                        val filePath = uri.path
+                        if (filePath != null) {
+                            Log.d(TAG, "检测到file:// URI，使用SAF访问: $filePath")
+                            decodeFromFilePathViaSAF(filePath)
+                        } else {
+                            null
+                        }
                     }
-                    
-                    // 尝试解码
-                    BitmapFactory.decodeStream(inputStream)
+                    // 对于content://类型的URI，直接使用
+                    uri.scheme == "content" -> {
+                        contentResolver.openInputStream(uri)?.use { inputStream ->
+                            BitmapFactory.decodeStream(inputStream)
+                        }
+                    }
+                    else -> {
+                        Log.w(TAG, "未知的URI scheme: ${uri.scheme}")
+                        null
+                    }
                 }
                 
                 if (bitmap != null && bitmap.width > 0 && bitmap.height > 0) {
                     Log.d(TAG, "✅ 第${attempt + 1}次尝试成功解码: ${bitmap.width}x${bitmap.height}")
                     return bitmap
                 } else {
-                    Log.w(TAG, "第${attempt + 1}次尝试解码失败，图片可能损坏或未完全写入")
+                    Log.w(TAG, "第${attempt + 1}次尝试解码失败，图片可能未完全写入")
                 }
                 
             } catch (e: Exception) {
                 Log.w(TAG, "第${attempt + 1}次尝试解码异常: ${e.message}")
             }
             
-            // 如果不是最后一次尝试，等待一小段时间再重试
+            // 如果不是最后一次尝试，等待短时间再重试
             if (attempt < maxRetries - 1) {
-                Log.d(TAG, "等待100ms后重试...")
-                delay(100) // 比500ms延迟更短且更有针对性
+                Log.d(TAG, "等待200ms后重试...")
+                delay(200)
             }
         }
         
         Log.e(TAG, "❌ 经过${maxRetries}次尝试仍无法解码图片")
         return null
     }
+    
+
+    
+    /**
+     * 通过SAF访问文件
+     * 使用Storage Access Framework确保权限兼容性
+     */
+    private fun decodeFromFilePathViaSAF(filePath: String): Bitmap? {
+        return try {
+            Log.d(TAG, "通过SAF访问截屏文件: $filePath")
+            
+            val deviceScreenshotManager = screenshotManager.getDeviceScreenshotManager()
+            val fileName = java.io.File(filePath).name
+            
+            // 根据文件路径确定设备类型
+            val deviceConfig = when {
+                filePath.contains("/storage/emulated/0/SCREENSHOT/") -> {
+                    deviceScreenshotManager.getScreenshotDirectoryConfigs()
+                        .find { it.deviceType == com.readassist.utils.DeviceType.SUPERNOTE }
+                }
+                filePath.contains("/storage/emulated/0/iReader/saveImage/") -> {
+                    deviceScreenshotManager.getScreenshotDirectoryConfigs()
+                        .find { it.deviceType == com.readassist.utils.DeviceType.IREADER }
+                }
+                else -> null
+            }
+            
+            if (deviceConfig != null && deviceScreenshotManager.hasDirectoryAccess(deviceConfig)) {
+                val directory = deviceScreenshotManager.getScreenshotDirectory(deviceConfig)
+                
+                directory?.listFiles()?.forEach { file ->
+                    if (file.name == fileName) {
+                        Log.d(TAG, "通过SAF找到文件: ${file.name}")
+                        file.uri?.let { uri ->
+                            return contentResolver.openInputStream(uri)?.use { inputStream ->
+                                BitmapFactory.decodeStream(inputStream)
+                            }
+                        }
+                    }
+                }
+            }
+            
+            Log.w(TAG, "SAF无法访问文件: $fileName")
+            null
+        } catch (e: Exception) {
+            Log.w(TAG, "SAF访问异常: ${e.message}")
+            null
+        }
+    }
+    
+
+    
+
     
     override fun onScreenshotFailed(error: String) {
         Log.e(TAG, "❌ 截屏失败: $error")
@@ -1353,8 +1418,9 @@ class FloatingWindowServiceNew : Service(),
             chatWindowManager.updateWindowTitle()
 
             // === 新增：刷新勾选项内容 ===
-            val screenshotTime = getLatestScreenshotTimeString()
-            chatWindowManager.updateScreenshotInfo(screenshotTime)
+            // 注意：移除了updateScreenshotInfoWithDeviceManager()调用
+            // 因为processScreenshot()中的updateScreenshotInfoDirect()已提供精确时间更新
+            // 避免重复调用导致时间显示不一致
             updateClipboardUI()
             
             // 新增：初始状态下，确保输入框内容与勾选状态一致

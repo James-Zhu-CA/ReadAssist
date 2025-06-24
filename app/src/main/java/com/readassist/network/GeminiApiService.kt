@@ -9,14 +9,16 @@ import retrofit2.http.*
  */
 interface GeminiApiService {
     
-    @POST("v1beta/models/gemini-2.5-flash-preview-05-20:generateContent")
+    @POST("v1beta/models/{model}:generateContent")
     suspend fun generateContent(
+        @Path("model") model: String,
         @Query("key") apiKey: String,
         @Body request: GeminiRequest
     ): Response<GeminiResponse>
     
-    @POST("v1beta/models/gemini-2.5-flash-preview-05-20:streamGenerateContent")
+    @POST("v1beta/models/{model}:streamGenerateContent")
     suspend fun streamGenerateContent(
+        @Path("model") model: String,
         @Query("key") apiKey: String,
         @Body request: GeminiRequest
     ): Response<GeminiResponse>

@@ -18,6 +18,8 @@ import com.readassist.databinding.ActivityMainBinding
 import com.readassist.service.FloatingWindowServiceNew
 import com.readassist.service.ScreenshotService
 import com.readassist.utils.ApiKeyHelper
+import com.readassist.utils.DeviceUtils
+import com.readassist.utils.DeviceType
 import com.readassist.utils.PermissionUtils
 import com.readassist.viewmodel.MainViewModel
 import android.util.Log
@@ -28,6 +30,8 @@ import android.net.Uri
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.IntentFilter
+import com.readassist.utils.DeviceScreenshotManager
+import com.readassist.utils.PreferenceManager
 
 class MainActivity : AppCompatActivity() {
     
@@ -73,6 +77,30 @@ class MainActivity : AppCompatActivity() {
             app.preferenceManager.setScreenshotPermissionGranted(false)
             showMessage("截屏权限被拒绝，截屏功能将无法使用")
             updateFloatingServiceStatus()
+        }
+    }
+    
+    // SAF目录权限相关
+    private val safDirectoryLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            val deviceScreenshotManager = DeviceScreenshotManager(this, app.preferenceManager)
+            val success = deviceScreenshotManager.handleDirectoryAccessResult(
+                DeviceScreenshotManager.REQUEST_CODE_SAF_DIRECTORY,
+                result.resultCode,
+                result.data
+            )
+            
+            if (success) {
+                showMessage("✅ Supernote截屏目录权限已授予")
+                // 刷新权限状态显示
+                viewModel.checkPermissions()
+            } else {
+                showMessage("❌ 权限授予失败，请重试")
+            }
+        } else {
+            showMessage("❌ 用户取消了权限授予")
         }
     }
     
@@ -584,10 +612,10 @@ class MainActivity : AppCompatActivity() {
         val screenshotGranted = app.preferenceManager.isScreenshotPermissionGranted()
         val floatingServiceRunning = isFloatingWindowServiceRunning()
 
-        // 获取StorageAccessManager来检查掌阅截屏目录权限
-        val storageAccessManager = com.readassist.utils.StorageAccessManager(this, app.preferenceManager)
-        val isIReaderDevice = com.readassist.utils.DeviceUtils.isIReaderDevice()
-        val hasIReaderDirectoryAccess = if (isIReaderDevice) storageAccessManager.hasIReaderDirectoryAccess() else true
+        // 获取通用设备截屏目录管理器
+        val deviceScreenshotManager = com.readassist.utils.DeviceScreenshotManager(this, app.preferenceManager)
+        val currentDeviceConfig = deviceScreenshotManager.getCurrentDeviceConfig()
+        val hasCurrentDeviceAccess = deviceScreenshotManager.hasDirectoryAccess(currentDeviceConfig)
         
         // 存储权限状态显示 - 墨水屏优化，统一使用黑色文字
         if (storageStatus.allGranted) {
@@ -611,43 +639,116 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // 掌阅设备截屏文件目录权限状态显示（仅掌阅设备显示）
-        if (isIReaderDevice) {
-            // 显示截屏文件目录权限状态
-            binding.tvIReaderDirectoryStatus.visibility = View.VISIBLE
-            binding.btnRequestIReaderDirectory.visibility = View.VISIBLE
-            
-            if (hasIReaderDirectoryAccess) {
-                binding.tvIReaderDirectoryStatus.text = "掌阅截屏文件目录：已授予"
-                binding.tvIReaderDirectoryStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
-                binding.btnRequestIReaderDirectory.visibility = View.GONE
-            } else {
-                binding.tvIReaderDirectoryStatus.text = "掌阅截屏文件目录：未授予"
-                binding.tvIReaderDirectoryStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
-                binding.btnRequestIReaderDirectory.visibility = View.VISIBLE
-                binding.btnRequestIReaderDirectory.text = "配置目录权限"
-                binding.btnRequestIReaderDirectory.setOnClickListener {
-                    // 启动掌阅设备配置Activity
-                    startActivity(Intent(this@MainActivity, com.readassist.ui.IReaderSetupActivity::class.java))
+        // 通用设备截屏文件目录权限状态显示 - 增强版
+        binding.tvIReaderDirectoryStatus.visibility = View.VISIBLE
+        binding.btnRequestIReaderDirectory.visibility = View.VISIBLE
+        
+        // 检查各个目录的权限状态
+        val deviceType = com.readassist.utils.DeviceUtils.getDeviceType()
+        val directoryStatusText = when (deviceType) {
+            com.readassist.utils.DeviceType.SUPERNOTE -> {
+                // 检查SAF权限而不是直接文件系统访问
+                val deviceScreenshotManager = DeviceScreenshotManager(this, app.preferenceManager)
+                val config = deviceScreenshotManager.getCurrentDeviceConfig()
+                val hasSafAccess = deviceScreenshotManager.hasDirectoryAccess(config)
+                
+                // 添加调试日志
+                Log.d(TAG, "Supernote目录权限检查: config=${config.displayName}, hasSafAccess=$hasSafAccess")
+                Log.d(TAG, "Supernote配置详情: systemPath=${config.systemPath}, safPrefKey=${config.safPrefKey}")
+                val savedUri = app.preferenceManager.getString(config.safPrefKey, "")
+                Log.d(TAG, "Supernote保存的URI: $savedUri")
+                
+                if (hasSafAccess) {
+                    "Supernote截屏目录：✅ 已授权SAF访问 (/storage/emulated/0/SCREENSHOT)"
+                } else {
+                    "Supernote截屏目录：❌ 需要SAF授权 (/storage/emulated/0/SCREENSHOT)"
                 }
             }
+            com.readassist.utils.DeviceType.IREADER -> {
+                if (hasCurrentDeviceAccess) {
+                    "掌阅截屏目录：✅ 已授权 (${currentDeviceConfig.systemPath})"
+                } else {
+                    "掌阅截屏目录：❌ 需要SAF授权 (${currentDeviceConfig.systemPath})"
+                }
+            }
+            else -> {
+                val screenshotDir = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_PICTURES), "Screenshots")
+                val canWrite = try {
+                    screenshotDir.exists() || screenshotDir.mkdirs()
+                    val testFile = java.io.File(screenshotDir, ".test_write_permission")
+                    testFile.createNewFile() && testFile.delete()
+                } catch (e: Exception) {
+                    false
+                }
+                
+                if (canWrite) {
+                    "通用截屏目录：✅ 可写入 (${screenshotDir.absolutePath})"
+                } else {
+                    "通用截屏目录：❌ 无写入权限 (${screenshotDir.absolutePath})"
+                }
+            }
+        }
+        
+        binding.tvIReaderDirectoryStatus.text = directoryStatusText
+        binding.tvIReaderDirectoryStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
+        
+        // 根据权限状态决定按钮显示
+        val hasDirectoryAccess = when (deviceType) {
+            com.readassist.utils.DeviceType.SUPERNOTE -> {
+                directoryStatusText.contains("✅")
+            }
+            com.readassist.utils.DeviceType.IREADER -> {
+                hasCurrentDeviceAccess
+            }
+            else -> {
+                directoryStatusText.contains("✅")
+            }
+        }
+        
+        if (hasDirectoryAccess) {
+            // 已授权：隐藏按钮
+            binding.btnRequestIReaderDirectory.visibility = View.GONE
+        } else {
+            // 未授权：显示授权按钮
+            binding.btnRequestIReaderDirectory.visibility = View.VISIBLE
+            binding.btnRequestIReaderDirectory.text = when (deviceType) {
+                com.readassist.utils.DeviceType.SUPERNOTE -> "开始目录授权"
+                com.readassist.utils.DeviceType.IREADER -> "开始目录授权"
+                else -> "开始目录授权"
+            }
+        }
+        
+        binding.btnRequestIReaderDirectory.setOnClickListener {
+            // 根据设备类型和权限状态决定跳转逻辑
+            val deviceType = com.readassist.utils.DeviceUtils.getDeviceType()
             
-            // 如果是掌阅设备，修改截屏权限提示
+            if (deviceType == com.readassist.utils.DeviceType.SUPERNOTE && !directoryStatusText.contains("✅")) {
+                // Supernote设备且无权限：直接启动SAF授权
+                requestSupernoteDirectoryAccess()
+            } else {
+                // 其他情况：启动通用设备配置Activity
+                startActivity(Intent(this@MainActivity, com.readassist.ui.DeviceSetupActivity::class.java))
+            }
+        }
+            
+        // 根据设备类型显示不同的截屏权限说明
+        if (com.readassist.utils.DeviceUtils.isIReaderDevice()) {
+            // 掌阅设备特殊说明
             binding.tvScreenshotStatus.text = "截屏权限：您的设备是掌阅公司的，建议将按键长按设置为截屏，使用会更便捷"
             binding.tvScreenshotStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
             binding.btnScreenshotPermission.visibility = View.GONE
         } else {
-            // 非掌阅设备，隐藏掌阅特定的权限显示
-            binding.tvIReaderDirectoryStatus.visibility = View.GONE
-            binding.btnRequestIReaderDirectory.visibility = View.GONE
             
-            // 非掌阅设备的截屏权限显示 - 改进说明
+            // 非掌阅设备的截屏权限显示 - 简化权限检查逻辑
             if (screenshotGranted) {
-                // 验证权限是否真正有效
+                // 简化验证：只检查基本权限标志和resultCode
                 val resultCode = app.preferenceManager.getScreenshotResultCode()
-                val resultDataUri = app.preferenceManager.getScreenshotResultDataUri()
                 
-                if (resultCode != -1 && resultDataUri != null) {
+                // 添加调试日志
+                Log.d(TAG, "截屏权限检查: screenshotGranted=$screenshotGranted, resultCode=$resultCode")
+                
+                // MediaProjection的RESULT_OK是-1，只检查这个核心条件
+                if (resultCode == -1) {
                     binding.tvScreenshotStatus.text = "截屏权限：已授予（重启后需重新授权）"
                     binding.tvScreenshotStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
                     binding.btnScreenshotPermission.visibility = View.VISIBLE
@@ -687,7 +788,7 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "btnScreenshotPermission visible: ${binding.btnScreenshotPermission.visibility == View.VISIBLE}")
         Log.d(TAG, "tvStoragePermissionStatus: ${binding.tvStoragePermissionStatus.text}")
         Log.d(TAG, "btnRequestStoragePermission visible: ${binding.btnRequestStoragePermission.visibility == View.VISIBLE}")
-        if (isIReaderDevice) {
+        if (DeviceUtils.isIReaderDevice()) {
             Log.d(TAG, "tvIReaderDirectoryStatus: ${binding.tvIReaderDirectoryStatus.text}")
             Log.d(TAG, "btnRequestIReaderDirectory visible: ${binding.btnRequestIReaderDirectory.visibility == View.VISIBLE}")
         }
@@ -907,6 +1008,40 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+
+    /**
+     * 请求Supernote设备的截屏目录访问权限
+     */
+    private fun requestSupernoteDirectoryAccess() {
+        AlertDialog.Builder(this)
+            .setTitle("🗂️ Supernote截屏目录授权")
+            .setMessage("为了保存和监控截屏文件，需要授权访问以下目录：\n\n📁 /storage/emulated/0/SCREENSHOT\n\n这是Supernote设备的系统截屏目录。点击\"授权\"后，请在文件选择器中选择 SCREENSHOT 文件夹。")
+            .setPositiveButton("🔓 授权") { _, _ ->
+                try {
+                    val deviceScreenshotManager = DeviceScreenshotManager(this, app.preferenceManager)
+                    val config = deviceScreenshotManager.getCurrentDeviceConfig()
+                    
+                    // 使用Intent.ACTION_OPEN_DOCUMENT_TREE直接创建授权Intent
+                    val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                            // 尝试指向SCREENSHOT目录
+                            val uri = android.provider.DocumentsContract.buildDocumentUri(
+                                "com.android.externalstorage.documents",
+                                "primary:SCREENSHOT"
+                            )
+                            putExtra(android.provider.DocumentsContract.EXTRA_INITIAL_URI, uri)
+                        }
+                    }
+                    
+                    safDirectoryLauncher.launch(intent)
+                } catch (e: Exception) {
+                    Log.e(TAG, "启动SAF授权失败", e)
+                    showMessage("❌ 启动授权失败：${e.message}")
+                }
+            }
+            .setNegativeButton("❌ 取消", null)
+            .show()
+    }
 
     override fun onDestroy() {
         super.onDestroy()

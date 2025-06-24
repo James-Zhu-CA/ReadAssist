@@ -76,8 +76,8 @@ class FloatingButtonManager(
                 btn.layoutParams = params
             }
             
-            // 设置透明度为0.8（统一透明度）
-            floatingButton?.alpha = 0.8f
+            // 设置透明度为1.0（完全不透明，透明度由XML背景控制）
+            floatingButton?.alpha = 1.0f
             
             // 设置按钮点击事件
             floatingButton?.setOnClickListener {
@@ -195,7 +195,7 @@ class FloatingButtonManager(
                     v.animate()
                         .scaleX(0.9f)
                         .scaleY(0.9f)
-                        .alpha(0.9f)
+                        .alpha(1.0f)
                         .setDuration(100)
                         .start()
                     
@@ -233,7 +233,7 @@ class FloatingButtonManager(
                     v.animate()
                         .scaleX(1.0f)
                         .scaleY(1.0f)
-                        .alpha(0.8f)  // 统一透明度为0.8
+                        .alpha(1.0f)  // 完全不透明，透明度由XML背景控制
                         .setDuration(150)
                         .start()
                     
@@ -292,7 +292,7 @@ class FloatingButtonManager(
                 // 不使用缩放动画
                 scaleX = 1.0f
                 scaleY = 1.0f
-                alpha = 0.8f // 统一透明度为0.8
+                alpha = 1.0f // 完全不透明，透明度由XML背景控制
                 
                 // 不再设置背景色，使用XML中定义的白色背景和圆圈边框
                 if (this is Button) {
@@ -331,7 +331,7 @@ class FloatingButtonManager(
                 // 移除动画效果，直接设置状态
                 scaleX = 1.0f
                 scaleY = 1.0f
-                alpha = 0.8f
+                alpha = 1.0f
                 
                 // 不再设置背景色，使用XML中定义的白色背景和圆圈边框
                 if (this is Button) {
@@ -453,7 +453,7 @@ class FloatingButtonManager(
         floatingButton?.let { button ->
             if (isSelectionMode) {
                 // 选择模式：移除动画效果，直接设置状态
-                button.alpha = 0.8f // 统一透明度为0.8
+                button.alpha = 1.0f // 完全不透明，透明度由XML背景控制
                 button.scaleX = 1.0f
                 button.scaleY = 1.0f
                 
@@ -462,7 +462,7 @@ class FloatingButtonManager(
                 Log.e(TAG, "🎨 按钮外观已更新为选择模式")
             } else {
                 // 普通模式：移除动画效果，直接设置状态
-                button.alpha = 0.8f // 统一透明度为0.8
+                button.alpha = 1.0f // 完全不透明，透明度由XML背景控制
                 button.scaleX = 1.0f
                 button.scaleY = 1.0f
                 

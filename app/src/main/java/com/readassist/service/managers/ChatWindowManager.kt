@@ -777,6 +777,64 @@ class ChatWindowManager(
             checkSendScreenshot?.isEnabled = true
         }
     }
+    
+    /**
+     * 更新截屏信息（使用新的设备管理器）
+     */
+    fun updateScreenshotInfoWithDeviceManager() {
+        try {
+            val deviceScreenshotManager = com.readassist.utils.DeviceScreenshotManager(context, preferenceManager)
+            val latestInfo = deviceScreenshotManager.getLatestScreenshotInfo()
+            
+            if (latestInfo != null) {
+                val timeString = deviceScreenshotManager.formatTimeForDisplay(latestInfo.lastModified)
+                val deviceInfo = when (latestInfo.deviceType) {
+                    com.readassist.utils.DeviceType.IREADER -> "掌阅"
+                    com.readassist.utils.DeviceType.SUPERNOTE -> "Supernote"
+                    else -> "系统"
+                }
+                tvScreenshotTime?.text = "$timeString ($deviceInfo)"
+                checkSendScreenshot?.isEnabled = true
+            } else {
+                tvScreenshotTime?.text = "无最新截屏"
+                checkSendScreenshot?.isEnabled = false
+                checkSendScreenshot?.isChecked = false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "更新截屏信息失败", e)
+            tvScreenshotTime?.text = "获取失败"
+            checkSendScreenshot?.isEnabled = false
+            checkSendScreenshot?.isChecked = false
+        }
+    }
+    
+    /**
+     * 直接更新截屏信息（使用指定的文件信息）
+     * 用于FileObserver触发时的精确时间显示
+     */
+    fun updateScreenshotInfoDirect(filePath: String, timestamp: Long) {
+        try {
+            val deviceScreenshotManager = com.readassist.utils.DeviceScreenshotManager(context, preferenceManager)
+            val timeString = deviceScreenshotManager.formatTimeForDisplay(timestamp)
+            
+            // 根据文件路径判断设备类型
+            val deviceInfo = when {
+                filePath.contains("/storage/emulated/0/SCREENSHOT/") -> "Supernote"
+                filePath.contains("/storage/emulated/0/iReader/saveImage/") -> "掌阅"
+                filePath.contains("/storage/emulated/0/Pictures/Screenshots/") -> "系统"
+                else -> "未知"
+            }
+            
+            tvScreenshotTime?.text = "$timeString ($deviceInfo)"
+            checkSendScreenshot?.isEnabled = true
+            
+            Log.d(TAG, "直接更新截屏信息: $timeString ($deviceInfo) - $filePath")
+        } catch (e: Exception) {
+            Log.e(TAG, "直接更新截屏信息失败", e)
+            // 回退到通用方法
+            updateScreenshotInfoWithDeviceManager()
+        }
+    }
 
     /**
      * 优化：更新剪贴板内容勾选项和内容显示

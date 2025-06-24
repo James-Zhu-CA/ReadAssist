@@ -2,8 +2,8 @@
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="oval">
     
-    <!-- 白色填充背景 -->
-    <solid android:color="#FFFFFF" />
+    <!-- 白色填充背景，透明度60% -->
+    <solid android:color="#99FFFFFF" />
     
     <!-- 黑色圆圈边框 -->
     <stroke

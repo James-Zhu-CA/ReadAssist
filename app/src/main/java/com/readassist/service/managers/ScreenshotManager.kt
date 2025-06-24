@@ -33,7 +33,7 @@ import java.io.File
 import java.io.FileOutputStream
 import android.os.FileObserver
 import android.os.Environment
-import com.readassist.utils.StorageAccessManager
+
 import androidx.documentfile.provider.DocumentFile
 
 /**
@@ -78,9 +78,10 @@ class ScreenshotManager(
 
     // 新增：统一的文件观察器
     private var fileObserver: FileObserver? = null
+    private var fileObservers: MutableList<FileObserver>? = null
     
-    // SAF管理器（用于掌阅设备）
-    private val storageAccessManager = StorageAccessManager(context, preferenceManager)
+    // 通用设备截屏目录管理器（替代原来的StorageAccessManager）
+    private val deviceScreenshotManager = com.readassist.utils.DeviceScreenshotManager(context, preferenceManager)
     
     private val screenshotReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -1387,8 +1388,8 @@ class ScreenshotManager(
                 File(Environment.getExternalStorageDirectory(), "DCIM/Screenshots"),
                 // 掌阅设备截屏目录
                 File("/storage/emulated/0/iReader/saveImage/tmp"),
-                // Supernote设备应用私有目录
-                context.getExternalFilesDir(null)?.let { File(it, "") }
+                // Supernote设备截屏目录
+                File("/storage/emulated/0/SCREENSHOT")
             ).filterNotNull()
 
             Log.d(TAG, "✅ [统一流程] 开始监控多个截屏目录:")
@@ -1419,8 +1420,8 @@ class ScreenshotManager(
                     val currentTime = System.currentTimeMillis()
                         val fullPath = File(dirToWatch, path).absolutePath
                         
-                    // 防抖：2秒内同一个文件的事件只处理一次
-                        if (fullPath == lastProcessedPath && (currentTime - lastProcessedTime) < 2000) {
+                    // 防抖：5秒内同一个文件的事件只处理一次
+                        if (fullPath == lastProcessedPath && (currentTime - lastProcessedTime) < 5000) {
                         return
                     }
                     
@@ -1433,13 +1434,21 @@ class ScreenshotManager(
                         lastProcessedPath = fullPath
                     lastProcessedTime = currentTime
 
-                                                 // 立即处理，在解码时确保文件完整性
-                        val file = File(dirToWatch, path)
-                         if (file.exists() && isRecentFile(file)) {
-                             Log.d(TAG, "[统一流程] 立即处理新截屏文件: ${file.absolutePath}")
-                             // 统一回调接口，触发弹窗逻辑
-                            callbacks.onScreenshotComplete(Uri.fromFile(file))
+                    val file = File(dirToWatch, path)
+                    if (file.exists() && isRecentFile(file)) {
+                        // 使用协程进行文件大小轮询，确保文件完全写入
+                        coroutineScope.launch {
+                            val finalFile = waitForFileWriteComplete(file)
+                            if (finalFile != null) {
+                                Log.d(TAG, "[统一流程] 文件写入完成，开始处理: ${finalFile.absolutePath}")
+                                withContext(Dispatchers.Main) {
+                                    callbacks.onScreenshotComplete(Uri.fromFile(finalFile))
+                                }
+                            } else {
+                                Log.e(TAG, "[统一流程] 文件写入超时或失败: $fullPath")
+                            }
                         }
+                    }
                 }
             }
             
@@ -1451,10 +1460,10 @@ class ScreenshotManager(
             // 保存所有观察器（需要修改变量类型来支持多个观察器）
             fileObservers = observers
             
-            // 如果是掌阅设备，同时启动SAF监控
-            if (DeviceUtils.isIReaderDevice()) {
-                startSAFMonitoring()
-            }
+            // 注释掉掌阅设备的SAF监控启动，避免双重监控导致弹窗重复
+            // if (DeviceUtils.isIReaderDevice()) {
+            //     startSAFMonitoring()
+            // }
 
         } catch (e: Exception) {
             Log.e(TAG, "❌ 启动统一截屏文件监控失败", e)
@@ -1466,9 +1475,20 @@ class ScreenshotManager(
      */
     private fun isScreenshotFile(fileName: String): Boolean {
         val lowerName = fileName.lowercase()
-        return (lowerName.endsWith(".png") || lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg")) &&
-               (lowerName.contains("screenshot") || lowerName.contains("screen") || 
-                lowerName.contains("capture") || lowerName.contains("snap"))
+        
+        // 检查文件扩展名
+        val hasValidExtension = lowerName.endsWith(".png") || lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg")
+        if (!hasValidExtension) return false
+        
+        // 检查文件名模式
+        return lowerName.contains("screenshot") || 
+               lowerName.contains("screen") || 
+               lowerName.contains("capture") || 
+               lowerName.contains("snap") ||
+               // Supernote格式：20250623_080940.png
+               lowerName.matches(Regex("\\d{8}_\\d{6}\\.(png|jpg|jpeg)")) ||
+               // 掌阅格式：screenshot-时间戳.png
+               lowerName.matches(Regex("screenshot-\\d+\\.(png|jpg|jpeg)"))
     }
     
     /**
@@ -1482,6 +1502,69 @@ class ScreenshotManager(
     }
     
     /**
+     * 等待文件写入完成
+     * 通过文件大小轮询机制确保文件完全写入
+     * @param file 要检查的文件
+     * @return 写入完成的文件，如果超时则返回null
+     */
+    private suspend fun waitForFileWriteComplete(file: File): File? {
+        return withContext(Dispatchers.IO) {
+            try {
+                var lastSize = -1L
+                var stableCount = 0
+                val maxWaitTime = 5000L // 最大等待5秒
+                val startTime = System.currentTimeMillis()
+                
+                Log.d(TAG, "[文件轮询] 开始监控文件写入: ${file.absolutePath}")
+                
+                while (System.currentTimeMillis() - startTime < maxWaitTime) {
+                    if (!file.exists()) {
+                        Log.d(TAG, "[文件轮询] 文件不存在，继续等待...")
+                        delay(50)
+                        continue
+                    }
+                    
+                    val currentSize = file.length()
+                    Log.d(TAG, "[文件轮询] 当前文件大小: $currentSize bytes")
+                    
+                                         if (currentSize == lastSize && currentSize > 0) {
+                         stableCount++
+                         Log.d(TAG, "[文件轮询] 文件大小稳定 ${stableCount * 50}ms: $currentSize bytes")
+                         
+                         // 如果文件大小连续200ms没有变化，认为写入完成
+                         if (stableCount >= 4) { // 4 * 50ms = 200ms
+                             Log.d(TAG, "[文件轮询] ✅ 文件写入完成: ${file.absolutePath}, 最终大小: $currentSize bytes")
+                             return@withContext file
+                         }
+                    } else {
+                        // 文件大小发生变化，重置计数器
+                        if (currentSize != lastSize) {
+                            Log.d(TAG, "[文件轮询] 文件大小变化: $lastSize -> $currentSize bytes")
+                            stableCount = 0
+                            lastSize = currentSize
+                        }
+                    }
+                    
+                    delay(50) // 每50ms检查一次
+                }
+                
+                // 超时但文件存在，尝试使用当前文件
+                if (file.exists() && file.length() > 0) {
+                    Log.w(TAG, "[文件轮询] ⚠️ 等待超时，但文件存在，尝试继续处理: ${file.length()} bytes")
+                    return@withContext file
+                } else {
+                    Log.e(TAG, "[文件轮询] ❌ 等待超时且文件无效")
+                    return@withContext null
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "[文件轮询] 异常: ${e.message}", e)
+                return@withContext null
+            }
+        }
+    }
+    
+    /**
      * 停止监控截屏目录 - 统一流程版本
      */
     fun stopMonitoring() {
@@ -1492,28 +1575,30 @@ class ScreenshotManager(
             }
             fileObservers?.clear()
             
-            // 停止SAF监控
-            stopSAFMonitoring()
+            // 注释掉SAF监控停止，因为已经不启动SAF监控了
+            // stopSAFMonitoring()
         } catch (e: Exception) {
             Log.e(TAG, "停止截屏监控失败", e)
         }
     }
 
-    // 需要在类顶部添加新的变量定义
-    private var fileObservers: MutableList<FileObserver>? = null
+    // fileObservers变量已在类顶部定义
     
     // SAF监控相关
     private var safMonitoringJob: Job? = null
     
     /**
      * 开始SAF监控（专门用于掌阅设备）
+     * 注意：此方法已停用，避免与FileObserver形成双重监控导致弹窗重复
      */
     private fun startSAFMonitoring() {
         if (!DeviceUtils.isIReaderDevice()) {
             return
         }
         
-        if (!storageAccessManager.hasIReaderDirectoryAccess()) {
+        val iReaderConfig = deviceScreenshotManager.getScreenshotDirectoryConfigs()
+            .find { it.deviceType == com.readassist.utils.DeviceType.IREADER }
+        if (iReaderConfig == null || !deviceScreenshotManager.hasDirectoryAccess(iReaderConfig)) {
             Log.d(TAG, "掌阅设备未配置SAF权限，跳过SAF监控")
             return
         }
@@ -1524,7 +1609,7 @@ class ScreenshotManager(
             
             while (true) {
                 try {
-                    val recentScreenshots = storageAccessManager.findRecentScreenshots(5000)
+                    val recentScreenshots = deviceScreenshotManager.findRecentScreenshots(iReaderConfig, 5000)
                     if (recentScreenshots.isNotEmpty()) {
                         val latestScreenshot = recentScreenshots.first()
                         Log.d(TAG, "📸 SAF检测到新截屏: ${latestScreenshot.name}")
@@ -1555,16 +1640,17 @@ class ScreenshotManager(
     }
     
     /**
-     * 检查掌阅设备是否需要配置SAF权限
+     * 检查设备是否需要配置SAF权限
      */
     fun checkIReaderSetupRequired(): Boolean {
-        return DeviceUtils.isIReaderDevice() && !storageAccessManager.hasIReaderDirectoryAccess()
+        val currentConfig = deviceScreenshotManager.getCurrentDeviceConfig()
+        return !deviceScreenshotManager.hasDirectoryAccess(currentConfig)
     }
     
     /**
-     * 获取SAF管理器（供外部使用）
+     * 获取设备截屏管理器（供外部使用）
      */
-    fun getStorageAccessManager(): StorageAccessManager {
-        return storageAccessManager
+    fun getDeviceScreenshotManager(): com.readassist.utils.DeviceScreenshotManager {
+        return deviceScreenshotManager
     }
 } 

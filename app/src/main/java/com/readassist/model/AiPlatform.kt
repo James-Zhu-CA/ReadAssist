@@ -52,15 +52,15 @@ data class AiModel(
                     description = "最新的Gemini模型，支持图像分析"
                 ),
                 AiModel(
-                    id = "gemini-2.5-flash-preview-05-20",
-                    displayName = "Gemini 2.5 Flash Preview",
+                    id = "gemini-2.5-flash",
+                    displayName = "Gemini 2.5 Flash",
                     platform = AiPlatform.GEMINI,
                     supportsVision = true,
-                    description = "Gemini 2.5预览版，性能优秀"
+                    description = "Gemini 2.5正式版，性能优秀"
                 ),
                 AiModel(
-                    id = "gemini-2.5-pro-preview-05-06",
-                    displayName = "Gemini 2.5 Pro Preview",
+                    id = "gemini-2.5-pro",
+                    displayName = "Gemini 2.5 Pro",
                     platform = AiPlatform.GEMINI,
                     supportsVision = true,
                     description = "Gemini 2.5专业版，功能最强"
@@ -96,7 +96,7 @@ data class AiModel(
          */
         fun getDefaultModelForPlatform(platform: AiPlatform): AiModel? {
             return when (platform) {
-                AiPlatform.GEMINI -> getDefaultModels().find { it.id == "gemini-2.0-flash" }
+                AiPlatform.GEMINI -> getDefaultModels().find { it.id == "gemini-2.5-flash" }
                 AiPlatform.SILICONFLOW -> getDefaultModels().find { it.id == "Qwen/Qwen2.5-VL-72B-Instruct" }
             }
         }
