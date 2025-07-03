@@ -18,7 +18,7 @@ import android.media.projection.MediaProjectionManager
  * 用于接收截屏权限请求结果的Activity
  * 此Activity不显示任何UI，只是作为接收权限请求结果的中介
  */
-class ScreenshotResultActivity : AppCompatActivity() {
+class ScreenshotResultActivity : BaseActivity() {
     
     companion object {
         private const val TAG = "ScreenshotResultActivity"

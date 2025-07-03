@@ -10,6 +10,7 @@ import android.widget.Toast
 import com.readassist.model.AiModel
 import com.readassist.model.AiPlatform
 import com.readassist.utils.PreferenceManager
+import com.readassist.R
 
 /**
  * 管理AI配置
@@ -112,15 +113,15 @@ class AiConfigurationManager(
     ) {
         try {
             AlertDialog.Builder(context, android.R.style.Theme_Material_Dialog_Alert)
-                .setTitle("需要配置AI服务")
-                .setMessage("使用AI助手前需要先配置API Key。\n\n请选择：\n• 在主应用中完成配置\n• 或在聊天窗口中快速配置")
-                .setPositiveButton("打开主应用") { _, _ ->
+                .setTitle(context.getString(R.string.ai_config_required_title))
+                .setMessage(context.getString(R.string.ai_config_required_message))
+                .setPositiveButton(context.getString(R.string.open_main_app)) { _, _ ->
                     onOpenMainApp.invoke()
                 }
-                .setNeutralButton("快速配置") { _, _ ->
+                .setNeutralButton(context.getString(R.string.quick_setup)) { _, _ ->
                     onQuickConfig.invoke()
                 }
-                .setNegativeButton("取消", null)
+                .setNegativeButton(context.getString(R.string.cancel_button), null)
                 .setCancelable(true)
                 .create()
                 .apply {
@@ -148,12 +149,12 @@ class AiConfigurationManager(
             val platformNames = platforms.map { it.displayName }.toTypedArray()
             
             AlertDialog.Builder(context, android.R.style.Theme_Material_Dialog_Alert)
-                .setTitle("选择AI平台")
+                .setTitle(context.getString(R.string.select_ai_platform_dialog_title))
                 .setItems(platformNames) { _, which ->
                     val selectedPlatform = platforms[which]
                     onPlatformSelected.invoke(selectedPlatform)
                 }
-                .setNegativeButton("取消", null)
+                .setNegativeButton(context.getString(R.string.cancel_button), null)
                 .setCancelable(true)
                 .create()
                 .apply {
@@ -178,17 +179,24 @@ class AiConfigurationManager(
     fun showApiKeyInputDialog(platform: AiPlatform, onApiKeySet: (Boolean) -> Unit) {
         try {
             val input = EditText(context).apply {
-                hint = platform.keyHint
+                hint = when (platform) {
+                AiPlatform.GEMINI -> context.getString(R.string.gemini_api_key_hint)
+                AiPlatform.SILICONFLOW -> context.getString(R.string.siliconflow_api_key_hint)
+            }
                 inputType = android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
             }
             
-            val message = "配置 ${platform.displayName}\n\n${platform.keyHint}\n\n申请地址：${platform.signupUrl}"
+            val keyHint = when (platform) {
+            AiPlatform.GEMINI -> context.getString(R.string.gemini_api_key_hint)
+            AiPlatform.SILICONFLOW -> context.getString(R.string.siliconflow_api_key_hint)
+        }
+        val message = context.getString(R.string.configure_platform_title, platform.displayName) + "\n\n${keyHint}\n\n" + context.getString(R.string.api_signup_url_label, platform.signupUrl)
             
             AlertDialog.Builder(context, android.R.style.Theme_Material_Dialog_Alert)
-                .setTitle("输入API Key")
+                .setTitle(context.getString(R.string.configure_api_key_title))
                 .setMessage(message)
                 .setView(input)
-                .setPositiveButton("确定") { _, _ ->
+                .setPositiveButton(context.getString(R.string.confirm)) { _, _ ->
                     val apiKey = input.text.toString().trim()
                     val success = setApiKey(platform, apiKey)
                     
@@ -205,14 +213,14 @@ class AiConfigurationManager(
                         // 配置完成
                         preferenceManager.setAiSetupCompleted(true)
                         
-                        Toast.makeText(context, "✅ ${platform.displayName} 配置成功", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.platform_config_success, platform.displayName), Toast.LENGTH_SHORT).show()
                     } else {
-                        Toast.makeText(context, "❌ API Key 格式不正确", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.api_key_invalid_format), Toast.LENGTH_SHORT).show()
                     }
                     
                     onApiKeySet.invoke(success)
                 }
-                .setNegativeButton("取消", null)
+                .setNegativeButton(context.getString(R.string.cancel_button), null)
                 .setCancelable(true)
                 .create()
                 .apply {

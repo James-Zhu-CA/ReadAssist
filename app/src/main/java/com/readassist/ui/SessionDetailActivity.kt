@@ -19,7 +19,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class SessionDetailActivity : AppCompatActivity() {
+class SessionDetailActivity : BaseActivity() {
 
     companion object {
         const val EXTRA_SESSION_ID = "extra_session_id"
@@ -41,17 +41,17 @@ class SessionDetailActivity : AppCompatActivity() {
 
         // 获取会话ID
         sessionId = intent.getStringExtra(EXTRA_SESSION_ID) ?: ""
-        bookName = intent.getStringExtra(EXTRA_BOOK_NAME) ?: "未知书籍"
+        bookName = intent.getStringExtra(EXTRA_BOOK_NAME) ?: getString(R.string.unknown_book)
 
         if (sessionId.isEmpty()) {
-            Toast.makeText(this, "无效的会话ID", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.invalid_session_id), Toast.LENGTH_SHORT).show()
             finish()
             return
         }
 
         // 设置标题栏
         supportActionBar?.title = bookName
-        supportActionBar?.subtitle = "会话详情"
+        supportActionBar?.subtitle = getString(R.string.session_detail)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         // 初始化RecyclerView
@@ -125,7 +125,7 @@ class SessionDetailActivity : AppCompatActivity() {
             app.chatRepository.toggleBookmark(messageId, isBookmarked)
             Toast.makeText(
                 this@SessionDetailActivity,
-                if (isBookmarked) "已收藏消息" else "已取消收藏",
+                if (isBookmarked) getString(R.string.message_bookmarked) else getString(R.string.message_unbookmarked),
                 Toast.LENGTH_SHORT
             ).show()
         }
@@ -140,7 +140,7 @@ class SessionDetailActivity : AppCompatActivity() {
                 binding.progressBar.visibility = View.GONE
             } catch (e: Exception) {
                 binding.progressBar.visibility = View.GONE
-                Toast.makeText(this@SessionDetailActivity, "导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@SessionDetailActivity, getString(R.string.export_failed, e.message), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -164,7 +164,7 @@ class SessionDetailActivity : AppCompatActivity() {
             // 显示成功消息
             Toast.makeText(
                 this,
-                "导出成功: ${file.absolutePath}",
+                getString(R.string.export_success_path, file.absolutePath),
                 Toast.LENGTH_LONG
             ).show()
             
@@ -174,25 +174,25 @@ class SessionDetailActivity : AppCompatActivity() {
             sendBroadcast(mediaScanIntent)
             
         } catch (e: Exception) {
-            Toast.makeText(this, "保存文件失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.save_file_failed, e.message), Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun confirmDeleteSession() {
         androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("删除会话")
-            .setMessage("确定要删除此会话吗？这将永久删除所有相关消息，且无法恢复。")
-            .setPositiveButton("删除") { _, _ ->
+            .setTitle(getString(R.string.delete_session_title))
+            .setMessage(getString(R.string.delete_session_message))
+            .setPositiveButton(getString(R.string.delete_button)) { _, _ ->
                 deleteSession()
             }
-            .setNegativeButton("取消", null)
+            .setNegativeButton(getString(R.string.cancel_button), null)
             .show()
     }
 
     private fun deleteSession() {
         lifecycleScope.launch {
             app.chatRepository.deleteSession(sessionId)
-            Toast.makeText(this@SessionDetailActivity, "会话已删除", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this@SessionDetailActivity, getString(R.string.session_deleted), Toast.LENGTH_SHORT).show()
             finish()
         }
     }

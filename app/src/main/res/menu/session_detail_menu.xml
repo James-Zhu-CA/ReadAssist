@@ -5,13 +5,13 @@
     <item
         android:id="@+id/menu_export"
         android:icon="@android:drawable/ic_menu_share"
-        android:title="导出会话"
+        android:title="@string/export_session"
         app:showAsAction="ifRoom" />
 
     <item
         android:id="@+id/menu_delete"
         android:icon="@android:drawable/ic_menu_delete"
-        android:title="删除会话"
+        android:title="@string/delete_session"
         app:showAsAction="never" />
 
 </menu> 

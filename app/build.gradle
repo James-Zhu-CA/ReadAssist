@@ -7,14 +7,14 @@ plugins {
 
 android {
     namespace 'com.readassist'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.readassist"
         minSdk 21  // 支持 Android 5.0+，兼容 A5X 的 Android 8.1
-        targetSdk 34
-        versionCode 8
-        versionName "1.7.0"
+        targetSdk 35
+        versionCode 9
+        versionName "1.8.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         

@@ -16,7 +16,7 @@ import com.readassist.utils.DeviceScreenshotManager
  * 通用设备截屏目录设置界面
  * 支持掌阅、Supernote和通用Android设备
  */
-class DeviceSetupActivity : AppCompatActivity() {
+class DeviceSetupActivity : BaseActivity() {
     
     private lateinit var preferenceManager: PreferenceManager
     private lateinit var deviceScreenshotManager: DeviceScreenshotManager
@@ -71,16 +71,13 @@ class DeviceSetupActivity : AppCompatActivity() {
         val currentConfig = deviceScreenshotManager.getCurrentDeviceConfig()
         
         val deviceInfo = """
-            📱 设备信息：
-            制造商：${android.os.Build.MANUFACTURER}
-            型号：${android.os.Build.MODEL}
-            检测设备类型：${currentConfig.displayName}
+            ${getString(R.string.device_info_title)}
+            ${getString(R.string.manufacturer_label, android.os.Build.MANUFACTURER)}
+            ${getString(R.string.model_label, android.os.Build.MODEL)}
+            ${getString(R.string.detected_device_type, currentConfig.displayName)}
             
-            💡 使用说明：
-            • 配置截屏目录权限可以实现自动弹窗功能
-            • 当您在设备上截屏时，应用会自动弹出对话窗口
-            • 建议配置当前设备对应的截屏目录权限
-            • 其他设备类型的配置是可选的
+            ${getString(R.string.usage_instructions)}
+            ${getString(R.string.usage_description)}
             
             ${deviceScreenshotManager.getStatusInfo()}
         """.trimIndent()
@@ -98,7 +95,7 @@ class DeviceSetupActivity : AppCompatActivity() {
     private fun clearSAFSetup(config: DeviceScreenshotManager.ScreenshotDirectoryConfig) {
         deviceScreenshotManager.clearDirectoryAccess(config)
         updateUI()
-        Toast.makeText(this, "已清除 ${config.displayName} 的配置", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, getString(R.string.config_cleared_for_device, config.displayName), Toast.LENGTH_SHORT).show()
     }
     
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -106,9 +103,9 @@ class DeviceSetupActivity : AppCompatActivity() {
         
         if (deviceScreenshotManager.handleDirectoryAccessResult(requestCode, resultCode, data)) {
             updateUI()
-            Toast.makeText(this, "✅ 目录访问权限配置成功！", Toast.LENGTH_LONG).show()
+                                Toast.makeText(this, getString(R.string.directory_access_configured), Toast.LENGTH_LONG).show()
         } else {
-            Toast.makeText(this, "❌ 配置失败或已取消", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.config_failed_or_cancelled), Toast.LENGTH_SHORT).show()
         }
     }
 }
@@ -152,19 +149,19 @@ class DeviceConfigAdapter(
         val hasAccess = deviceScreenshotManager.hasDirectoryAccess(config)
         val isCurrentDevice = DeviceUtils.getDeviceType() == config.deviceType
         
-        holder.deviceName.text = "${config.displayName}${if (isCurrentDevice) " (当前设备)" else ""}"
-        holder.devicePath.text = "路径: ${config.systemPath}"
+        holder.deviceName.text = "${config.displayName}${if (isCurrentDevice) holder.itemView.context.getString(R.string.current_device_label) else ""}"
+        holder.devicePath.text = holder.itemView.context.getString(R.string.device_path_label, config.systemPath)
         holder.deviceDescription.text = config.description
         
         if (hasAccess) {
-            holder.statusIndicator.text = "✅ 已配置"
+            holder.statusIndicator.text = "✅ ${holder.itemView.context.getString(R.string.device_configured)}"
             holder.statusIndicator.setTextColor(0xFF4CAF50.toInt())
-            holder.setupButton.text = "重新配置"
+            holder.setupButton.text = holder.itemView.context.getString(R.string.reconfigure)
             holder.clearButton.isEnabled = true
         } else {
-            holder.statusIndicator.text = "❌ 未配置"
+            holder.statusIndicator.text = holder.itemView.context.getString(R.string.device_not_configured)
             holder.statusIndicator.setTextColor(0xFFF44336.toInt())
-            holder.setupButton.text = "配置权限"
+            holder.setupButton.text = holder.itemView.context.getString(R.string.configure_permission_btn)
             holder.clearButton.isEnabled = false
         }
         

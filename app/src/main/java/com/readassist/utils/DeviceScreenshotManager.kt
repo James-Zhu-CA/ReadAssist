@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
+import com.readassist.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -336,7 +337,7 @@ class DeviceScreenshotManager(
         val statusList = configs.map { config ->
             val hasAccess = hasDirectoryAccess(config)
             val status = if (hasAccess) "✅" else "❌"
-            "$status ${config.displayName}: ${if (hasAccess) "已配置" else "未配置"}"
+            "$status ${config.displayName}: ${if (hasAccess) context.getString(R.string.device_configured) else context.getString(R.string.device_not_configured)}"
         }
         
         return "截屏目录监控状态：\n" + statusList.joinToString("\n")

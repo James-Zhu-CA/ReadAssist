@@ -90,10 +90,10 @@ class ScreenshotService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "截屏服务",
+                getString(R.string.screenshot_service_name),
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "ReadAssist 截屏功能"
+                description = getString(R.string.screenshot_service_description)
                 setShowBadge(false)
             }
             
@@ -104,8 +104,8 @@ class ScreenshotService : Service() {
     
     private fun createNotification(): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("ReadAssist 截屏服务")
-            .setContentText("准备截屏...")
+            .setContentTitle(getString(R.string.screenshot_service_title))
+            .setContentText(getString(R.string.screenshot_service_preparing))
             .setSmallIcon(R.drawable.ic_launcher)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -149,7 +149,7 @@ class ScreenshotService : Service() {
                         override fun onStop() {
                             Log.w(TAG, "⚠️ MediaProjection被系统停止了")
                             serviceScope.launch(Dispatchers.Main) {
-                                screenshotCallback?.onScreenshotFailed("截屏权限已被系统收回，请重新授权")
+                                screenshotCallback?.onScreenshotFailed(getString(R.string.screenshot_permission_revoked_by_system))
                             }
                         }
                     }, null)
@@ -273,7 +273,7 @@ class ScreenshotService : Service() {
         // 检查MediaProjection状态
         if (mediaProjection == null) {
             Log.e(TAG, "❌ MediaProjection为空，无法截屏")
-            screenshotCallback?.onScreenshotFailed("截屏权限未授予")
+            screenshotCallback?.onScreenshotFailed(getString(R.string.screenshot_permission_not_granted_simple))
                 return
         }
         

@@ -1,18 +1,21 @@
 package com.readassist.ui
 
+import android.content.Context
 import android.os.Bundle
 import android.widget.Toast
 import android.widget.ArrayAdapter
 import android.widget.AdapterView
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AlertDialog
 import com.readassist.R
 import com.readassist.ReadAssistApplication
 import com.readassist.databinding.ActivitySettingsBinding
 import com.readassist.model.AiPlatform
 import com.readassist.model.AiModel
+import com.readassist.utils.LanguageManager
 
-class SettingsActivity : AppCompatActivity() {
+class SettingsActivity : BaseActivity() {
     
     private lateinit var binding: ActivitySettingsBinding
     private lateinit var app: ReadAssistApplication
@@ -50,6 +53,9 @@ class SettingsActivity : AppCompatActivity() {
         setupPlatformSpinner()
         setupModelSpinner()
         
+        // 设置语言选择器
+        setupLanguageSpinner()
+        
         // 加载当前设置
         loadCurrentSettings()
     }
@@ -61,8 +67,8 @@ class SettingsActivity : AppCompatActivity() {
         val platforms = AiPlatform.values()
         val platformNames = platforms.map { it.displayName }
         
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, platformNames)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        val adapter = ArrayAdapter(this, R.layout.spinner_item_small, platformNames)
+        adapter.setDropDownViewResource(R.layout.spinner_item_small)
         
         binding.platformSpinner.adapter = adapter
         
@@ -108,8 +114,8 @@ class SettingsActivity : AppCompatActivity() {
             "${it.displayName}${if (!it.supportsVision) " (仅文本)" else ""}" 
         }
         
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, modelNames)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        val adapter = ArrayAdapter(this, R.layout.spinner_item_small, modelNames)
+        adapter.setDropDownViewResource(R.layout.spinner_item_small)
         
         binding.modelSpinner.adapter = adapter
         
@@ -198,11 +204,110 @@ class SettingsActivity : AppCompatActivity() {
         if (hasKey) {
             val apiKey = app.preferenceManager.getApiKey(platform) ?: ""
             val maskedKey = com.readassist.utils.ApiKeyHelper.getMaskedApiKey(apiKey)
-            binding.tvApiKeyStatus.text = "已配置: $maskedKey"
+            binding.tvApiKeyStatus.text = getString(R.string.api_key_configured, maskedKey)
             binding.tvApiKeyStatus.setTextColor(0xFF4CAF50.toInt())
         } else {
-            binding.tvApiKeyStatus.text = "未配置 ${platform.displayName} API Key"
+            binding.tvApiKeyStatus.text = getString(R.string.api_key_not_configured, platform.displayName)
             binding.tvApiKeyStatus.setTextColor(0xFFF44336.toInt())
+        }
+    }
+    
+    /**
+     * 设置语言选择器
+     */
+    private fun setupLanguageSpinner() {
+        // 简化的语言选项
+        val languageOptions = listOf(
+            "system" to getString(R.string.language_system),
+            "zh" to getString(R.string.language_chinese),
+            "en" to getString(R.string.language_english)
+        )
+        
+        val languageNames = languageOptions.map { it.second }
+        val languageCodes = languageOptions.map { it.first }
+        
+        val adapter = ArrayAdapter(this, R.layout.spinner_item_small, languageNames)
+        adapter.setDropDownViewResource(R.layout.spinner_item_small)
+        
+        binding.languageSpinner.adapter = adapter
+        
+        // 设置当前选择
+        val currentLanguageCode = app.preferenceManager.getAppLanguage()
+        val currentIndex = languageCodes.indexOf(currentLanguageCode)
+        if (currentIndex >= 0) {
+            binding.languageSpinner.setSelection(currentIndex)
+        }
+        
+        android.util.Log.e("SettingsActivity", "🌐 Current language: $currentLanguageCode (index: $currentIndex)")
+        
+        // 设置选择监听器
+        binding.languageSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val selectedLanguageCode = languageCodes[position]
+                val currentLanguageCode = app.preferenceManager.getAppLanguage()
+                
+                if (selectedLanguageCode != currentLanguageCode) {
+                    android.util.Log.e("SettingsActivity", "🔄 Language change requested: $currentLanguageCode -> $selectedLanguageCode")
+                    
+                    // 显示确认对话框
+                    AlertDialog.Builder(this@SettingsActivity)
+                        .setTitle(getString(R.string.language_title))
+                        .setMessage(getString(R.string.language_changed))
+                        .setPositiveButton(getString(R.string.ok)) { _, _ ->
+                            try {
+                                android.util.Log.e("SettingsActivity", "✅ User confirmed language change")
+                                
+                                // 调试：保存前先检查当前值
+                                val beforeSave = app.preferenceManager.getAppLanguage()
+                                android.util.Log.e("SettingsActivity", "🔍 Language before save: '$beforeSave'")
+                                
+                                // 直接保存语言设置到SharedPreferences
+                                app.preferenceManager.setAppLanguage(selectedLanguageCode)
+                                
+                                // 调试：保存后立即验证
+                                val afterSave = app.preferenceManager.getAppLanguage()
+                                android.util.Log.e("SettingsActivity", "✅ Language setting saved: '$selectedLanguageCode'")
+                                android.util.Log.e("SettingsActivity", "🔍 Language after save: '$afterSave'")
+                                
+                                // 额外验证：直接读取SharedPreferences
+                                val prefs = getSharedPreferences("readassist_prefs", Context.MODE_PRIVATE)
+                                val directRead = prefs.getString("app_language", "system") ?: "system"
+                                android.util.Log.e("SettingsActivity", "🔍 Direct SharedPreferences read: '$directRead'")
+                                
+                                // 显示提示信息
+                                showMessage(getString(R.string.language_saved_restarting))
+                                
+                                // 简化的重启方式
+                                binding.languageSpinner.postDelayed({
+                                    simpleRestartApp()
+                                }, 1000)
+                                
+                            } catch (e: Exception) {
+                                android.util.Log.e("SettingsActivity", "❌ Failed to save language setting", e)
+                                showMessage("语言设置失败: ${e.message}")
+                                
+                                // 恢复到原来的选择
+                                val originalIndex = languageCodes.indexOf(currentLanguageCode)
+                                if (originalIndex >= 0) {
+                                    binding.languageSpinner.setSelection(originalIndex)
+                                }
+                            }
+                        }
+                        .setNegativeButton(getString(R.string.cancel)) { _, _ ->
+                            android.util.Log.e("SettingsActivity", "❌ User cancelled language change")
+                            
+                            // 恢复到原来的选择
+                            val originalIndex = languageCodes.indexOf(currentLanguageCode)
+                            if (originalIndex >= 0) {
+                                binding.languageSpinner.setSelection(originalIndex)
+                            }
+                        }
+                        .setCancelable(false) // 防止意外取消
+                        .show()
+                }
+            }
+            
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
     }
     
@@ -210,6 +315,11 @@ class SettingsActivity : AppCompatActivity() {
      * 设置监听器
      */
     private fun setupListeners() {
+        // 返回主界面按钮
+        binding.btnBackToMain.setOnClickListener {
+            finish()
+        }
+        
         // 保存提示模板
         binding.btnSaveTemplate.setOnClickListener {
             savePromptTemplate()
@@ -218,7 +328,7 @@ class SettingsActivity : AppCompatActivity() {
         // 自动分析开关
         binding.switchAutoAnalyze.setOnCheckedChangeListener { _, isChecked ->
             app.preferenceManager.setAutoAnalyzeEnabled(isChecked)
-            showMessage("自动分析已${if (isChecked) "启用" else "禁用"}")
+            showMessage(getString(R.string.auto_analyze_status, if (isChecked) getString(R.string.enabled) else getString(R.string.disabled)))
         }
         
         // 配置API Key
@@ -245,40 +355,47 @@ class SettingsActivity : AppCompatActivity() {
         val currentKey = app.preferenceManager.getApiKey(currentPlatform) ?: ""
         
         val input = android.widget.EditText(this).apply {
-            hint = currentPlatform.keyHint
+                            hint = when (currentPlatform) {
+                    AiPlatform.GEMINI -> getString(R.string.gemini_api_key_hint)
+                    AiPlatform.SILICONFLOW -> getString(R.string.siliconflow_api_key_hint)
+                }
             inputType = android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
             setText(currentKey)
         }
         
-        val message = "配置 ${currentPlatform.displayName}\n\n${currentPlatform.keyHint}\n\n申请地址：${currentPlatform.signupUrl}"
+                    val keyHint = when (currentPlatform) {
+                AiPlatform.GEMINI -> getString(R.string.gemini_api_key_hint)
+                AiPlatform.SILICONFLOW -> getString(R.string.siliconflow_api_key_hint)
+            }
+            val message = getString(R.string.configure_platform_title, currentPlatform.displayName) + "\n\n${keyHint}\n\n" + getString(R.string.api_signup_url_label, currentPlatform.signupUrl)
         
         androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("配置API Key")
+            .setTitle(getString(R.string.configure_api_key_title))
             .setMessage(message)
             .setView(input)
-            .setPositiveButton("确定") { _, _ ->
+            .setPositiveButton(getString(R.string.confirm)) { _, _ ->
                 val apiKey = input.text.toString().trim()
                 if (apiKey.isNotEmpty()) {
                     if (apiKey.matches(currentPlatform.keyValidationPattern.toRegex())) {
                         app.preferenceManager.setApiKey(currentPlatform, apiKey)
                         app.preferenceManager.setAiSetupCompleted(true)
                         updateConfigurationStatus()
-                        showMessage("✅ API Key 配置成功")
+                        showMessage(getString(R.string.api_key_config_success))
                     } else {
-                        showMessage("❌ API Key 格式不正确")
+                        showMessage(getString(R.string.api_key_invalid_format))
                     }
                 } else {
-                    showMessage("请输入API Key")
+                    showMessage(getString(R.string.please_enter_api_key))
                 }
             }
-            .setNegativeButton("取消", null)
-            .setNeutralButton("打开申请页面") { _, _ ->
+            .setNegativeButton(getString(R.string.cancel_button), null)
+            .setNeutralButton(getString(R.string.open_signup_page)) { _, _ ->
                 try {
                     val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, 
                         android.net.Uri.parse(currentPlatform.signupUrl))
                     startActivity(intent)
                 } catch (e: Exception) {
-                    showMessage("无法打开浏览器")
+                    showMessage(getString(R.string.cannot_open_browser))
                 }
             }
             .show()
@@ -291,17 +408,17 @@ class SettingsActivity : AppCompatActivity() {
         val template = binding.etPromptTemplate.text.toString().trim()
         
         if (template.isEmpty()) {
-            showMessage("提示模板不能为空")
+            showMessage(getString(R.string.prompt_template_empty_error))
             return
         }
         
         if (!template.contains("[TEXT]")) {
-            showMessage("提示模板必须包含 [TEXT] 占位符")
+            showMessage(getString(R.string.prompt_template_placeholder_error))
             return
         }
         
         app.preferenceManager.setPromptTemplate(template)
-        showMessage("提示模板已保存")
+        showMessage(getString(R.string.prompt_template_saved))
     }
     
     /**
@@ -311,14 +428,14 @@ class SettingsActivity : AppCompatActivity() {
         val currentPlatform = app.preferenceManager.getCurrentAiPlatform()
         
         androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("清除API Key")
-            .setMessage("确定要清除 ${currentPlatform.displayName} 的API Key吗？")
-            .setPositiveButton("确定") { _, _ ->
+            .setTitle(getString(R.string.clear_api_key_title))
+            .setMessage(getString(R.string.clear_api_key_message, currentPlatform.displayName))
+            .setPositiveButton(getString(R.string.confirm_button)) { _, _ ->
                 app.preferenceManager.clearApiKey(currentPlatform)
                 updateConfigurationStatus()
-                showMessage("已清除 ${currentPlatform.displayName} API Key")
+                showMessage(getString(R.string.api_key_cleared_message, currentPlatform.displayName))
             }
-            .setNegativeButton("取消", null)
+            .setNegativeButton(getString(R.string.cancel_button), null)
             .show()
     }
     
@@ -327,12 +444,12 @@ class SettingsActivity : AppCompatActivity() {
      */
     private fun resetSettings() {
         androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("重置设置")
-            .setMessage("确定要重置所有设置到默认值吗？这将清除所有AI配置和聊天记录。")
-            .setPositiveButton("确定") { _, _ ->
+            .setTitle(getString(R.string.reset_settings_title))
+            .setMessage(getString(R.string.reset_settings_message))
+            .setPositiveButton(getString(R.string.confirm_button)) { _, _ ->
                 performReset()
             }
-            .setNegativeButton("取消", null)
+            .setNegativeButton(getString(R.string.cancel_button), null)
             .show()
     }
     
@@ -346,7 +463,7 @@ class SettingsActivity : AppCompatActivity() {
         // 重新初始化设置
         initializeSettings()
         
-        showMessage("设置已重置")
+        showMessage(getString(R.string.settings_reset_complete))
     }
     
     /**
@@ -354,5 +471,68 @@ class SettingsActivity : AppCompatActivity() {
      */
     private fun showMessage(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+    
+    /**
+     * 重启应用
+     */
+    private fun restartApp() {
+        android.util.Log.e("SettingsActivity", "🔄 Restarting app...")
+        
+        try {
+            // 方法1：使用Intent重启
+            val intent = packageManager.getLaunchIntentForPackage(packageName)
+            if (intent != null) {
+                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                
+                android.util.Log.e("SettingsActivity", "🚀 Starting new app instance")
+                startActivity(intent)
+                
+                // 确保当前Activity完全结束
+                finishAffinity()
+                
+                // 延迟杀死进程
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    android.util.Log.e("SettingsActivity", "💀 Killing current process")
+                    android.os.Process.killProcess(android.os.Process.myPid())
+                }, 500)
+                
+            } else {
+                android.util.Log.e("SettingsActivity", "❌ Cannot get launch intent")
+                showMessage("重启失败，请手动重启应用")
+            }
+            
+        } catch (e: Exception) {
+            android.util.Log.e("SettingsActivity", "❌ Failed to restart app", e)
+            showMessage("重启失败: ${e.message}")
+        }
+    }
+    
+    /**
+     * 简化的重启方式
+     */
+    private fun simpleRestartApp() {
+        android.util.Log.e("SettingsActivity", "🔄 Simple restart app...")
+        
+        try {
+            // 创建新的Intent启动主Activity
+            val intent = android.content.Intent(this, MainActivity::class.java).apply {
+                addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            }
+            
+            android.util.Log.e("SettingsActivity", "🚀 Starting MainActivity with language change")
+            startActivity(intent)
+            
+            // 直接finish当前Activity
+            finish()
+            
+        } catch (e: Exception) {
+            android.util.Log.e("SettingsActivity", "❌ Failed to simple restart", e)
+            showMessage("重启失败: ${e.message}")
+        }
     }
 } 

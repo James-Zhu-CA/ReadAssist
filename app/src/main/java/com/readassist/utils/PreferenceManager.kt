@@ -6,6 +6,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.readassist.R
 import com.readassist.model.AiPlatform
 import com.readassist.model.AiModel
 import java.security.GeneralSecurityException
@@ -34,9 +35,11 @@ class PreferenceManager(private val context: Context) {
         private const val KEY_SCREENSHOT_RESULT_CODE = "screenshot_result_code"
         private const val KEY_SCREENSHOT_RESULT_DATA = "screenshot_result_data"
         private const val KEY_AI_SETUP_COMPLETED = "ai_setup_completed"
+        private const val KEY_APP_LANGUAGE = "app_language"
         
         // 默认值
-        private const val DEFAULT_PROMPT = "请用用户提问的语言回答问题：\n\n[TEXT]"
+        // 默认提示词将根据系统语言动态获取
+    private const val DEFAULT_PROMPT_KEY = "default_prompt_template"
     }
     
     // 普通偏好设置
@@ -221,7 +224,57 @@ class PreferenceManager(private val context: Context) {
     }
     
     fun getPromptTemplate(): String {
-        return normalPrefs.getString(KEY_PROMPT_TEMPLATE, DEFAULT_PROMPT) ?: DEFAULT_PROMPT
+        val defaultPrompt = getDefaultPromptTemplate()
+        return normalPrefs.getString(KEY_PROMPT_TEMPLATE, defaultPrompt) ?: defaultPrompt
+    }
+    
+    /**
+     * 根据当前语言获取默认提示模板
+     */
+    private fun getDefaultPromptTemplate(): String {
+        return try {
+            val resources = context.resources
+            when (getAppLanguage()) {
+                "zh" -> resources.getString(R.string.default_prompt_template_chinese)
+                "en" -> resources.getString(R.string.default_prompt_template_english)
+                else -> {
+                    // 根据系统语言
+                    val systemLocale = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                        context.resources.configuration.locales[0]
+                    } else {
+                        @Suppress("DEPRECATION")
+                        context.resources.configuration.locale
+                    }
+                    
+                    if (systemLocale.language == "zh") {
+                        resources.getString(R.string.default_prompt_template_chinese)
+                    } else {
+                        resources.getString(R.string.default_prompt_template_english)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // 回退到硬编码的默认值
+            when (getAppLanguage()) {
+                "en" -> "Please answer question in English:\n\n[TEXT]"
+                "zh" -> "请用中文回答问题：\n\n[TEXT]"
+                else -> {
+                    // 根据系统语言
+                    val systemLocale = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                        context.resources.configuration.locales[0]
+                    } else {
+                        @Suppress("DEPRECATION")
+                        context.resources.configuration.locale
+                    }
+                    
+                    if (systemLocale.language == "zh") {
+                        "请用中文回答问题：\n\n[TEXT]"
+                    } else {
+                        "Please answer question in English:\n\n[TEXT]"
+                    }
+                }
+            }
+        }
     }
     
     // === 悬浮按钮位置 ===
@@ -339,6 +392,22 @@ class PreferenceManager(private val context: Context) {
             .remove(KEY_SCREENSHOT_RESULT_CODE)
             .remove(KEY_SCREENSHOT_RESULT_DATA)
             .apply()
+    }
+    
+    // === 语言管理 ===
+    
+    /**
+     * 设置应用语言
+     */
+    fun setAppLanguage(languageCode: String) {
+        normalPrefs.edit().putString(KEY_APP_LANGUAGE, languageCode).apply()
+    }
+    
+    /**
+     * 获取应用语言
+     */
+    fun getAppLanguage(): String {
+        return normalPrefs.getString(KEY_APP_LANGUAGE, "system") ?: "system"
     }
     
     // === 清理方法 ===

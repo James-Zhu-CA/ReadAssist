@@ -334,7 +334,7 @@ class GeminiRepository(private val preferenceManager: PreferenceManager) {
         
         // 使用设置中的提示词模板，如果用户没有输入具体问题则使用默认提示
         val promptTemplate = preferenceManager.getPromptTemplate()
-        val basePrompt = if (prompt.isBlank() || prompt.contains("请分析这张截屏图片")) {
+        val basePrompt = if (prompt.isBlank() || prompt.contains("请分析") || prompt.contains("Please analyze")) {
             // 如果是默认提示或空白，使用模板中的图片分析提示
             promptTemplate.replace("[TEXT]", "图片中的文字内容")
         } else {

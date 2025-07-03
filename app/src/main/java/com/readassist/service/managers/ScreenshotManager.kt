@@ -16,6 +16,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.widget.Toast
+import com.readassist.R
 import com.readassist.ReadAssistApplication
 import com.readassist.service.ScreenshotService
 import com.readassist.utils.PreferenceManager
@@ -325,7 +326,7 @@ class ScreenshotManager(
         // 检查权限状态
         if (!preferenceManager.isScreenshotPermissionGranted()) {
             Log.e(TAG, "❌ 截屏权限未授予，直接请求权限")
-            callbacks.onScreenshotFailed("需要获取截屏权限")
+            callbacks.onScreenshotFailed(context.getString(R.string.need_screenshot_permission))
             
             // 重置状态标志并请求权限
             isRequestingPermission = false
@@ -349,7 +350,7 @@ class ScreenshotManager(
                 if (service == null) {
                     Log.e(TAG, "❌ 截屏服务未连接")
                     withContext(Dispatchers.Main) {
-                        callbacks.onScreenshotFailed("截屏服务未准备就绪")
+                        callbacks.onScreenshotFailed(context.getString(R.string.screenshot_service_not_ready))
                         
                         // 尝试绑定服务
                         bindScreenshotService()
@@ -434,16 +435,16 @@ class ScreenshotManager(
         
         try {
             permissionDialog = android.app.AlertDialog.Builder(context, android.R.style.Theme_Material_Dialog_Alert)
-                .setTitle("需要重新授权截屏权限")
-                .setMessage("检测到截屏权限已失效或过期。\n\n点击\"立即授权\"重新获取权限，系统将弹出授权对话框。\n\n请在弹窗中选择\"立即开始\"。")
-                .setPositiveButton("立即授权") { dialog, _ ->
+                .setTitle(context.getString(R.string.permission_reauth_required_title))
+                .setMessage(context.getString(R.string.permission_reauth_required_message))
+                .setPositiveButton(context.getString(R.string.authorize_now)) { dialog, _ ->
                     Log.d(TAG, "用户点击立即授权")
                     dialog.dismiss()
                     
                     // 尝试直接请求系统级别权限
                     requestDirectSystemPermission()
                 }
-                .setNegativeButton("取消") { dialog, _ ->
+                .setNegativeButton(context.getString(R.string.cancel)) { dialog, _ ->
                     Log.d(TAG, "用户取消权限请求")
                     dialog.dismiss()
                     // 取消时恢复UI
@@ -543,7 +544,7 @@ class ScreenshotManager(
                 if (isRequestingPermission) {
                     Log.w(TAG, "⚠️ 直接权限请求超时")
                     isRequestingPermission = false
-                    callbacks.onScreenshotFailed("权限请求超时，请重试")
+                    callbacks.onScreenshotFailed(context.getString(R.string.permission_request_timeout))
                 }
             }
         } catch (e: Exception) {
@@ -615,7 +616,7 @@ class ScreenshotManager(
                 } catch (e2: Exception) {
                     Log.e(TAG, "❌ 备用启动方法也失败", e2)
                     isRequestingPermission = false
-                    callbacks.onScreenshotFailed("无法启动权限请求，请重试或重启应用")
+                    callbacks.onScreenshotFailed(context.getString(R.string.cannot_start_permission_request))
                     return
                 }
             }
@@ -662,7 +663,7 @@ class ScreenshotManager(
             isRequestingPermission = false
             Log.d(TAG, "权限请求状态已重置为false")
             
-            callbacks.onScreenshotFailed("无法启动权限请求，请重试或重启应用")
+            callbacks.onScreenshotFailed(context.getString(R.string.cannot_start_permission_request))
         }
         Log.d(TAG, "=== requestScreenshotPermissionDirectly() 结束 ===")
     }
@@ -673,14 +674,14 @@ class ScreenshotManager(
     private fun showEmergencyResetDialog() {
         try {
             val dialogBuilder = android.app.AlertDialog.Builder(context, android.R.style.Theme_Material_Dialog_Alert)
-            dialogBuilder.setTitle("权限请求超时")
-            dialogBuilder.setMessage("截屏权限请求超过了60秒无响应。\n\n可能的原因：\n• 系统对话框未正确显示\n• 权限请求被系统阻止\n• 设备运行缓慢\n\n建议操作：\n1. 点击「强制重置」\n2. 再次尝试截屏功能")
-            dialogBuilder.setPositiveButton("强制重置") { dialog, _ ->
+            dialogBuilder.setTitle(context.getString(R.string.permission_timeout_title))
+            dialogBuilder.setMessage(context.getString(R.string.permission_timeout_message))
+            dialogBuilder.setPositiveButton(context.getString(R.string.force_reset)) { dialog, _ ->
                 dialog.dismiss()
-                Toast.makeText(context, "正在重置权限状态...", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.resetting_permission_status), Toast.LENGTH_SHORT).show()
                 emergencyResetPermissionState()
             }
-            dialogBuilder.setNegativeButton("关闭") { dialog, _ ->
+            dialogBuilder.setNegativeButton(context.getString(R.string.cancel)) { dialog, _ ->
                 dialog.dismiss()
                 callbacks.onScreenshotCancelled()
             }
@@ -698,7 +699,7 @@ class ScreenshotManager(
             dialog.show()
         } catch (e: Exception) {
             Log.e(TAG, "显示紧急重置对话框失败", e)
-            Toast.makeText(context, "权限请求超时，正在自动重置...", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, context.getString(R.string.permission_timeout_auto_reset), Toast.LENGTH_LONG).show()
             emergencyResetPermissionState()
         }
     }
@@ -755,7 +756,7 @@ class ScreenshotManager(
                     
                     // 通知用户
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "截屏权限已重置，请重新尝试", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, context.getString(R.string.screenshot_permission_reset_retry), Toast.LENGTH_LONG).show()
                         callbacks.onScreenshotCancelled()
                         
                         // 额外发送广播，通知其他组件权限已重置
@@ -765,7 +766,7 @@ class ScreenshotManager(
                 } catch (e: Exception) {
                     Log.e(TAG, "重新创建服务连接失败", e)
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "重置过程出错，请重启应用", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.reset_error_restart_app), Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -773,7 +774,7 @@ class ScreenshotManager(
             Log.d(TAG, "✅ 权限状态重置完成")
         } catch (e: Exception) {
             Log.e(TAG, "重置权限状态失败", e)
-            Toast.makeText(context, "重置失败，请重启应用", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.reset_failed_restart_app), Toast.LENGTH_SHORT).show()
         }
     }
     
@@ -783,9 +784,9 @@ class ScreenshotManager(
     private fun showScreenshotServiceErrorDialog() {
         try {
             val dialogBuilder = android.app.AlertDialog.Builder(context, android.R.style.Theme_Material_Dialog_Alert)
-            dialogBuilder.setTitle("截屏服务异常")
-            dialogBuilder.setMessage("截屏服务出现问题，可能的原因：\n\n• 截屏权限已失效\n• 服务连接中断\n• 设备性能限制\n\n建议操作：\n1. 重新授予截屏权限\n2. 重启应用\n3. 检查设备内存")
-            dialogBuilder.setPositiveButton("重新授权") { _, _ ->
+            dialogBuilder.setTitle(context.getString(R.string.screenshot_service_error_title))
+            dialogBuilder.setMessage(context.getString(R.string.screenshot_service_error_message))
+            dialogBuilder.setPositiveButton(context.getString(R.string.reauthorize)) { _, _ ->
                 // 清除权限状态，强制重新授权
                 preferenceManager.clearScreenshotPermission()
                 isScreenshotPermissionGranted = false
@@ -796,7 +797,7 @@ class ScreenshotManager(
                 }
                 context.startActivity(intent)
             }
-            dialogBuilder.setNegativeButton("稍后重试", null)
+            dialogBuilder.setNegativeButton(context.getString(R.string.retry_later), null)
             dialogBuilder.setCancelable(true)
             
             val dialog = dialogBuilder.create()
@@ -811,7 +812,7 @@ class ScreenshotManager(
             dialog.show()
         } catch (e: Exception) {
             Log.e(TAG, "显示服务错误对话框失败", e)
-            Toast.makeText(context, "截屏服务异常，请重启应用", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, context.getString(R.string.screenshot_service_error_restart), Toast.LENGTH_LONG).show()
         }
     }
     

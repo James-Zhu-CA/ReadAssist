@@ -67,6 +67,7 @@ import java.util.Locale
 import java.text.SimpleDateFormat
 import android.os.Environment
 import com.readassist.ui.DeviceSetupActivity
+import com.readassist.R
 
 /**
  * 重构后的悬浮窗服务
@@ -80,6 +81,78 @@ class FloatingWindowServiceNew : Service(),
     
     companion object {
         private const val TAG = "FloatingWindowServiceNew"
+    }
+    
+    override fun attachBaseContext(base: Context?) {
+        Log.d(TAG, "🔧 Service attachBaseContext started")
+        
+        if (base == null) {
+            super.attachBaseContext(base)
+            return
+        }
+        
+        try {
+            // 应用语言设置到Service
+            val localizedContext = createLocalizedContext(base)
+            super.attachBaseContext(localizedContext)
+            
+            Log.d(TAG, "✅ Service attachBaseContext completed successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Service attachBaseContext failed", e)
+            super.attachBaseContext(base)
+        }
+    }
+    
+    /**
+     * 创建本地化Context
+     */
+    private fun createLocalizedContext(context: Context): Context {
+        return try {
+            val prefs = context.getSharedPreferences("readassist_prefs", Context.MODE_PRIVATE)
+            val languageCode = prefs.getString("app_language", "system") ?: "system"
+            
+            val locale = when (languageCode) {
+                "zh" -> java.util.Locale.CHINESE
+                "en" -> java.util.Locale.ENGLISH
+                else -> getSystemLocale(context)
+            }
+            
+            Log.d(TAG, "🌐 Service applying language: $languageCode -> $locale")
+            
+            java.util.Locale.setDefault(locale)
+            
+            val configuration = android.content.res.Configuration(context.resources.configuration)
+            
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                configuration.setLocales(android.os.LocaleList(locale))
+            } else {
+                @Suppress("DEPRECATION")
+                configuration.locale = locale
+            }
+            
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N_MR1) {
+                context.createConfigurationContext(configuration)
+            } else {
+                @Suppress("DEPRECATION")
+                context.resources.updateConfiguration(configuration, context.resources.displayMetrics)
+                context
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to create localized context", e)
+            context
+        }
+    }
+    
+    /**
+     * 获取系统默认语言
+     */
+    private fun getSystemLocale(context: Context): java.util.Locale {
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            context.resources.configuration.locales[0]
+        } else {
+            @Suppress("DEPRECATION")
+            context.resources.configuration.locale
+        }
     }
     
     // 组件管理器
@@ -185,7 +258,7 @@ class FloatingWindowServiceNew : Service(),
                 
                 Toast.makeText(
                     this@FloatingWindowServiceNew,
-                    "📱 检测到掌阅设备，建议配置截屏目录以获得更好体验",
+                    getString(R.string.ireader_device_detected),
                     Toast.LENGTH_LONG
                 ).show()
                 
@@ -342,8 +415,8 @@ class FloatingWindowServiceNew : Service(),
         }
         
         val notification = android.app.Notification.Builder(this, channelId)
-            .setContentTitle("ReadAssist正在运行")
-            .setContentText("点击管理应用")
+            .setContentTitle(getString(R.string.readassist_running))
+            .setContentText(getString(R.string.tap_to_manage_app))
             .setSmallIcon(com.readassist.R.drawable.ic_launcher)
             .setOngoing(true)
             .build()
@@ -718,7 +791,7 @@ class FloatingWindowServiceNew : Service(),
                 withContext(Dispatchers.Main) {
                     floatingButtonManager.restoreDefaultState()
                     chatWindowManager.showChatWindow()
-                    chatWindowManager.addSystemMessage("截屏失败：${e.message}")
+                    chatWindowManager.addSystemMessage(getString(R.string.screenshot_failed_message, e.message ?: ""))
                 }
             }
         }
@@ -799,7 +872,7 @@ class FloatingWindowServiceNew : Service(),
         
         // 如果没有用户输入但有截图，添加默认文本
         if (sb.isEmpty() && hasScreenshot) {
-            sb.append("请分析这张截屏图片：")
+                            sb.append(getString(R.string.analyze_screenshot_prompt))
         }
         
         val finalText = sb.toString()
@@ -859,7 +932,7 @@ class FloatingWindowServiceNew : Service(),
                 chatWindowManager.addUserMessage(message)
                 
                 // 添加加载动画
-                chatWindowManager.addLoadingMessage("AI思考中...")
+                chatWindowManager.addLoadingMessage(getString(R.string.ai_thinking_message))
 
                 // 发送消息到AI并获取响应
                 val result = aiCommunicationManager.sendTextMessage(
@@ -934,7 +1007,7 @@ class FloatingWindowServiceNew : Service(),
                 chatWindowManager.addUserMessage("$message 📸")
                 
                 // 添加加载消息
-                chatWindowManager.addLoadingMessage("🤖 正在分析图片和您的问题...")
+                chatWindowManager.addLoadingMessage(getString(R.string.analyzing_image_message))
                 
                 Log.d(TAG, "🚀 调用AI服务分析图片...")
                 
@@ -1154,7 +1227,7 @@ class FloatingWindowServiceNew : Service(),
                     val autoPopup = preferenceManager.getBoolean("screenshot_auto_popup", true)
                     if (!autoPopup) {
                         Log.d(TAG, "🚫 用户已关闭截屏后自动弹窗功能")
-                        Toast.makeText(this@FloatingWindowServiceNew, "截屏已保存，点击悬浮窗手动分析", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@FloatingWindowServiceNew, getString(R.string.screenshot_saved_click_to_analyze), Toast.LENGTH_SHORT).show()
                         return@withContext
                     }
 
@@ -1166,9 +1239,9 @@ class FloatingWindowServiceNew : Service(),
                     val hasSelectedText = selectedText.isNotEmpty() && selectedText.length > 10
                     
                     val promptText = if (hasSelectedText) {
-                        "选中文本：$selectedText\n\n请分析这张截屏图片："
+                        getString(R.string.selected_text_with_screenshot, selectedText)
                     } else {
-                        "请分析这张截屏图片："
+                        getString(R.string.analyze_screenshot_prompt)
                     }
                     
                     // 导入提示文本到输入框
@@ -1315,7 +1388,7 @@ class FloatingWindowServiceNew : Service(),
     override fun onScreenshotFailed(error: String) {
         Log.e(TAG, "❌ 截屏失败: $error")
         // 处理截屏失败
-        Toast.makeText(this, "截屏失败: $error", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, getString(R.string.screenshot_failed_message, error), Toast.LENGTH_SHORT).show()
     }
 
     override fun onScreenshotCancelled() {
@@ -1334,7 +1407,7 @@ class FloatingWindowServiceNew : Service(),
         Log.e(TAG, "🔐 正在请求截屏权限...")
         // 显示加载消息
         chatWindowManager.showChatWindow()
-        chatWindowManager.addLoadingMessage("🔐 正在请求截屏权限...")
+        chatWindowManager.addLoadingMessage(getString(R.string.requesting_screenshot_permission))
     }
 
     override fun onPermissionGranted() {
@@ -1669,10 +1742,10 @@ class FloatingWindowServiceNew : Service(),
         val sendScreenshot = chatWindowManager.isSendScreenshotChecked()
         val sendClipboard = chatWindowManager.isSendClipboardChecked()
         val hint = when {
-            sendScreenshot && sendClipboard -> "请分析发给你的图片和文字内容。"
-            sendScreenshot -> "请分析这张截屏图片："
-            sendClipboard -> "请分析这段文字："
-            else -> "请输入您的问题或内容，选择对话文本后长按可自动复制到此处"
+            sendScreenshot && sendClipboard -> getString(R.string.analyze_image_and_text_prompt)
+            sendScreenshot -> getString(R.string.analyze_screenshot_prompt)
+            sendClipboard -> getString(R.string.analyze_text_prompt)
+            else -> getString(R.string.input_hint_long)
         }
         
         // 使用新方法同时更新输入框内容和提示文本

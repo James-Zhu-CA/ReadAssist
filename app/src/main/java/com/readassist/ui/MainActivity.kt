@@ -32,8 +32,9 @@ import android.content.Context
 import android.content.IntentFilter
 import com.readassist.utils.DeviceScreenshotManager
 import com.readassist.utils.PreferenceManager
+import com.readassist.utils.LanguageManager
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : BaseActivity() {
     
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels()
@@ -71,11 +72,11 @@ class MainActivity : AppCompatActivity() {
             }
             startForegroundService(intent)
             
-            showMessage("截屏权限已授予，截屏功能已启用")
+            showMessage(getString(R.string.screenshot_permission_granted))
             updateFloatingServiceStatus()
         } else {
             app.preferenceManager.setScreenshotPermissionGranted(false)
-            showMessage("截屏权限被拒绝，截屏功能将无法使用")
+            showMessage(getString(R.string.screenshot_permission_denied))
             updateFloatingServiceStatus()
         }
     }
@@ -93,14 +94,14 @@ class MainActivity : AppCompatActivity() {
             )
             
             if (success) {
-                showMessage("✅ Supernote截屏目录权限已授予")
+                showMessage(getString(R.string.supernote_dir_permission_granted))
                 // 刷新权限状态显示
                 viewModel.checkPermissions()
             } else {
-                showMessage("❌ 权限授予失败，请重试")
+                showMessage(getString(R.string.permission_grant_failed))
             }
         } else {
-            showMessage("❌ 用户取消了权限授予")
+            showMessage(getString(R.string.user_cancelled_permission))
         }
     }
     
@@ -118,6 +119,24 @@ class MainActivity : AppCompatActivity() {
         
         // 初始化应用实例
         app = application as com.readassist.ReadAssistApplication
+        
+        // 添加语言调试信息
+        Log.e(TAG, "=== MainActivity onCreate 语言调试 ===")
+        Log.e(TAG, "应用存储的语言设置: ${app.preferenceManager.getAppLanguage()}")
+        Log.e(TAG, "当前Context Locale: ${this.resources.configuration.locales.get(0)}")
+        Log.e(TAG, "系统默认Locale: ${java.util.Locale.getDefault()}")
+        Log.e(TAG, "读取main_subtitle字符串: '${getString(R.string.main_subtitle)}'")
+        Log.e(TAG, "读取system_status字符串: '${getString(R.string.system_status)}'")
+        Log.e(TAG, "读取usage_statistics字符串: '${getString(R.string.usage_statistics)}'")
+        Log.e(TAG, "读取function_menu字符串: '${getString(R.string.function_menu)}'")
+        Log.e(TAG, "读取settings字符串: '${getString(R.string.settings)}'")
+        Log.e(TAG, "读取history字符串: '${getString(R.string.history)}'")
+        
+        // 检查资源配置
+        val config = this.resources.configuration
+        Log.e(TAG, "Resources Configuration locale: ${config.locales.get(0)}")
+        Log.e(TAG, "Resources Configuration: $config")
+        Log.e(TAG, "=============================")
         
         // 使用 ViewBinding
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -266,7 +285,8 @@ class MainActivity : AppCompatActivity() {
         binding.switchScreenshotAutoPopup.setOnCheckedChangeListener { _, isChecked ->
             app.preferenceManager.setBoolean("screenshot_auto_popup", isChecked)
             Log.d(TAG, "截屏自动弹窗设置已${if (isChecked) "开启" else "关闭"}")
-            Toast.makeText(this, "截屏自动弹窗已${if (isChecked) "开启" else "关闭"}", Toast.LENGTH_SHORT).show()
+            val message = if (isChecked) getString(R.string.screenshot_auto_popup_enabled) else getString(R.string.screenshot_auto_popup_disabled)
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
         }
     }
     
@@ -293,9 +313,9 @@ class MainActivity : AppCompatActivity() {
      */
     private fun showWelcomeDialog() {
         AlertDialog.Builder(this)
-            .setTitle("欢迎使用 ReadAssist")
-            .setMessage("ReadAssist 是专为超级笔记、掌阅等电纸书设计的智能阅读助手。\n\n首次使用需要配置AI服务：\n\n1. 选择AI平台（Gemini 或 SiliconFlow）\n2. 申请并配置对应的API Key\n3. 授权必要权限（无障碍服务、存储和截屏权限）\n4. 开始智能阅读！\n\n点击\"开始配置\"进入设置向导。")
-            .setPositiveButton("开始配置") { _, _ ->
+            .setTitle(getString(R.string.welcome_title))
+            .setMessage(getString(R.string.welcome_message))
+            .setPositiveButton(getString(R.string.start_configuration)) { _, _ ->
                 if (!app.preferenceManager.isAiSetupCompleted()) {
                     try {
                         showAiSetupWizard()
@@ -307,7 +327,7 @@ class MainActivity : AppCompatActivity() {
                     // requestPermissions()
                 }
             }
-            .setNegativeButton("稍后设置", null)
+            .setNegativeButton(getString(R.string.setup_later), null)
             .show()
     }
     
@@ -317,12 +337,12 @@ class MainActivity : AppCompatActivity() {
     private fun requestPermissions() {
         permissionChecker.checkAndRequestPermissions(object : PermissionUtils.PermissionCallback {
             override fun onPermissionGranted() {
-                showMessage("所有权限已授予")
+                showMessage(getString(R.string.all_permissions_granted))
                 viewModel.checkPermissions()
             }
             
             override fun onPermissionDenied(missingPermissions: List<String>) {
-                val message = "缺少权限：${missingPermissions.joinToString(", ")}"
+                val message = getString(R.string.missing_permissions, missingPermissions.joinToString(", "))
                 showMessage(message)
             }
         })
@@ -342,8 +362,8 @@ class MainActivity : AppCompatActivity() {
             android.util.Log.d("MainActivity", "=== showAiSetupWizard 墨水屏优化版本 ===")
             
             val options = arrayOf(
-                "• Google Gemini",
-                "• SiliconFlow" 
+                getString(R.string.option_google_gemini),
+                getString(R.string.option_siliconflow)
             )
             
             val adapter = android.widget.ArrayAdapter<String>(
@@ -373,14 +393,14 @@ class MainActivity : AppCompatActivity() {
                 when (position) {
                     0 -> {
                         android.util.Log.d("MainActivity", "选择了Gemini")
-                        showMessage("✅ 已选择 Google Gemini")
+                        showMessage(getString(R.string.selected_gemini))
                         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                             showGeminiSetupDialog()
                         }, 300)
                     }
                     1 -> {
                         android.util.Log.d("MainActivity", "选择了SiliconFlow")
-                        showMessage("✅ 已选择 SiliconFlow")
+                        showMessage(getString(R.string.selected_siliconflow))
                         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                             showSiliconFlowSetupDialog()
                         }, 300)
@@ -389,10 +409,10 @@ class MainActivity : AppCompatActivity() {
             }
             
             platformDialog = android.app.AlertDialog.Builder(this)
-                .setTitle("🔧 选择AI平台")
-                .setMessage("请选择要使用的AI服务：")
+                .setTitle("🔧 ${getString(R.string.setup_wizard_title)}")
+                .setMessage(getString(R.string.setup_wizard_message))
                 .setView(listView)
-                .setNegativeButton("❌ 取消") { dialog, _ ->
+                .setNegativeButton("❌ ${getString(R.string.setup_wizard_cancel)}") { dialog, _ ->
                     android.util.Log.d("MainActivity", "用户取消设置")
                     dialog.dismiss()
                 }
@@ -410,7 +430,7 @@ class MainActivity : AppCompatActivity() {
             
         } catch (e: Exception) {
             android.util.Log.e("MainActivity", "❌ showAiSetupWizard失败", e)
-            showMessage("❌ 显示设置失败，转到手动设置")
+            showMessage(getString(R.string.setup_failed_fallback))
             showPlatformSelectionFallback()
         }
     }
@@ -421,19 +441,19 @@ class MainActivity : AppCompatActivity() {
     private fun showPlatformSelectionFallback() {
         try {
             val menu = android.widget.PopupMenu(this, findViewById(android.R.id.content))
-            menu.menu.add(0, 1, 1, "🤖 Google Gemini")
-            menu.menu.add(0, 2, 2, "⚡ SiliconFlow")
-            menu.menu.add(0, 3, 3, "⚙️ 手动设置")
+            menu.menu.add(0, 1, 1, "🤖 ${getString(R.string.option_google_gemini).removePrefix("• ")}")
+            menu.menu.add(0, 2, 2, "⚡ ${getString(R.string.option_siliconflow).removePrefix("• ")}")
+            menu.menu.add(0, 3, 3, getString(R.string.option_manual_setup))
             
             menu.setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     1 -> {
-                        showMessage("✅ 已选择 Google Gemini")
+                        showMessage(getString(R.string.selected_gemini))
                         showGeminiSetupDialog()
                         true
                     }
                     2 -> {
-                        showMessage("✅ 已选择 SiliconFlow")
+                        showMessage(getString(R.string.selected_siliconflow))
                         showSiliconFlowSetupDialog()
                         true
                     }
@@ -460,7 +480,7 @@ class MainActivity : AppCompatActivity() {
     private fun showGeminiSetupDialog() {
         val platform = com.readassist.model.AiPlatform.GEMINI
         val input = android.widget.EditText(this).apply {
-            hint = "请输入 Gemini API Key (以 AIza 开头)"
+                            hint = getString(R.string.gemini_api_key_hint)
             inputType = android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
         }
         
@@ -468,10 +488,10 @@ class MainActivity : AppCompatActivity() {
         lateinit var apiKeyDialog: AlertDialog
 
         apiKeyDialog = AlertDialog.Builder(this)
-            .setTitle("配置 Google Gemini")
-            .setMessage("Gemini API Key 申请地址：\nhttps://aistudio.google.com/apikey\n\n请将您的API Key输入到下方：")
+            .setTitle(getString(R.string.gemini_setup_title))
+            .setMessage(getString(R.string.gemini_setup_message))
             .setView(input)
-            .setPositiveButton("确定") { _, _ ->
+            .setPositiveButton(getString(R.string.confirm_button)) { _, _ ->
                 val apiKey = input.text.toString().trim()
                 if (apiKey.isNotEmpty()) {
                     if (apiKey.startsWith("AIza")) {
@@ -484,32 +504,32 @@ class MainActivity : AppCompatActivity() {
                         app.preferenceManager.setAiSetupCompleted(true)
                         
                         apiKeyDialog.dismiss() // 关闭API Key输入对话框
-                        showMessage("✅ Gemini 配置成功！现在进行权限设置...")
+                        showMessage(getString(R.string.platform_config_success, "Gemini"))
                         viewModel.checkApiKey()
                         
                         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                             requestPermissions()
                         }, 500)
                     } else {
-                        showMessage("❌ Gemini API Key 格式不正确")
+                        showMessage(getString(R.string.platform_api_key_invalid, "Gemini"))
                         showGeminiSetupDialog() // 重新显示当前对话框
                     }
                 } else {
-                    showMessage("请输入API Key")
+                    showMessage(getString(R.string.please_enter_api_key))
                     showGeminiSetupDialog() // 重新显示当前对话框
                 }
             }
-            .setNegativeButton("返回") { dialog, _ ->
+            .setNegativeButton(getString(R.string.back_button)) { dialog, _ ->
                 dialog.dismiss()
                 showAiSetupWizard() // 返回平台选择
             }
-            .setNeutralButton("申请Key") { _, _ ->
+            .setNeutralButton(getString(R.string.apply_key_button)) { _, _ ->
                 try {
                     val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://aistudio.google.com/apikey"))
                     startActivity(intent)
                     // 用户去申请Key，当前对话框保留，回来后可以继续输入
                 } catch (e: Exception) {
-                    showMessage("无法打开浏览器")
+                    showMessage(getString(R.string.cannot_open_browser))
                 }
             }
             .setCancelable(false)
@@ -522,17 +542,17 @@ class MainActivity : AppCompatActivity() {
     private fun showSiliconFlowSetupDialog() {
         val platform = com.readassist.model.AiPlatform.SILICONFLOW
         val input = android.widget.EditText(this).apply {
-            hint = "请输入 SiliconFlow API Key (以 sk- 开头)"
+                            hint = getString(R.string.siliconflow_api_key_hint)
             inputType = android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
         }
 
         lateinit var apiKeyDialog: AlertDialog // 声明以便后续dismiss
 
         apiKeyDialog = AlertDialog.Builder(this)
-            .setTitle("配置 SiliconFlow")
-            .setMessage("SiliconFlow API Key 申请地址：\nhttps://siliconflow.com\n\n请将您的API Key输入到下方：")
+            .setTitle(getString(R.string.siliconflow_setup_title))
+            .setMessage(getString(R.string.siliconflow_setup_message))
             .setView(input)
-            .setPositiveButton("确定") { _, _ ->
+            .setPositiveButton(getString(R.string.confirm_button)) { _, _ ->
                 val apiKey = input.text.toString().trim()
                 if (apiKey.isNotEmpty()) {
                     if (apiKey.startsWith("sk-")) {
@@ -545,32 +565,32 @@ class MainActivity : AppCompatActivity() {
                         app.preferenceManager.setAiSetupCompleted(true)
 
                         apiKeyDialog.dismiss() // 关闭API Key输入对话框
-                        showMessage("✅ SiliconFlow 配置成功！现在进行权限设置...")
+                        showMessage(getString(R.string.platform_config_success, "SiliconFlow"))
                         viewModel.checkApiKey()
                         
                         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                             requestPermissions()
                         }, 500)
                     } else {
-                        showMessage("❌ SiliconFlow API Key 格式不正确")
+                        showMessage(getString(R.string.platform_api_key_invalid, "SiliconFlow"))
                         showSiliconFlowSetupDialog() // 重新显示当前对话框
                     }
                 } else {
-                    showMessage("请输入API Key")
+                    showMessage(getString(R.string.please_enter_api_key))
                     showSiliconFlowSetupDialog() // 重新显示当前对话框
                 }
             }
-            .setNegativeButton("返回") { dialog, _ ->
+            .setNegativeButton(getString(R.string.back_button)) { dialog, _ ->
                 dialog.dismiss()
                 showAiSetupWizard() // 返回平台选择
             }
-            .setNeutralButton("申请Key") { _, _ ->
+            .setNeutralButton(getString(R.string.apply_key_button)) { _, _ ->
                 try {
                     val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://siliconflow.com"))
                     startActivity(intent)
                     // 用户去申请Key，当前对话框保留，回来后可以继续输入
                 } catch (e: Exception) {
-                    showMessage("无法打开浏览器")
+                    showMessage(getString(R.string.cannot_open_browser))
                 }
             }
             .setCancelable(false)
@@ -591,12 +611,12 @@ class MainActivity : AppCompatActivity() {
      */
     private fun showClearDataDialog() {
         AlertDialog.Builder(this)
-            .setTitle("清除所有数据")
-            .setMessage("此操作将删除所有聊天记录和设置，且无法恢复。确定要继续吗？")
-            .setPositiveButton("确定") { _, _ ->
+            .setTitle(getString(R.string.clear_all_data_title))
+            .setMessage(getString(R.string.clear_all_data_message))
+            .setPositiveButton(getString(R.string.confirm_button)) { _, _ ->
                 viewModel.clearAllData()
             }
-            .setNegativeButton("取消", null)
+            .setNegativeButton(getString(R.string.cancel), null)
             .show()
     }
     
@@ -619,7 +639,7 @@ class MainActivity : AppCompatActivity() {
         
         // 存储权限状态显示 - 墨水屏优化，统一使用黑色文字
         if (storageStatus.allGranted) {
-            binding.tvStoragePermissionStatus.text = "存储权限：已授予（读写外部存储）"
+            binding.tvStoragePermissionStatus.text = getString(R.string.storage_permission_granted_external)
             binding.tvStoragePermissionStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
             binding.btnRequestStoragePermission.visibility = View.GONE
         } else {
@@ -630,10 +650,10 @@ class MainActivity : AppCompatActivity() {
                     else -> it
                 }
             }
-            binding.tvStoragePermissionStatus.text = "存储权限：缺少 ($missingPerms)"
+            binding.tvStoragePermissionStatus.text = getString(R.string.storage_permission_missing, missingPerms)
             binding.tvStoragePermissionStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
             binding.btnRequestStoragePermission.visibility = View.VISIBLE
-            binding.btnRequestStoragePermission.text = "授予存储权限"
+            binding.btnRequestStoragePermission.text = getString(R.string.request_storage_permission)
             binding.btnRequestStoragePermission.setOnClickListener {
                 viewModel.requestStoragePermissions(this@MainActivity)
             }
@@ -659,16 +679,16 @@ class MainActivity : AppCompatActivity() {
                 Log.d(TAG, "Supernote保存的URI: $savedUri")
                 
                 if (hasSafAccess) {
-                    "Supernote截屏目录：✅ 已授权SAF访问 (/storage/emulated/0/SCREENSHOT)"
+                    getString(R.string.supernote_screenshot_dir_authorized)
                 } else {
-                    "Supernote截屏目录：❌ 需要SAF授权 (/storage/emulated/0/SCREENSHOT)"
+                    getString(R.string.supernote_screenshot_dir_not_authorized)
                 }
             }
             com.readassist.utils.DeviceType.IREADER -> {
                 if (hasCurrentDeviceAccess) {
-                    "掌阅截屏目录：✅ 已授权 (${currentDeviceConfig.systemPath})"
+                    getString(R.string.ireader_screenshot_dir_authorized, currentDeviceConfig.systemPath)
                 } else {
-                    "掌阅截屏目录：❌ 需要SAF授权 (${currentDeviceConfig.systemPath})"
+                    getString(R.string.ireader_screenshot_dir_not_authorized, currentDeviceConfig.systemPath)
                 }
             }
             else -> {
@@ -711,30 +731,39 @@ class MainActivity : AppCompatActivity() {
         } else {
             // 未授权：显示授权按钮
             binding.btnRequestIReaderDirectory.visibility = View.VISIBLE
-            binding.btnRequestIReaderDirectory.text = when (deviceType) {
-                com.readassist.utils.DeviceType.SUPERNOTE -> "开始目录授权"
-                com.readassist.utils.DeviceType.IREADER -> "开始目录授权"
-                else -> "开始目录授权"
-            }
+            binding.btnRequestIReaderDirectory.text = getString(R.string.start_directory_authorization)
         }
         
         binding.btnRequestIReaderDirectory.setOnClickListener {
             // 根据设备类型和权限状态决定跳转逻辑
             val deviceType = com.readassist.utils.DeviceUtils.getDeviceType()
             
-            if (deviceType == com.readassist.utils.DeviceType.SUPERNOTE && !directoryStatusText.contains("✅")) {
-                // Supernote设备且无权限：直接启动SAF授权
-                requestSupernoteDirectoryAccess()
-            } else {
-                // 其他情况：启动通用设备配置Activity
-                startActivity(Intent(this@MainActivity, com.readassist.ui.DeviceSetupActivity::class.java))
+            when (deviceType) {
+                com.readassist.utils.DeviceType.SUPERNOTE -> {
+                    // Supernote设备：直接启动SAF授权
+                    requestSupernoteDirectoryAccess()
+                }
+                com.readassist.utils.DeviceType.IREADER -> {
+                    // iReader设备：检查是否需要授权或配置
+                    if (hasCurrentDeviceAccess) {
+                        // 已有权限，可能需要重新配置
+                        startActivity(Intent(this@MainActivity, com.readassist.ui.DeviceSetupActivity::class.java))
+                    } else {
+                        // 需要权限：启动目录选择
+                        requestIReaderDirectoryAccess()
+                    }
+                }
+                else -> {
+                    // 通用设备：启动设备配置Activity
+                    startActivity(Intent(this@MainActivity, com.readassist.ui.DeviceSetupActivity::class.java))
+                }
             }
         }
             
         // 根据设备类型显示不同的截屏权限说明
         if (com.readassist.utils.DeviceUtils.isIReaderDevice()) {
             // 掌阅设备特殊说明
-            binding.tvScreenshotStatus.text = "截屏权限：您的设备是掌阅公司的，建议将按键长按设置为截屏，使用会更便捷"
+                            binding.tvScreenshotStatus.text = getString(R.string.screenshot_permission_ireader_tip)
             binding.tvScreenshotStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
             binding.btnScreenshotPermission.visibility = View.GONE
         } else {
@@ -749,34 +778,34 @@ class MainActivity : AppCompatActivity() {
                 
                 // MediaProjection的RESULT_OK是-1，只检查这个核心条件
                 if (resultCode == -1) {
-                    binding.tvScreenshotStatus.text = "截屏权限：已授予（重启后需重新授权）"
+                    binding.tvScreenshotStatus.text = getString(R.string.screenshot_permission_granted_restart)
                     binding.tvScreenshotStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
                     binding.btnScreenshotPermission.visibility = View.VISIBLE
-                    binding.btnScreenshotPermission.text = "重新授权"
+                    binding.btnScreenshotPermission.text = getString(R.string.reauthorize)
                 } else {
-                    binding.tvScreenshotStatus.text = "截屏权限：已失效（请重新授权）"
+                    binding.tvScreenshotStatus.text = getString(R.string.screenshot_permission_expired)
                     binding.tvScreenshotStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
                     binding.btnScreenshotPermission.visibility = View.VISIBLE
-                    binding.btnScreenshotPermission.text = "授权截屏权限"
+                    binding.btnScreenshotPermission.text = getString(R.string.grant_screenshot_permission_btn)
                 }
             } else {
-                binding.tvScreenshotStatus.text = "截屏权限：未授予"
+                binding.tvScreenshotStatus.text = getString(R.string.screenshot_permission_not_granted)
                 binding.tvScreenshotStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
                 binding.btnScreenshotPermission.visibility = View.VISIBLE
-                binding.btnScreenshotPermission.text = "授权截屏权限"
+                binding.btnScreenshotPermission.text = getString(R.string.grant_screenshot_permission_btn)
             }
         }
 
         // 无障碍服务权限 - 统一使用黑色文字
         if (accessibilityGranted) {
-            binding.tvAccessibilityPermissionStatus.text = "无障碍服务权限：已授予"
+            binding.tvAccessibilityPermissionStatus.text = getString(R.string.accessibility_permission_granted)
             binding.tvAccessibilityPermissionStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
             binding.btnRequestAccessibilityPermission.visibility = View.GONE
         } else {
-            binding.tvAccessibilityPermissionStatus.text = "无障碍服务权限：未授权"
+            binding.tvAccessibilityPermissionStatus.text = getString(R.string.accessibility_permission_not_granted)
             binding.tvAccessibilityPermissionStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
             binding.btnRequestAccessibilityPermission.visibility = View.VISIBLE
-            binding.btnRequestAccessibilityPermission.text = "授予无障碍权限"
+            binding.btnRequestAccessibilityPermission.text = getString(R.string.grant_accessibility_permission_btn)
             binding.btnRequestAccessibilityPermission.setOnClickListener {
                 val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
                 startActivity(intent)
@@ -806,15 +835,15 @@ class MainActivity : AppCompatActivity() {
         if (isConfigured && hasKey && currentModel != null) {
             binding.tvApiKeyStatus.text = "✓ ${currentPlatform.displayName} - ${currentModel.displayName}"
             binding.tvApiKeyStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
-            binding.btnApiKey.text = "重新配置"
+            binding.btnApiKey.text = getString(R.string.reconfigure)
         } else if (app.preferenceManager.isAiSetupCompleted()) {
-            binding.tvApiKeyStatus.text = "⚠ 配置不完整或无效"
+            binding.tvApiKeyStatus.text = getString(R.string.configuration_incomplete)
             binding.tvApiKeyStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
-            binding.btnApiKey.text = "修复配置"
+            binding.btnApiKey.text = getString(R.string.fix_configuration)
         } else {
-            binding.tvApiKeyStatus.text = "❌ 未配置AI服务"
+            binding.tvApiKeyStatus.text = getString(R.string.api_service_not_configured)
             binding.tvApiKeyStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
-            binding.btnApiKey.text = "开始配置"
+            binding.btnApiKey.text = getString(R.string.start_configuration)
         }
     }
     
@@ -822,7 +851,7 @@ class MainActivity : AppCompatActivity() {
      * 更新统计信息显示
      */
     private fun updateStatistics(stats: com.readassist.repository.ChatStatistics) {
-        binding.tvStatistics.text = "消息: ${stats.totalMessages} | 会话: ${stats.totalSessions}"
+        binding.tvStatistics.text = getString(R.string.message_and_session_stats, stats.totalMessages, stats.totalSessions)
     }
     
     /**
@@ -848,12 +877,12 @@ class MainActivity : AppCompatActivity() {
         val isServiceRunning = isFloatingWindowServiceRunning()
         if (isServiceRunning) {
             stopService(Intent(this, FloatingWindowServiceNew::class.java))
-            showMessage("悬浮按钮已停止")
+            showMessage(getString(R.string.turn_off_floating_button))
         } else {
             if (PermissionUtils.hasOverlayPermission(this)) {
                 startFloatingWindowService()
             } else {
-                showMessage("请先授予悬浮窗权限")
+                showMessage(getString(R.string.grant_overlay_permission))
                 requestPermissions()
             }
         }
@@ -866,7 +895,7 @@ class MainActivity : AppCompatActivity() {
     private fun startFloatingWindowService() {
         val intent = Intent(this, FloatingWindowServiceNew::class.java)
         startForegroundService(intent)
-        showMessage("悬浮窗服务已启动")
+        showMessage(getString(R.string.floating_service_started))
     }
     
     /**
@@ -887,19 +916,19 @@ class MainActivity : AppCompatActivity() {
      */
     private fun requestScreenshotPermission() {
         if (isScreenshotPermissionGranted()) {
-            showMessage("截屏权限已授予")
+            showMessage(getString(R.string.screenshot_permission_granted_simple))
             return
         }
         
         AlertDialog.Builder(this)
-            .setTitle("截屏权限")
-            .setMessage("截屏功能需要录屏权限来捕获屏幕内容。\n\n点击确定后，请在系统弹窗中选择\"立即开始\"。\n\n注意：此权限仅用于截屏分析，不会进行录制。")
-            .setPositiveButton("授予权限") { _, _ ->
+            .setTitle(getString(R.string.permission_title_screenshot))
+            .setMessage(getString(R.string.permission_message_screenshot))
+            .setPositiveButton(getString(R.string.grant_permission_label)) { _, _ ->
                 val mediaProjectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
                 val intent = mediaProjectionManager.createScreenCaptureIntent()
                 screenshotPermissionLauncher.launch(intent)
             }
-            .setNegativeButton("取消", null)
+            .setNegativeButton(getString(R.string.cancel_button), null)
             .show()
     }
     
@@ -917,13 +946,13 @@ class MainActivity : AppCompatActivity() {
     private fun updateFloatingServiceStatus() {
         val isServiceRunning = isFloatingWindowServiceRunning()
         if (isServiceRunning) {
-            binding.tvFloatingWindowStatus.text = "✓ 悬浮按钮运行中"
+            binding.tvFloatingWindowStatus.text = getString(R.string.floating_button_running)
             binding.tvFloatingWindowStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
-            binding.btnFloatingWindow.text = "停止悬浮按钮"
+            binding.btnFloatingWindow.text = getString(R.string.stop_floating_button)
         } else {
-            binding.tvFloatingWindowStatus.text = "- 悬浮按钮已停止"
+            binding.tvFloatingWindowStatus.text = getString(R.string.floating_button_stopped)
             binding.tvFloatingWindowStatus.setTextColor(ContextCompat.getColor(this, R.color.black))
-            binding.btnFloatingWindow.text = "启动悬浮按钮"
+            binding.btnFloatingWindow.text = getString(R.string.turn_on_floating_button)
         }
     }
 
@@ -971,11 +1000,11 @@ class MainActivity : AppCompatActivity() {
                 }
                 startForegroundService(intent)
                 
-                showMessage("截屏权限已授予，截屏功能已启用")
+                showMessage(getString(R.string.screenshot_permission_granted_simple))
                 updateFloatingServiceStatus()
             } else {
                 app.preferenceManager.setScreenshotPermissionGranted(false)
-                showMessage("截屏权限被拒绝，截屏功能将无法使用")
+                showMessage(getString(R.string.screenshot_permission_denied_simple))
                 updateFloatingServiceStatus()
             }
         }
@@ -993,9 +1022,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun showOverlayPermissionDialog() {
         AlertDialog.Builder(this)
-            .setTitle("需要悬浮窗权限")
-            .setMessage("ReadAssist需要悬浮窗权限才能显示悬浮按钮。请在设置中授予权限。")
-            .setPositiveButton("去设置") { _, _ ->
+            .setTitle(getString(R.string.overlay_permission_title))
+            .setMessage(getString(R.string.overlay_permission_message))
+            .setPositiveButton(getString(R.string.go_to_settings)) { _, _ ->
                 // 跳转到悬浮窗权限设置页面
                 val intent = Intent(
                     Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
@@ -1003,20 +1032,44 @@ class MainActivity : AppCompatActivity() {
                 )
                 startActivity(intent)
             }
-            .setNegativeButton("取消", null)
+            .setNegativeButton(getString(R.string.cancel_button), null)
             .show()
     }
 
 
 
     /**
+     * 请求iReader设备的截屏目录访问权限
+     */
+    private fun requestIReaderDirectoryAccess() {
+        val deviceScreenshotManager = DeviceScreenshotManager(this, app.preferenceManager)
+        val config = deviceScreenshotManager.getCurrentDeviceConfig()
+        
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.ireader_directory_auth_title))
+            .setMessage(getString(R.string.ireader_directory_auth_message, config.systemPath))
+            .setPositiveButton(getString(R.string.grant_access_button)) { _, _ ->
+                try {
+                    // 使用Intent.ACTION_OPEN_DOCUMENT_TREE直接创建授权Intent
+                    val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+                    safDirectoryLauncher.launch(intent)
+                } catch (e: Exception) {
+                    Log.e(TAG, "启动SAF授权失败", e)
+                    showMessage(getString(R.string.authorization_failed, e.message ?: ""))
+                }
+            }
+            .setNegativeButton(getString(R.string.cancel_button_x), null)
+            .show()
+    }
+
+    /**
      * 请求Supernote设备的截屏目录访问权限
      */
     private fun requestSupernoteDirectoryAccess() {
         AlertDialog.Builder(this)
-            .setTitle("🗂️ Supernote截屏目录授权")
-            .setMessage("为了保存和监控截屏文件，需要授权访问以下目录：\n\n📁 /storage/emulated/0/SCREENSHOT\n\n这是Supernote设备的系统截屏目录。点击\"授权\"后，请在文件选择器中选择 SCREENSHOT 文件夹。")
-            .setPositiveButton("🔓 授权") { _, _ ->
+            .setTitle(getString(R.string.supernote_directory_auth_title))
+            .setMessage(getString(R.string.supernote_directory_auth_message))
+            .setPositiveButton(getString(R.string.grant_access_button)) { _, _ ->
                 try {
                     val deviceScreenshotManager = DeviceScreenshotManager(this, app.preferenceManager)
                     val config = deviceScreenshotManager.getCurrentDeviceConfig()
@@ -1036,10 +1089,10 @@ class MainActivity : AppCompatActivity() {
                     safDirectoryLauncher.launch(intent)
                 } catch (e: Exception) {
                     Log.e(TAG, "启动SAF授权失败", e)
-                    showMessage("❌ 启动授权失败：${e.message}")
+                    showMessage(getString(R.string.authorization_failed, e.message ?: ""))
                 }
             }
-            .setNegativeButton("❌ 取消", null)
+            .setNegativeButton(getString(R.string.cancel_button_x), null)
             .show()
     }
 

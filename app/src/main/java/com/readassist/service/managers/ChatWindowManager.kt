@@ -134,15 +134,15 @@ class ChatWindowManager(
         
         // 检查当前内容是否是默认提示文本
         val isDefaultPrompt = currentText.isBlank() ||
-            currentText == "请分析这张截屏图片：" ||
-            currentText == "请分析这段文字：" ||
-            currentText == "请分析发给你的图片和文字内容。" ||
-            currentText == "请输入您的问题或内容" ||
-            currentText.contains("请输入您的问题或内容") ||
-            currentText.startsWith("请分析")
+            currentText == context.getString(R.string.analyze_screenshot_prompt) ||
+            currentText == context.getString(R.string.analyze_text_prompt) ||
+            currentText == context.getString(R.string.analyze_image_and_text_prompt) ||
+            currentText.contains(context.getString(R.string.input_hint_long).split("，")[0]) ||
+            currentText.startsWith("请分析") ||
+            currentText.startsWith("Please analyze")
         
-        // 特殊情况：如果新提示是默认输入提示（包含"请输入您的问题或内容"），只设置hint不改变内容
-        if (newHint.contains("请输入您的问题或内容")) {
+        // 特殊情况：如果新提示是默认输入提示，只设置hint不改变内容
+        if (newHint.contains(context.getString(R.string.input_hint_long).split("，")[0])) {
             Log.e(TAG, "[日志追踪] 提示为默认输入提示，只设置hint不改变内容")
             // 如果当前内容也是提示文本，则清空输入框
             if (isDefaultPrompt) {
@@ -377,9 +377,9 @@ class ChatWindowManager(
                     Log.e(TAG, "[日志追踪] 输入框为空但有提示文本: $hintText")
                     
                     if (!hintText.isNullOrEmpty() && 
-                        (hintText.contains("请分析这张截屏图片") || 
-                         hintText.contains("请分析这段文字") || 
-                         hintText.contains("请分析发给你的图片和文字内容"))) {
+                                    (hintText.contains(context.getString(R.string.analyze_screenshot_prompt).split("：")[0]) ||
+            hintText.contains(context.getString(R.string.analyze_text_prompt).split("：")[0]) ||
+            hintText.contains(context.getString(R.string.analyze_image_and_text_prompt).split("。")[0]))) {
                         Log.e(TAG, "[日志追踪] 使用提示文本作为消息内容发送")
                         inputEditText?.setText("")
                         callbacks.onMessageSend(hintText)
@@ -744,7 +744,7 @@ class ChatWindowManager(
             
             // 设置标题
             val title = if (bookPreference == "阅读笔记" || bookPreference.isEmpty()) {
-                "AI阅读助手"
+                context.getString(R.string.floating_window_title)
             } else {
                 "$bookPreference"
             }
@@ -789,20 +789,20 @@ class ChatWindowManager(
             if (latestInfo != null) {
                 val timeString = deviceScreenshotManager.formatTimeForDisplay(latestInfo.lastModified)
                 val deviceInfo = when (latestInfo.deviceType) {
-                    com.readassist.utils.DeviceType.IREADER -> "掌阅"
-                    com.readassist.utils.DeviceType.SUPERNOTE -> "Supernote"
-                    else -> "系统"
+                    com.readassist.utils.DeviceType.IREADER -> context.getString(R.string.device_ireader)
+                    com.readassist.utils.DeviceType.SUPERNOTE -> context.getString(R.string.device_supernote)
+                    else -> context.getString(R.string.device_system)
                 }
                 tvScreenshotTime?.text = "$timeString ($deviceInfo)"
                 checkSendScreenshot?.isEnabled = true
             } else {
-                tvScreenshotTime?.text = "无最新截屏"
+                tvScreenshotTime?.text = context.getString(R.string.no_latest_screenshot)
                 checkSendScreenshot?.isEnabled = false
                 checkSendScreenshot?.isChecked = false
             }
         } catch (e: Exception) {
             Log.e(TAG, "更新截屏信息失败", e)
-            tvScreenshotTime?.text = "获取失败"
+            tvScreenshotTime?.text = context.getString(R.string.get_failed)
             checkSendScreenshot?.isEnabled = false
             checkSendScreenshot?.isChecked = false
         }
@@ -819,10 +819,10 @@ class ChatWindowManager(
             
             // 根据文件路径判断设备类型
             val deviceInfo = when {
-                filePath.contains("/storage/emulated/0/SCREENSHOT/") -> "Supernote"
-                filePath.contains("/storage/emulated/0/iReader/saveImage/") -> "掌阅"
-                filePath.contains("/storage/emulated/0/Pictures/Screenshots/") -> "系统"
-                else -> "未知"
+                filePath.contains("/storage/emulated/0/SCREENSHOT/") -> context.getString(R.string.device_supernote)
+                filePath.contains("/storage/emulated/0/iReader/saveImage/") -> context.getString(R.string.device_ireader)
+                filePath.contains("/storage/emulated/0/Pictures/Screenshots/") -> context.getString(R.string.device_system)
+                else -> context.getString(R.string.device_unknown)
             }
             
             tvScreenshotTime?.text = "$timeString ($deviceInfo)"
@@ -842,7 +842,7 @@ class ChatWindowManager(
      */
     fun updateClipboardInfo(clipboardContent: String?) {
         if (clipboardContent.isNullOrBlank()) {
-            tvClipboardContent?.text = "无"
+            tvClipboardContent?.text = context.getString(R.string.none)
             checkSendClipboard?.isEnabled = false
             checkSendClipboard?.isChecked = false
         } else {
@@ -906,7 +906,7 @@ class ChatWindowManager(
         tvTitle?.text = when {
             bookName.isNotEmpty() -> bookName
             appPackage.isNotEmpty() -> appPackage
-            else -> "阅读助手"
+            else -> context.getString(R.string.floating_window_title)
         }
     }
 
@@ -984,7 +984,7 @@ class ChatAdapter(
                     clipboard.setPrimaryClip(clip)
                     
                     // 显示提示
-                    Toast.makeText(context, "已复制选中文字", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.copied_selected_text), Toast.LENGTH_SHORT).show()
                     
                     // 清除选择状态
                     tv.clearFocus()
@@ -1002,7 +1002,7 @@ class ChatAdapter(
         
         when {
             item.isUserMessage -> {
-                senderLabel.text = "👤 用户"
+                senderLabel.text = "👤 ${context.getString(R.string.user_label)}"
                 senderLabel.setTextColor(0xFF2196F3.toInt()) // 蓝色
                 messageTextView.text = item.userMessage
                 messageTextView.setBackgroundColor(0xFFE3F2FD.toInt()) // 浅蓝背景
@@ -1017,7 +1017,7 @@ class ChatAdapter(
             }
             
             item.isLoading -> {
-                senderLabel.text = "🤖 AI (思考中...)"
+                senderLabel.text = "🤖 ${context.getString(R.string.ai_assistant)} (${context.getString(R.string.ai_thinking_message).replace("...", "")})"
                 senderLabel.setTextColor(0xFF4CAF50.toInt()) // 绿色
                 messageTextView.text = item.aiMessage
                 messageTextView.setBackgroundColor(0xFFFFFFFF.toInt()) // 白色背景
@@ -1035,7 +1035,7 @@ class ChatAdapter(
             }
             
             else -> {
-                senderLabel.text = "🤖 AI助手"
+                senderLabel.text = "🤖 ${context.getString(R.string.ai_assistant)}"
                 senderLabel.setTextColor(0xFF4CAF50.toInt()) // 绿色
                 messageTextView.text = item.aiMessage
                 messageTextView.setBackgroundColor(0xFFF1F8E9.toInt()) // 浅绿背景

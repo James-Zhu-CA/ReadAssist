@@ -30,10 +30,10 @@ object ApiKeyHelper {
      * 获取显示用的 API Key（隐藏部分字符）
      */
     fun getMaskedApiKey(apiKey: String): String {
-        return if (apiKey.length > 8) {
-            "${apiKey.take(8)}${"*".repeat(apiKey.length - 12)}${apiKey.takeLast(4)}"
-        } else {
-            "*".repeat(apiKey.length)
+        return when {
+            apiKey.length <= 8 -> "*".repeat(apiKey.length)
+            apiKey.length <= 12 -> "${apiKey.take(4)}${"*".repeat(apiKey.length - 8)}${apiKey.takeLast(4)}"
+            else -> "${apiKey.take(8)}${"*".repeat(apiKey.length - 12)}${apiKey.takeLast(4)}"
         }
     }
 } 

@@ -2,7 +2,7 @@
 <resources>
     <!-- 应用名称 -->
     <string name="app_name">ReadAssist</string>
-    <string name="app_description">Supernote A5X 智能阅读助手</string>
+    <string name="app_description">电纸书设备智能阅读助手</string>
     
     <!-- 主界面 -->
     <string name="main_title">ReadAssist</string>
@@ -51,10 +51,8 @@
     <string name="bookmark_removed">取消收藏</string>
     
     <!-- 历史记录 -->
-    <string name="history_title">历史记录</string>
     <string name="search_history">搜索历史记录</string>
     <string name="no_history">暂无聊天记录</string>
-    <string name="delete_session">删除会话</string>
     <string name="export_history">导出记录</string>
     <string name="session_from">来自：%s</string>
     <string name="messages_count">%d 条消息</string>
@@ -96,5 +94,378 @@
     <!-- Screenshot Permission Status -->
     <string name="screenshot_permission_status">截屏权限：%s</string>
 
-    <!-- Accessibility Service -->
+    <!-- Language Settings -->
+    <string name="language_title">语言</string>
+    <string name="language_system">跟随系统</string>
+    <string name="language_chinese">中文</string>
+    <string name="language_english">English</string>
+    <string name="language_changed">语言已更改，请重启应用</string>
+
+    <!-- 悬浮窗硬编码文本 -->
+    <string name="new_chat">新对话</string>
+    <string name="send_screenshot">发送截屏图片</string>
+    <string name="send_clipboard">发送剪贴板内容</string>
+    <string name="attach_screenshot">附带截屏</string>
+    
+    <!-- 界面硬编码文本 -->
+    <string name="system_status">系统状态</string>
+    <string name="usage_statistics">使用统计</string>
+    <string name="loading">加载中...</string>
+    <string name="function_menu">功能菜单</string>
+    <string name="floating_service_status_checking">悬浮窗服务状态检查中...</string>
+    <string name="start_floating">启动悬浮窗</string>
+    <string name="auto_screenshot_trigger">使用系统截屏后自动触发对话窗口</string>
+    <string name="api_key_status_checking">API Key 状态检查中...</string>
+    <string name="set_api_key">设置 API Key</string>
+    <string name="data_management">数据管理</string>
+    <string name="not_configured">未配置</string>
+    <string name="not_set">未设置</string>
+    <string name="ai_platform_config">AI平台配置</string>
+    <string name="ai_platform">AI平台</string>
+    <string name="ai_model">AI模型</string>
+    <string name="configure">配置</string>
+    <string name="clear">清除</string>
+    <string name="text_placeholder_hint">使用 [TEXT] 作为选中文本的占位符</string>
+    <string name="reset_settings">重置设置</string>
+    <string name="screenshot_permission_checking">截屏权限状态检查中...</string>
+    <string name="grant_screenshot_permission">授予截屏权限</string>
+    <string name="grant_accessibility_permission">授予无障碍权限</string>
+    <string name="accessibility_permission_unknown">无障碍服务权限：未知</string>
+    <string name="device_setup">设备截屏目录配置</string>
+    <string name="device_info_loading">设备信息加载中...</string>
+    <string name="device_config_list">设备配置列表</string>
+    <string name="return_main">返回主界面</string>
+    <string name="permission_request_title">截屏权限授权</string>
+    <string name="permission_request_message">ReadAssist需要截屏权限来分析屏幕内容。\n\n点击下方按钮将打开系统权限对话框，请选择立即开始。</string>
+    <string name="grant_permission_btn">授权权限</string>
+    <string name="no_messages">没有消息记录</string>
+    <string name="no_history_sessions">没有历史会话记录</string>
+    <string name="show_archived_sessions">显示归档会话</string>
+    <string name="user_message_example">用户消息示例</string>
+    <string name="ai_reply_example">AI回复示例</string>
+    <string name="user">用户</string>
+    <string name="book_name">书籍名称</string>
+    <string name="archived">已归档</string>
+    <string name="app_name_placeholder">应用名称</string>
+    <string name="message_count_example">10条消息</string>
+    <string name="device_name">设备名称</string>
+    <string name="not_configured_status">❌ 未配置</string>
+    <string name="device_path">路径: /storage/emulated/0/...</string>
+    <string name="device_description">设备描述信息</string>
+    <string name="configure_permission">配置权限</string>
+    
+    <!-- 动态设置的文本 -->
+    <string name="floating_button_running">✓ 悬浮按钮运行中</string>
+    <string name="floating_button_stopped">- 悬浮按钮已停止</string>
+    <string name="stop_floating_button">停止悬浮按钮</string>
+    <string name="reconfigure">重新配置</string>
+    <string name="default_prompt_template">请用中文回答问题：\n\n[TEXT]</string>
+    <string name="ai_assistant">AI助手</string>
+    <string name="user_label">用户</string>
+    <string name="analyze_screenshot_prompt">请分析这张截屏图片：</string>
+    
+    <!-- 其他缺失的文本 -->
+    <string name="please_wait">请稍候...</string>
+    <string name="configuration_incomplete">⚠ 配置不完整或无效</string>
+    <string name="device_screenshot_path_unknown">掌阅截屏文件目录：未知</string>
+    
+    <!-- 权限状态文本 -->
+    <string name="storage_permission_granted_external">存储权限：已授予（读写外部存储）</string>
+    <string name="storage_permission_missing">存储权限：缺少 (%s)</string>
+    <string name="screenshot_permission_ireader_tip">截屏权限：您的设备是掌阅公司的，建议将按键长按设置为截屏，使用会更便捷</string>
+    <string name="screenshot_permission_granted_restart">截屏权限：已授予（重启后需重新授权）</string>
+    <string name="screenshot_permission_expired">截屏权限：已失效（请重新授权）</string>
+    <string name="screenshot_permission_not_granted">截屏权限：未授予</string>
+    <string name="accessibility_permission_granted">无障碍服务权限：已授予</string>
+    <string name="accessibility_permission_not_granted">无障碍服务权限：未授权</string>
+    <string name="input_hint_default">输入问题或点击分析选中文本</string>
+    <string name="input_hint_long">请输入您的问题或内容，选择对话文本后长按可自动复制到此处</string>
+    <string name="analyze_text_prompt">请分析这段文字：</string>
+    <string name="analyze_image_and_text_prompt">请分析发给你的图片和文字内容。</string>
+    <string name="gemini_api_key_hint">请输入 Gemini API Key (以 AIza 开头)</string>
+    <string name="siliconflow_api_key_hint">请输入 SiliconFlow API Key (以 sk- 开头)</string>
+    <string name="default_prompt_template_chinese">请用中文回答问题：\n\n[TEXT]</string>
+    <string name="default_prompt_template_english">Please answer question in English:\n\n[TEXT]</string>
+    
+    <!-- 设备截屏目录状态 -->
+    <string name="ireader_screenshot_dir_authorized">掌阅截屏目录：✅ 已授权 (%s)</string>
+    <string name="ireader_screenshot_dir_not_authorized">掌阅截屏目录：❌ 需要SAF授权 (%s)</string>
+    <string name="supernote_screenshot_dir_authorized">Supernote截屏目录：✅ 已授权SAF访问 (/storage/emulated/0/SCREENSHOT)</string>
+    <string name="supernote_screenshot_dir_not_authorized">Supernote截屏目录：❌ 需要SAF授权 (/storage/emulated/0/SCREENSHOT)</string>
+    <string name="turn_on_floating_button">启动悬浮按钮</string>
+    <string name="turn_off_floating_button">停止悬浮按钮</string>
+    <string name="auto_popup">自动弹屏</string>
+    <string name="new_chat_short">新对话</string>
+    <string name="ai_thinking_message">AI正在思考中...</string>
+    
+    <!-- 引导界面字符串 -->
+    <string name="setup_wizard_title">选择AI平台</string>
+    <string name="setup_wizard_message">请选择要使用的AI服务：</string>
+    <string name="setup_wizard_cancel">取消</string>
+    <string name="option_google_gemini">• Google Gemini</string>
+    <string name="option_siliconflow">• SiliconFlow</string>
+    <string name="option_manual_setup">⚙️ 手动设置</string>
+    <string name="selected_gemini">✅ 已选择 Google Gemini</string>
+    <string name="selected_siliconflow">✅ 已选择 SiliconFlow</string>
+    <string name="setup_failed_fallback">❌ 显示设置失败，转到手动设置</string>
+    
+    <!-- Gemini设置对话框 -->
+    <string name="gemini_setup_title">配置 Google Gemini</string>
+    <string name="gemini_setup_message">Gemini API Key 申请地址：\nhttps://aistudio.google.com/apikey\n\n请将您的API Key输入到下方：</string>
+    <string name="confirm_button">确定</string>
+    <string name="back_button">返回</string>
+    <string name="apply_key_button">申请Key</string>
+    
+    <!-- SiliconFlow设置对话框 -->
+    <string name="siliconflow_setup_title">配置 SiliconFlow</string>
+    <string name="siliconflow_setup_message">SiliconFlow API Key 申请地址：\nhttps://siliconflow.com\n\n请将您的API Key输入到下方：</string>
+    
+    <!-- 通用设置消息 -->
+    <string name="please_enter_api_key">请输入API Key</string>
+    <string name="platform_config_success">%s 配置成功！</string>
+    
+    <!-- 清除数据对话框 -->
+    <string name="clear_all_data_title">清除所有数据</string>
+    <string name="clear_all_data_message">此操作将删除所有聊天记录和设置，且无法恢复。确定要继续吗？</string>
+    
+    <!-- 目录授权按钮 -->
+    <string name="start_directory_authorization">开始目录授权</string>
+    <string name="selected_text_with_screenshot">选中文本：%s\n\n请分析这张截屏图片：</string>
+    <string name="floating_service_started">悬浮窗服务已启动</string>
+    <string name="screenshot_failed_message">截屏失败：%s</string>
+    <string name="requesting_screenshot_permission">🔐 正在请求截屏权限...</string>
+    <string name="language_saved_restarting">语言设置已保存，正在重启应用...</string>
+    <string name="auto_analyze_status">自动分析已%s</string>
+    <string name="enabled">启用</string>
+    <string name="disabled">禁用</string>
+    <string name="fix_configuration">修复配置</string>
+    <string name="start_configuration">开始配置</string>
+    <string name="need_configure_ai_service">需要配置AI服务</string>
+    <string name="api_key_invalid_format">❌ API Key 格式不正确</string>
+    <string name="api_key_config_success">✅ API Key 配置成功</string>
+    <string name="platform_config_success_detailed">✅ %s 配置成功！现在进行权限设置...</string>
+    <string name="platform_api_key_invalid">❌ %s API Key 格式不正确</string>
+    <string name="cannot_open_browser">无法打开浏览器</string>
+    <string name="directory_access_configured">✅ 目录访问权限配置成功！</string>
+    
+    <!-- MainActivity 额外缺失的字符串 -->
+    <string name="screenshot_permission_granted">截屏权限已授予，截屏功能已启用</string>
+    <string name="screenshot_permission_denied">截屏权限被拒绝，截屏功能将无法使用</string>
+    <string name="supernote_dir_permission_granted">✅ Supernote截屏目录权限已授予</string>
+    <string name="permission_grant_failed">❌ 权限授予失败，请重试</string>
+    <string name="user_cancelled_permission">❌ 用户取消了权限授予</string>
+    <string name="api_service_not_configured">❌ 未配置AI服务</string>
+    <string name="welcome_title">欢迎使用 ReadAssist</string>
+    <string name="welcome_message">ReadAssist 是专为超级笔记、掌阅等电纸书设计的智能阅读助手。\n\n首次使用需要配置AI服务：\n\n1. 选择AI平台（Gemini 或 SiliconFlow）\n2. 申请并配置对应的API Key\n3. 授权必要权限（无障碍服务、存储和截屏权限）\n4. 开始智能阅读！\n\n点击\"开始配置\"进入设置向导。</string>
+    <string name="setup_later">稍后设置</string>
+    <string name="screenshot_auto_popup_enabled">截屏自动弹窗已开启</string>
+    <string name="screenshot_auto_popup_disabled">截屏自动弹窗已关闭</string>
+    <string name="select_ai_platform_title">🔧 选择AI平台</string>
+    <string name="select_ai_platform_message">请选择要使用的AI服务：</string>
+    <string name="gemini_selected">✅ 已选择 Google Gemini</string>
+    <string name="siliconflow_selected">✅ 已选择 SiliconFlow</string>
+    <string name="setup_cancelled">用户取消设置</string>
+    <string name="setup_failed">❌ 显示设置失败，转到手动设置</string>
+    <string name="grant_overlay_permission">请先授予悬浮窗权限</string>
+    <string name="screenshot_permission_granted_simple">截屏权限已授予</string>
+    <string name="permission_title_screenshot">截屏权限</string>
+    <string name="permission_message_screenshot">截屏功能需要录屏权限来捕获屏幕内容。\n\n点击确定后，请在系统弹窗中选择\"立即开始\"。\n\n注意：此权限仅用于截屏分析，不会进行录制。</string>
+    <string name="grant_permission_label">授予权限</string>
+    <string name="overlay_permission_title">需要悬浮窗权限</string>
+    <string name="overlay_permission_message">ReadAssist需要悬浮窗权限才能显示悬浮按钮。请在设置中授予权限。</string>
+    <string name="go_to_settings">去设置</string>
+    <string name="authorize">🔓 授权</string>
+    <string name="authorization_failed">❌ 启动授权失败：%s</string>
+    <string name="reauthorize">重新授权</string>
+    <string name="grant_screenshot_permission_btn">授权截屏权限</string>
+    <string name="grant_accessibility_permission_btn">授予无障碍权限</string>
+    <string name="message_and_session_stats" formatted="false">消息: %d | 会话: %d</string>
+    <string name="ai_label">AI:</string>
+    <string name="ai_assistant_short">AI</string>
+    
+    <!-- 返回按钮 -->
+    <string name="back_to_main">返回主界面</string>
+    
+    <!-- 历史页面标题 -->
+    <string name="history_title">历史记录</string>
+    
+    <!-- 隐藏归档会话 -->
+    <string name="hide_archived_sessions">隐藏归档会话</string>
+    
+    <!-- Toast消息 -->
+    <string name="preparing_screenshot_analysis">准备截屏分析，请稍候...</string>
+    <string name="text_imported_ready_to_edit">文本已导入，可以编辑后发送</string>
+    <string name="ai_platform_configured_success">✅ %s 配置成功</string>
+    <string name="api_key_format_incorrect">❌ API Key 格式不正确</string>
+    <string name="please_enter_api_key_simple">请输入API Key</string>
+    <string name="cannot_open_browser_simple">无法打开浏览器</string>
+    <string name="copied_to_clipboard">已复制到剪贴板</string>
+    <string name="screenshot_saved_click_to_analyze">截屏已保存，点击悬浮窗手动分析</string>
+    <string name="resetting_permission_status">正在重置权限状态...</string>
+    <string name="permission_timeout_auto_reset">权限请求超时，正在自动重置...</string>
+    <string name="screenshot_permission_reset_retry">截屏权限已重置，请重新尝试</string>
+    <string name="reset_error_restart_app">重置过程出错，请重启应用</string>
+    <string name="reset_failed_restart_app">重置失败，请重启应用</string>
+    <string name="screenshot_service_error_restart">截屏服务异常，请重启应用</string>
+    <string name="copied_selected_text">已复制选中文字</string>
+    <string name="retry_later">稍后重试</string>
+    <string name="all_permissions_granted">所有权限已授予</string>
+    <string name="missing_permissions">缺少权限：%s</string>
+    
+    <!-- 截屏权限活动相关 -->
+    <string name="screenshot_permission_title">截屏权限授权</string>
+    <string name="screenshot_permission_initial_message">ReadAssist需要截屏权限来分析屏幕内容。\n\n点击下方按钮将打开系统权限对话框，请选择\"立即开始\"。</string>
+    <string name="user_cancelled_permission_request">用户取消权限请求</string>
+    <string name="opening_system_permission_dialog">正在打开系统权限对话框...\n\n请在系统弹窗中选择「立即开始」。</string>
+    <string name="failed_to_start_permission_dialog">启动系统权限对话框失败，请重试\n\n错误: %s</string>
+    <string name="screenshot_permission_request_failed">截屏权限请求失败\n\n错误: %s</string>
+    <string name="screenshot_permission_granted_title">截屏权限已授予</string>
+    <string name="screenshot_permission_granted_message">截屏权限授予成功，现在可以使用截屏功能了。</string>
+    <string name="screenshot_permission_denied_title">截屏权限被拒绝</string>
+    <string name="screenshot_permission_denied_message">您拒绝了截屏权限，无法使用截屏功能。\n\n如果需要使用截屏功能，请点击下方按钮重新授权。</string>
+    
+    <!-- 截屏服务相关 -->
+    <string name="screenshot_service_name">截屏服务</string>
+    <string name="screenshot_service_description">ReadAssist 截屏功能</string>
+    <string name="screenshot_service_title">ReadAssist 截屏服务</string>
+    <string name="screenshot_service_preparing">准备截屏...</string>
+    <string name="screenshot_permission_revoked_by_system">截屏权限已被系统收回，请重新授权</string>
+    <string name="screenshot_permission_not_granted_simple">截屏权限未授予</string>
+    <string name="screenshot_permission_denied_simple">截屏权限被拒绝，截屏功能将无法使用</string>
+    
+    <!-- 悬浮窗服务相关 -->
+    <string name="readassist_running">ReadAssist正在运行</string>
+    <string name="tap_to_manage_app">点击管理应用</string>
+    
+    <!-- 截屏管理器相关 -->
+    <string name="need_screenshot_permission">需要获取截屏权限</string>
+    <string name="screenshot_service_not_ready">截屏服务未准备就绪</string>
+    <string name="permission_request_timeout">权限请求超时，请重试</string>
+    <string name="cannot_start_permission_request">无法启动权限请求，请重试或重启应用</string>
+    
+    <string name="invalid_session_id">无效的会话ID</string>
+    <string name="config_cleared_for_device">已清除 %s 的配置</string>
+    <string name="config_failed_or_cancelled">❌ 配置失败或已取消</string>
+    <string name="search_feature_coming_soon">搜索功能即将推出</string>
+    <string name="export_failed">导出失败: %s</string>
+    <string name="save_file_failed">保存文件失败: %s</string>
+    <string name="session_deleted">会话已删除</string>
+    <string name="no_sessions_to_export">没有可导出的会话</string>
+    
+    <!-- 会话操作 -->
+    <string name="session_actions">会话操作</string>
+    <string name="archive_session">归档</string>
+    <string name="unarchive_session">取消归档</string>
+    <string name="export_session">导出会话</string>
+    <string name="delete_session">删除会话</string>
+    <string name="session_archived">会话已归档</string>
+    <string name="session_unarchived">会话已取消归档</string>
+    <string name="delete_session_title">删除会话</string>
+    <string name="delete_session_message">确定要删除此会话吗？这将永久删除所有相关消息，且无法恢复。</string>
+    <string name="delete_button">删除</string>
+    <string name="cancel_button">取消</string>
+    <string name="export_success">导出成功: %s</string>
+    
+    <!-- API Key配置相关 -->
+    <string name="api_key_configured">已配置: %s</string>
+    <string name="api_key_not_configured">未配置 %s API Key</string>
+    <string name="configure_api_key_title">配置API Key</string>
+    <string name="configure_platform_title">配置 %s</string>
+    <string name="api_signup_url_label">申请地址：%s</string>
+    <string name="open_signup_page">打开申请页面</string>
+    <string name="confirm">确定</string>
+    
+    <!-- AI配置引导对话框 -->
+    <string name="ai_config_required_title">需要配置AI服务</string>
+    <string name="ai_config_required_message">使用AI助手前需要先配置API Key。\n\n请选择：\n• 在主应用中完成配置\n• 或在聊天窗口中快速配置</string>
+    <string name="quick_setup">快速配置</string>
+    <string name="open_main_app">打开主应用</string>
+    <string name="device_configured">已配置</string>
+    <string name="device_not_configured">未配置</string>
+    <string name="select_ai_platform_dialog_title">选择AI平台</string>
+    <string name="input_api_key_title">输入API Key</string>
+    
+    <!-- 目录授权对话框 -->
+    <string name="ireader_directory_auth_title">📱 iReader截屏目录授权</string>
+    <string name="ireader_directory_auth_message">为了保存和监控截屏文件，需要授权访问以下目录：\n\n📁 %s\n\n这是您设备的截屏目录。点击"授权"后，请在文件选择器中选择对应的文件夹。</string>
+    <string name="supernote_directory_auth_title">🗂️ Supernote截屏目录授权</string>
+    <string name="supernote_directory_auth_message">为了保存和监控截屏文件，需要授权访问以下目录：\n\n📁 /storage/emulated/0/SCREENSHOT\n\n这是Supernote设备的系统截屏目录。点击"授权"后，请在文件选择器中选择 SCREENSHOT 文件夹。</string>
+    <string name="grant_access_button">🔓 授权</string>
+    <string name="cancel_button_x">❌ 取消</string>
+    
+    <!-- 重置设置对话框 -->
+    <string name="reset_settings_title">重置设置</string>
+    <string name="reset_settings_message">确定要重置所有设置到默认值吗？这将清除所有AI配置和聊天记录。</string>
+    
+    <!-- 清除API Key对话框 -->
+    <string name="clear_api_key_title">清除API Key</string>
+    <string name="clear_api_key_message">确定要清除 %s 的API Key吗？</string>
+    <string name="api_key_cleared_message">已清除 %s API Key</string>
+    
+    <!-- 其他消息 -->
+    <string name="prompt_template_empty_error">提示模板不能为空</string>
+    <string name="prompt_template_placeholder_error">提示模板必须包含 [TEXT] 占位符</string>
+    <string name="prompt_template_saved">提示模板已保存</string>
+    <string name="settings_reset_complete">设置已重置</string>
+    
+    <!-- 设备检测提示 -->
+    <string name="ireader_device_detected">📱 检测到掌阅设备，建议配置截屏目录以获得更好体验</string>
+    
+    <!-- 权限相关对话框和Toast -->
+    <string name="permission_reauth_required_title">需要重新授权截屏权限</string>
+    <string name="permission_reauth_required_message">检测到截屏权限已失效或过期。\n\n点击\"立即授权\"重新获取权限，系统将弹出授权对话框。\n\n请在弹窗中选择\"立即开始\"。</string>
+    <string name="authorize_now">立即授权</string>
+    <string name="permission_timeout_title">权限请求超时</string>
+    <string name="permission_timeout_message">截屏权限请求超过了60秒无响应。\n\n可能的原因：\n• 系统对话框未正确显示\n• 权限请求被系统阻止\n• 设备运行缓慢\n\n建议操作：\n1. 点击「强制重置」\n2. 再次尝试截屏功能</string>
+    <string name="force_reset">强制重置</string>
+    <string name="screenshot_service_error_title">截屏服务异常</string>
+    <string name="screenshot_service_error_message">截屏服务出现问题，可能的原因：\n\n• 截屏权限已失效\n• 服务连接中断\n• 设备性能限制\n\n建议操作：\n1. 重新授予截屏权限\n2. 重启应用\n3. 检查设备内存</string>
+    
+    <!-- 历史记录相关 -->
+    <string name="export_options_title">导出选项</string>
+    <string name="export_all_history">导出全部历史</string>
+    <string name="export_active_sessions">导出活跃会话</string>
+    <string name="export_archived_sessions">导出归档会话</string>
+    
+    <!-- 会话详情相关 -->
+    <string name="unknown_book">未知书籍</string>
+    <string name="session_detail">会话详情</string>
+    <string name="message_bookmarked">已收藏消息</string>
+    <string name="message_unbookmarked">已取消收藏</string>
+    <string name="export_success_path">导出成功: %s</string>
+    
+    <!-- 设备配置相关 -->
+    <string name="device_info_title">📱 设备信息：</string>
+    <string name="manufacturer_label">制造商：%s</string>
+    <string name="model_label">型号：%s</string>
+    <string name="detected_device_type">检测设备类型：%s</string>
+    <string name="usage_instructions">💡 使用说明：</string>
+    <string name="usage_description">• 配置截屏目录权限可以实现自动弹窗功能\n• 当您在设备上截屏时，应用会自动弹出对话窗口\n• 建议配置当前设备对应的截屏目录权限\n• 其他设备类型的配置是可选的</string>
+    <string name="current_device_label"> (当前设备)</string>
+    <string name="device_path_label">路径: %s</string>
+    <string name="configure_permission_btn">配置权限</string>
+    
+    <!-- 权限标签 -->
+    <string name="overlay_permission_label">悬浮窗权限</string>
+    <string name="accessibility_permission_label">辅助功能权限</string>
+    <string name="storage_permission_label">存储权限</string>
+    
+    <!-- 菜单项 -->
+    <string name="search">搜索</string>
+    
+    <!-- 设备类型标签 -->
+    <string name="device_ireader">掌阅</string>
+    <string name="device_supernote">Supernote</string>
+    <string name="device_system">系统</string>
+    <string name="device_unknown">未知</string>
+    
+    <!-- 状态信息 -->
+    <string name="no_latest_screenshot">无最新截屏</string>
+    <string name="get_failed">获取失败</string>
+    <string name="none">无</string>
+    <string name="selected_text_label">选中文字</string>
+    <string name="system_error">系统错误</string>
+
+    <string name="analyzing_image_message">🤖 正在分析图片和您的问题...</string>
+
 </resources> 

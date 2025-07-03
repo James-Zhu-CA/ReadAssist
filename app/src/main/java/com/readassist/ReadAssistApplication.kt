@@ -10,6 +10,7 @@ import com.readassist.database.AppDatabase
 import com.readassist.repository.ChatRepository
 import com.readassist.repository.GeminiRepository
 import com.readassist.utils.PreferenceManager
+import com.readassist.utils.LanguageManager
 
 class ReadAssistApplication : Application() {
 
@@ -27,25 +28,75 @@ class ReadAssistApplication : Application() {
 
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
+        
         // 初始化 MultiDex
         MultiDex.install(this)
+        
+        Log.d(TAG, "📱 Application attachBaseContext completed")
     }
 
     override fun onCreate() {
         super.onCreate()
+        Log.d(TAG, "🚀 Application onCreate started")
         
+        try {
         // 初始化偏好设置管理器
         preferenceManager = PreferenceManager(applicationContext)
+            Log.d(TAG, "✅ PreferenceManager initialized")
+            
+            // 初始化语言设置
+            initializeLanguageSettings()
         
         // 初始化数据库
         database = AppDatabase.getDatabase(applicationContext)
+            Log.d(TAG, "✅ Database initialized")
         
         // 初始化仓库
         geminiRepository = GeminiRepository(preferenceManager)
         chatRepository = ChatRepository(database.chatDao(), geminiRepository)
-        
-        // 这里可以放置其他全局初始化逻辑
-        // 比如配置日志、崩溃报告等
+            Log.d(TAG, "✅ Repositories initialized")
+            
+            Log.d(TAG, "🎉 Application onCreate completed successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Application onCreate failed", e)
+            throw e
+        }
+    }
+    
+    /**
+     * 初始化语言设置
+     */
+    private fun initializeLanguageSettings() {
+        try {
+            val languageCode = preferenceManager.getAppLanguage()
+            Log.d(TAG, "🌐 Current language setting: $languageCode")
+            
+            // 设置默认语言环境
+            val locale = when (languageCode) {
+                "zh" -> java.util.Locale.CHINESE
+                "en" -> java.util.Locale.ENGLISH
+                else -> getSystemLocale()
+            }
+            
+            java.util.Locale.setDefault(locale)
+            Log.d(TAG, "🌐 Application default locale set to: $locale")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to initialize language settings", e)
+            // 如果语言设置失败，继续使用系统默认语言
+        }
+    }
+    
+    /**
+     * 获取系统默认语言
+     */
+    private fun getSystemLocale(): java.util.Locale {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            resources.configuration.locales[0]
+        } else {
+            @Suppress("DEPRECATION")
+            resources.configuration.locale
+        }
     }
 
     /**

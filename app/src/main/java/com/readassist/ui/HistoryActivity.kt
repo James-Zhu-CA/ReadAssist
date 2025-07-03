@@ -20,7 +20,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class HistoryActivity : AppCompatActivity() {
+class HistoryActivity : BaseActivity() {
 
     private lateinit var binding: ActivityHistoryBinding
     private lateinit var app: ReadAssistApplication
@@ -35,7 +35,7 @@ class HistoryActivity : AppCompatActivity() {
         app = application as ReadAssistApplication
 
         // 设置标题栏
-        supportActionBar?.title = "历史记录"
+        supportActionBar?.title = getString(R.string.history_title)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         // 初始化RecyclerView
@@ -49,10 +49,15 @@ class HistoryActivity : AppCompatActivity() {
             showExportOptions()
         }
 
+        // 设置返回按钮
+        binding.btnBackToMain.setOnClickListener {
+            finish()
+        }
+        
         // 设置过滤按钮
         binding.toggleArchived.setOnClickListener {
             isShowingArchived = !isShowingArchived
-            binding.toggleArchived.text = if (isShowingArchived) "显示活跃会话" else "显示归档会话"
+            binding.toggleArchived.text = if (isShowingArchived) getString(R.string.hide_archived_sessions) else getString(R.string.show_archived_sessions)
             loadSessionData()
         }
     }
@@ -74,7 +79,7 @@ class HistoryActivity : AppCompatActivity() {
             }
             R.id.menu_search -> {
                 // TODO: 实现搜索功能
-                Toast.makeText(this, "搜索功能即将推出", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.search_feature_coming_soon), Toast.LENGTH_SHORT).show()
                 true
             }
             else -> super.onOptionsItemSelected(item)
@@ -126,13 +131,13 @@ class HistoryActivity : AppCompatActivity() {
 
     private fun showSessionOptions(session: ChatSessionEntity) {
         val options = arrayOf(
-            if (session.isArchived) "取消归档" else "归档",
-            "导出会话",
-            "删除会话"
+            if (session.isArchived) getString(R.string.unarchive_session) else getString(R.string.archive_session),
+            getString(R.string.export_session),
+            getString(R.string.delete_session)
         )
 
         AlertDialog.Builder(this)
-            .setTitle("会话操作")
+            .setTitle(getString(R.string.session_actions))
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> toggleArchiveStatus(session)
@@ -148,7 +153,7 @@ class HistoryActivity : AppCompatActivity() {
             app.chatRepository.archiveSession(session.sessionId, !session.isArchived)
             Toast.makeText(
                 this@HistoryActivity,
-                if (!session.isArchived) "会话已归档" else "会话已取消归档",
+                if (!session.isArchived) getString(R.string.session_archived) else getString(R.string.session_unarchived),
                 Toast.LENGTH_SHORT
             ).show()
         }
@@ -163,7 +168,7 @@ class HistoryActivity : AppCompatActivity() {
                 binding.progressBar.visibility = View.GONE
             } catch (e: Exception) {
                 binding.progressBar.visibility = View.GONE
-                Toast.makeText(this@HistoryActivity, "导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@HistoryActivity, getString(R.string.export_failed, e.message), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -177,7 +182,7 @@ class HistoryActivity : AppCompatActivity() {
                 binding.progressBar.visibility = View.GONE
             } catch (e: Exception) {
                 binding.progressBar.visibility = View.GONE
-                Toast.makeText(this@HistoryActivity, "导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@HistoryActivity, getString(R.string.export_failed, e.message), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -201,7 +206,7 @@ class HistoryActivity : AppCompatActivity() {
             // 显示成功消息
             Toast.makeText(
                 this,
-                "导出成功: ${file.absolutePath}",
+                getString(R.string.export_success, file.absolutePath),
                 Toast.LENGTH_LONG
             ).show()
             
@@ -211,33 +216,37 @@ class HistoryActivity : AppCompatActivity() {
             sendBroadcast(mediaScanIntent)
             
         } catch (e: Exception) {
-            Toast.makeText(this, "保存文件失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.save_file_failed, e.message), Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun confirmDeleteSession(session: ChatSessionEntity) {
         AlertDialog.Builder(this)
-            .setTitle("删除会话")
-            .setMessage("确定要删除此会话吗？这将永久删除所有相关消息，且无法恢复。")
-            .setPositiveButton("删除") { _, _ ->
+            .setTitle(getString(R.string.delete_session_title))
+            .setMessage(getString(R.string.delete_session_message))
+            .setPositiveButton(getString(R.string.delete_button)) { _, _ ->
                 deleteSession(session)
             }
-            .setNegativeButton("取消", null)
+            .setNegativeButton(getString(R.string.cancel_button), null)
             .show()
     }
 
     private fun deleteSession(session: ChatSessionEntity) {
         lifecycleScope.launch {
             app.chatRepository.deleteSession(session.sessionId)
-            Toast.makeText(this@HistoryActivity, "会话已删除", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this@HistoryActivity, getString(R.string.session_deleted), Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun showExportOptions() {
-        val options = arrayOf("导出全部历史", "导出活跃会话", "导出归档会话")
+        val options = arrayOf(
+            getString(R.string.export_all_history),
+            getString(R.string.export_active_sessions),
+            getString(R.string.export_archived_sessions)
+        )
 
         AlertDialog.Builder(this)
-            .setTitle("导出选项")
+            .setTitle(getString(R.string.export_options_title))
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> exportAllHistory()
@@ -269,7 +278,7 @@ class HistoryActivity : AppCompatActivity() {
                     
                     if (filteredSessions.isEmpty()) {
                         binding.progressBar.visibility = View.GONE
-                        Toast.makeText(this@HistoryActivity, "没有可导出的会话", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@HistoryActivity, getString(R.string.no_sessions_to_export), Toast.LENGTH_SHORT).show()
                         return@collectLatest
                     }
                     
@@ -293,7 +302,7 @@ class HistoryActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 binding.progressBar.visibility = View.GONE
-                Toast.makeText(this@HistoryActivity, "导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@HistoryActivity, getString(R.string.export_failed, e.message), Toast.LENGTH_SHORT).show()
             }
         }
     }

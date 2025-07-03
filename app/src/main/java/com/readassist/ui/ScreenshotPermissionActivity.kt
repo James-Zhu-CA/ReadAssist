@@ -20,7 +20,7 @@ import com.readassist.service.ScreenshotService
 /**
  * 截屏权限请求Activity
  */
-class ScreenshotPermissionActivity : AppCompatActivity() {
+class ScreenshotPermissionActivity : BaseActivity() {
     
     companion object {
         private const val TAG = "ScreenshotPermissionActivity"
@@ -53,8 +53,8 @@ class ScreenshotPermissionActivity : AppCompatActivity() {
     }
     
     private fun setupUI() {
-        findViewById<TextView>(R.id.titleText)?.text = "截屏权限授权"
-        findViewById<TextView>(R.id.messageText)?.text = "ReadAssist需要截屏权限来分析屏幕内容。\n\n点击下方按钮将打开系统权限对话框，请选择\"立即开始\"。"
+        findViewById<TextView>(R.id.titleText)?.text = getString(R.string.screenshot_permission_title)
+        findViewById<TextView>(R.id.messageText)?.text = getString(R.string.screenshot_permission_initial_message)
         
         findViewById<Button>(R.id.requestButton)?.setOnClickListener {
             Log.d(TAG, "用户点击权限请求按钮")
@@ -64,7 +64,7 @@ class ScreenshotPermissionActivity : AppCompatActivity() {
         
         findViewById<Button>(R.id.cancelButton)?.setOnClickListener {
             Log.d(TAG, "用户点击取消按钮")
-            finishWithError("用户取消权限请求")
+            finishWithError(getString(R.string.user_cancelled_permission_request))
         }
     }
     
@@ -115,7 +115,7 @@ class ScreenshotPermissionActivity : AppCompatActivity() {
             val mediaProjectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             
             // 更新UI
-            findViewById<TextView>(R.id.messageText)?.text = "正在打开系统权限对话框...\n\n请在系统弹窗中选择「立即开始」。"
+            findViewById<TextView>(R.id.messageText)?.text = getString(R.string.opening_system_permission_dialog)
             findViewById<Button>(R.id.requestButton)?.isEnabled = false
             
             // 创建权限请求Intent
@@ -132,14 +132,14 @@ class ScreenshotPermissionActivity : AppCompatActivity() {
                 } catch (e: Exception) {
                     Log.e(TAG, "❌ 启动权限请求失败", e)
                     isPermissionRequested = false
-                    findViewById<TextView>(R.id.messageText)?.text = "启动系统权限对话框失败，请重试\n\n错误: ${e.message}"
+                    findViewById<TextView>(R.id.messageText)?.text = getString(R.string.failed_to_start_permission_dialog, e.message ?: "")
                     findViewById<Button>(R.id.requestButton)?.isEnabled = true
                 }
             }, 500)
             
         } catch (e: Exception) {
             Log.e(TAG, "❌ 请求截屏权限失败", e)
-            findViewById<TextView>(R.id.messageText)?.text = "截屏权限请求失败\n\n错误: ${e.message}"
+            findViewById<TextView>(R.id.messageText)?.text = getString(R.string.screenshot_permission_request_failed, e.message ?: "")
             findViewById<Button>(R.id.requestButton)?.isEnabled = true
             finishWithError("权限请求失败: ${e.message}")
             isPermissionRequested = false
@@ -167,10 +167,10 @@ class ScreenshotPermissionActivity : AppCompatActivity() {
                     (applicationContext as? ReadAssistApplication)?.onScreenshotPermissionGranted(resultCode, data)
                     
                     // 更新UI
-                    findViewById<TextView>(R.id.titleText)?.text = "截屏权限已授予"
-                    findViewById<TextView>(R.id.messageText)?.text = "截屏权限授予成功，现在可以使用截屏功能了。"
+                    findViewById<TextView>(R.id.titleText)?.text = getString(R.string.screenshot_permission_granted_title)
+                    findViewById<TextView>(R.id.messageText)?.text = getString(R.string.screenshot_permission_granted_message)
                     findViewById<Button>(R.id.requestButton)?.visibility = View.GONE
-                    findViewById<Button>(R.id.cancelButton)?.text = "确定"
+                    findViewById<Button>(R.id.cancelButton)?.text = getString(R.string.confirm_button)
                     
                     // 发送广播通知权限已授予
                     val permissionGrantedIntent = Intent("com.readassist.SCREENSHOT_PERMISSION_GRANTED")
@@ -209,10 +209,10 @@ class ScreenshotPermissionActivity : AppCompatActivity() {
                 sendBroadcast(permissionDeniedIntent)
                 
                 // 更新UI
-                findViewById<TextView>(R.id.titleText)?.text = "截屏权限被拒绝"
-                findViewById<TextView>(R.id.messageText)?.text = "您拒绝了截屏权限，无法使用截屏功能。\n\n如果需要使用截屏功能，请点击下方按钮重新授权。"
+                findViewById<TextView>(R.id.titleText)?.text = getString(R.string.screenshot_permission_denied_title)
+                findViewById<TextView>(R.id.messageText)?.text = getString(R.string.screenshot_permission_denied_message)
                 findViewById<Button>(R.id.requestButton)?.isEnabled = true
-                findViewById<Button>(R.id.requestButton)?.text = "重新授权"
+                findViewById<Button>(R.id.requestButton)?.text = getString(R.string.reauthorize)
                 
                 // 重置请求标志
                 isPermissionRequested = false

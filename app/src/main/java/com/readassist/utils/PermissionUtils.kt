@@ -12,6 +12,7 @@ import android.provider.Settings
 import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.readassist.R
 
 /**
  * 权限工具类
@@ -155,18 +156,18 @@ object PermissionUtils {
         
         // 检查悬浮窗权限
         if (!hasOverlayPermission(context)) {
-            missingPermissions.add("悬浮窗权限")
+            missingPermissions.add(context.getString(R.string.overlay_permission_label))
         }
         
         // 检查辅助功能权限
         if (!hasAccessibilityPermission(context)) {
-            missingPermissions.add("辅助功能权限")
+            missingPermissions.add(context.getString(R.string.accessibility_permission_label))
         }
         
         // 检查存储权限
         val storageStatus = hasStoragePermissions(context)
         if (!storageStatus.allGranted) {
-            missingPermissions.add("存储权限")
+            missingPermissions.add(context.getString(R.string.storage_permission_label))
         }
         
         return PermissionStatus(
@@ -258,14 +259,14 @@ object PermissionUtils {
                         currentCallback?.onPermissionGranted()
                     } else {
                         val finalMissing = mutableListOf<String>()
-                        if (!finalOverlayGranted) finalMissing.add("悬浮窗权限")
-                        if (!finalAccessibilityGranted) finalMissing.add("辅助功能权限")
+                        if (!finalOverlayGranted) finalMissing.add(activity.getString(R.string.overlay_permission_label))
+                        if (!finalAccessibilityGranted) finalMissing.add(activity.getString(R.string.accessibility_permission_label))
                         currentCallback?.onPermissionDenied(finalMissing)
                     }
                 } else {
                     val finalMissing = mutableListOf<String>()
-                    if (!hasOverlayPermission(activity)) finalMissing.add("悬浮窗权限")
-                    if (!hasAccessibilityPermission(activity)) finalMissing.add("辅助功能权限")
+                    if (!hasOverlayPermission(activity)) finalMissing.add(activity.getString(R.string.overlay_permission_label))
+                    if (!hasAccessibilityPermission(activity)) finalMissing.add(activity.getString(R.string.accessibility_permission_label))
                     finalMissing.addAll(missingPermissionsAfterRequest)
                     currentCallback?.onPermissionDenied(finalMissing)
                 }

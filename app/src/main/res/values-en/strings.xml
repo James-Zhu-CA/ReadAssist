@@ -1,0 +1,470 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App Name -->
+    <string name="app_name">ReadAssist</string>
+    <string name="app_description">Smart Reading Assistant for E-Readers</string>
+    
+    <!-- Main Interface -->
+    <string name="main_title">ReadAssist</string>
+    <string name="main_subtitle">Smart Reading Assistant</string>
+    <string name="start_service">Start Service</string>
+    <string name="stop_service">Stop Service</string>
+    <string name="settings">Settings</string>
+    <string name="history">History</string>
+    
+    <!-- Permissions -->
+    <string name="permission_required">Permission Required</string>
+    <string name="overlay_permission_required">Enable overlay to show AI assistant</string>
+    <string name="accessibility_permission_required">Enable text access for content reading</string>
+    <string name="grant_permission">Allow</string>
+    <string name="permission_denied">Permission Denied</string>
+    <string name="permissions_granted">Ready to go</string>
+    
+    <!-- Settings Page -->
+    <string name="settings_title">Settings</string>
+    <string name="api_key_title">Gemini API Key</string>
+    <string name="api_key_hint">Please enter your Google Gemini API Key</string>
+    <string name="api_key_empty">Please set API Key</string>
+    <string name="prompt_template_title">Prompt Template</string>
+    <string name="prompt_template_hint">Customize AI prompt (use [TEXT] for selected text)</string>
+    <string name="auto_analyze_title">Auto Analysis</string>
+    <string name="auto_analyze_summary">Auto-analyze copied text</string>
+    <string name="clear_data_title">Clear Data</string>
+    <string name="clear_data_summary">Clear all data</string>
+    <string name="about_title">About</string>
+    
+    <!-- Floating Window -->
+    <string name="floating_window_title">AI Reading Assistant</string>
+    <string name="minimize">Minimize</string>
+    <string name="close">Close</string>
+    <string name="send">Send</string>
+    <string name="input_hint">Enter question or click to analyze selected text</string>
+    <string name="analyze_text">Analyze Text</string>
+    
+    <!-- Chat Related -->
+    <string name="ai_thinking">AI is thinking...</string>
+    <string name="ai_response_error">AI response error, please retry</string>
+    <string name="network_error">Network connection failed</string>
+    <string name="api_key_invalid">Invalid API Key, please check settings</string>
+    <string name="rate_limit_exceeded">Rate limit reached, try again later</string>
+    <string name="bookmark_added">Bookmarked</string>
+    <string name="bookmark_removed">Bookmark removed</string>
+    
+    <!-- History -->
+    <string name="search_history">Search History</string>
+    <string name="no_history">No chat records</string>
+    <string name="export_history">Export Records</string>
+    <string name="session_from">From: %s</string>
+    <string name="messages_count">%d messages</string>
+    
+    <!-- Error Messages -->
+    <string name="error_unknown">Unknown error</string>
+    <string name="error_no_text">No text content detected</string>
+    <string name="error_text_too_long">Text too long, try selecting less</string>
+    <string name="error_service_not_running">Service not running</string>
+    
+    <!-- Text Selection -->
+    <string name="text_imported">Selected text imported to input box</string>
+    <string name="text_selection_detected">Text selection detected</string>
+    <string name="analyze_selected_text">Analyze Selected Text</string>
+    
+    <!-- General -->
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="delete">Delete</string>
+    <string name="edit">Edit</string>
+    <string name="share">Share</string>
+    <string name="copy">Copy</string>
+    <string name="retry">Retry</string>
+
+    <string name="chat_message_copied">Copied to clipboard</string>
+
+    <!-- Storage Permissions -->
+    <string name="storage_permission_status_unknown">File Access: Checking...</string>
+    <string name="storage_permission_status_granted">File Access: Enabled</string>
+    <string name="storage_permission_status_denied">File Access: Disabled</string>
+    <string name="request_storage_permission">Enable File Access</string>
+
+    <!-- Generic Permission Status -->
+    <string name="status_unknown">Checking...</string>
+    <string name="status_granted">Enabled</string>
+    <string name="status_not_granted">Disabled</string>
+
+    <!-- Screenshot Permission Status -->
+    <string name="screenshot_permission_status">Screen Capture: %s</string>
+
+    <!-- Language Settings -->
+    <string name="language_title">Language</string>
+    <string name="language_system">Follow System</string>
+    <string name="language_chinese">Chinese</string>
+    <string name="language_english">English</string>
+    <string name="language_changed">Language changed, please restart the app</string>
+
+    <!-- Floating Window Hard-coded Text -->
+    <string name="new_chat">New Chat</string>
+    <string name="send_screenshot">Send Screenshot</string>
+    <string name="send_clipboard">Send Clipboard</string>
+    <string name="attach_screenshot">Attach Screenshot</string>
+    
+    <!-- Interface Hard-coded Text -->
+    <string name="system_status">Setup Status</string>
+    <string name="usage_statistics">Usage Stats</string>
+    <string name="loading">Loading...</string>
+    <string name="function_menu">Quick Actions</string>
+    <string name="floating_service_status_checking">Checking floating assistant...</string>
+    <string name="start_floating">Start Assistant</string>
+    <string name="auto_screenshot_trigger">Auto-analyze screenshots</string>
+    <string name="api_key_status_checking">Checking AI configuration...</string>
+    <string name="set_api_key">Configure AI</string>
+    <string name="data_management">Data &amp; Privacy</string>
+    <string name="not_configured">Not Configured</string>
+    <string name="not_set">Not Set</string>
+    <string name="ai_platform_config">AI Platform Configuration</string>
+    <string name="ai_platform">AI Platform</string>
+    <string name="ai_model">AI Model</string>
+    <string name="configure">Configure</string>
+    <string name="clear">Clear</string>
+    <string name="text_placeholder_hint">Use [TEXT] as placeholder for selected text</string>
+    <string name="reset_settings">Reset Settings</string>
+    <string name="screenshot_permission_checking">Checking screen capture access...</string>
+    <string name="grant_screenshot_permission">Enable Screen Capture</string>
+    <string name="grant_accessibility_permission">Enable Text Access</string>
+    <string name="accessibility_permission_unknown">Text Access: Checking...</string>
+    <string name="device_setup">Device Screenshot Directory Setup</string>
+    <string name="device_info_loading">Device info loading...</string>
+    <string name="device_config_list">Device Configuration List</string>
+    <string name="return_main">Return to Main</string>
+    <string name="permission_request_title">Screenshot Permission Authorization</string>
+    <string name="permission_request_message">ReadAssist needs screenshot permission to analyze screen content.\n\nClick the button below to open system permission dialog, please select "Start now".</string>
+    <string name="grant_permission_btn">Grant Permission</string>
+    <string name="no_messages">No message records</string>
+    <string name="no_history_sessions">No history session records</string>
+    <string name="show_archived_sessions">Show Archived Sessions</string>
+    <string name="user_message_example">User message example</string>
+    <string name="ai_reply_example">AI reply example</string>
+    <string name="user">User</string>
+    <string name="book_name">Book Name</string>
+    <string name="archived">Archived</string>
+    <string name="app_name_placeholder">App Name</string>
+    <string name="message_count_example">10 messages</string>
+    <string name="device_name">Device Name</string>
+    <string name="not_configured_status">❌ Not Configured</string>
+    <string name="device_path">Path: /storage/emulated/0/...</string>
+    <string name="device_description">Device description info</string>
+    <string name="configure_permission">Configure Permission</string>
+    
+    <!-- Dynamic Text -->
+    <string name="floating_button_running">✓ Floating button running</string>
+    <string name="floating_button_stopped">- Floating button stopped</string>
+    <string name="stop_floating_button">TURN OFF</string>
+    <string name="reconfigure">Reconfigure</string>
+    <string name="default_prompt_template">Please answer in English:\n\n[TEXT]</string>
+    <string name="ai_assistant">AI Assistant</string>
+    <string name="user_label">User</string>
+    <string name="analyze_screenshot_prompt">Please analyze this screenshot:</string>
+    
+    <!-- Other missing text -->
+    <string name="please_wait">Please wait...</string>
+    <string name="configuration_incomplete">⚠ Configuration incomplete or invalid</string>
+    <string name="device_screenshot_path_unknown">iReader screenshot directory: Unknown</string>
+    
+    <!-- Permission status text -->
+    <string name="storage_permission_granted_external">Storage permission: Granted (external storage)</string>
+    <string name="storage_permission_missing">Storage permission: Missing (%s)</string>
+    <string name="screenshot_permission_ireader_tip">Screenshot permission: Your device is iReader, suggest setting long press key to screenshot for better experience</string>
+    <string name="screenshot_permission_granted_restart">Screenshot permission: Granted (need reauthorization after restart)</string>
+    <string name="screenshot_permission_expired">Screenshot permission: Expired (please reauthorize)</string>
+    <string name="screenshot_permission_not_granted">Screenshot permission: Not granted</string>
+    <string name="accessibility_permission_granted">Accessibility permission: Granted</string>
+    <string name="accessibility_permission_not_granted">Accessibility permission: Not granted</string>
+    <string name="input_hint_default">Enter question or click to analyze selected text</string>
+    <string name="input_hint_long">Please enter your question or content, long press chat text to copy here</string>
+    <string name="analyze_text_prompt">Please analyze this text:</string>
+    <string name="analyze_image_and_text_prompt">Please analyze the image and text content sent to you.</string>
+    <string name="gemini_api_key_hint">Please enter Gemini API Key (starts with AIza)</string>
+    <string name="siliconflow_api_key_hint">Please enter SiliconFlow API Key (starts with sk-)</string>
+    <string name="default_prompt_template_english">Please answer question in English:\n\n[TEXT]</string>
+    
+    <!-- Device screenshot directory status -->
+    <string name="ireader_screenshot_dir_authorized">iReader screenshot directory: ✅ Authorized (%s)</string>
+    <string name="ireader_screenshot_dir_not_authorized">iReader screenshot directory: ❌ SAF authorization required (%s)</string>
+    <string name="supernote_screenshot_dir_authorized">Supernote screenshot directory: ✅ SAF access authorized (/storage/emulated/0/SCREENSHOT)</string>
+    <string name="supernote_screenshot_dir_not_authorized">Supernote screenshot directory: ❌ SAF authorization required (/storage/emulated/0/SCREENSHOT)</string>
+    <string name="turn_on_floating_button">Turn On</string>
+    <string name="turn_off_floating_button">Turn Off</string>
+    <string name="auto_popup">Auto Pop Up</string>
+    <string name="new_chat_short">New</string>
+    <string name="ai_thinking_message">AI is thinking...</string>
+    
+    <!-- Setup wizard strings (North American style) -->
+    <string name="setup_wizard_title">Choose AI Platform</string>
+    <string name="setup_wizard_message">Select your preferred AI service:</string>
+    <string name="setup_wizard_cancel">Cancel</string>
+    <string name="option_google_gemini">• Google Gemini</string>
+    <string name="option_siliconflow">• SiliconFlow</string>
+    <string name="option_manual_setup">⚙️ Manual Setup</string>
+    <string name="selected_gemini">✅ Google Gemini Selected</string>
+    <string name="selected_siliconflow">✅ SiliconFlow Selected</string>
+    <string name="setup_failed_fallback">❌ Setup failed, try manual setup</string>
+    
+    <!-- Gemini setup dialog -->
+    <string name="gemini_setup_title">Configure Google Gemini</string>
+    <string name="gemini_setup_message">Get your Gemini API Key at:\nhttps://aistudio.google.com/apikey\n\nEnter your API Key below:</string>
+    <string name="confirm_button">Continue</string>
+    <string name="back_button">Back</string>
+    <string name="apply_key_button">Get Key</string>
+    
+    <!-- SiliconFlow setup dialog -->
+    <string name="siliconflow_setup_title">Configure SiliconFlow</string>
+    <string name="siliconflow_setup_message">Get your SiliconFlow API Key at:\nhttps://siliconflow.com\n\nEnter your API Key below:</string>
+    
+    <!-- General setup messages -->
+    <string name="platform_config_success">%s configured successfully!</string>
+    
+    <!-- Clear data dialog -->
+    <string name="clear_all_data_title">Clear All Data</string>
+    <string name="clear_all_data_message">This will permanently delete all chat history and settings. This action cannot be undone. Continue?</string>
+    
+    <!-- Directory authorization button -->
+    <string name="start_directory_authorization">Grant Folder Access</string>
+    <string name="default_prompt_template_chinese">请用中文回答问题：\n\n[TEXT]</string>
+    <string name="selected_text_with_screenshot">Selected text: %s\n\nPlease analyze this screenshot:</string>
+    <string name="floating_service_started">Floating service started</string>
+    <string name="screenshot_failed_message">Screenshot failed: %s</string>
+    <string name="requesting_screenshot_permission">🔐 Requesting screenshot permission...</string>
+    <string name="language_saved_restarting">Language setting saved, restarting app...</string>
+    <string name="auto_analyze_status">Auto analysis %s</string>
+    <string name="enabled">enabled</string>
+    <string name="disabled">disabled</string>
+    <string name="fix_configuration">Fix Setup</string>
+    <string name="start_configuration">Start Setup</string>
+    <string name="need_configure_ai_service">Need to configure AI service</string>
+    <string name="api_key_invalid_format">❌ API Key format is incorrect</string>
+    <string name="api_key_config_success">✅ API Key saved</string>
+    <string name="platform_config_success_detailed">✅ %s ready! Setting up permissions...</string>
+    <string name="platform_api_key_invalid">❌ %s API Key format is incorrect</string>
+    <string name="cannot_open_browser">Cannot open browser</string>
+    <string name="directory_access_configured">✅ Folder access granted!</string>
+    
+    <!-- MainActivity additional missing strings -->
+    <string name="screenshot_permission_granted">Screenshot access enabled</string>
+    <string name="screenshot_permission_denied">Screenshot access denied</string>
+    <string name="supernote_dir_permission_granted">✅ Supernote screenshot directory permission granted</string>
+    <string name="permission_grant_failed">❌ Permission failed, try again</string>
+    <string name="user_cancelled_permission">❌ Permission cancelled</string>
+    <string name="api_service_not_configured">❌ AI service not configured</string>
+    <string name="welcome_title">Welcome to ReadAssist</string>
+    <string name="welcome_message">Smart reading assistant for e-readers.\n\nQuick setup:\n1. Choose AI platform\n2. Add API key\n3. Grant permissions\n\nTap \"Start Setup\" to begin.</string>
+    <string name="setup_later">Setup Later</string>
+    <string name="screenshot_auto_popup_enabled">Screenshot auto-popup enabled</string>
+    <string name="screenshot_auto_popup_disabled">Screenshot auto-popup disabled</string>
+    <string name="select_ai_platform_title">🔧 Select AI Platform</string>
+    <string name="select_ai_platform_message">Please select the AI service to use:</string>
+    <string name="gemini_selected">✅ Selected Google Gemini</string>
+    <string name="siliconflow_selected">✅ Selected SiliconFlow</string>
+    <string name="setup_cancelled">User cancelled setup</string>
+    <string name="setup_failed">❌ Setup failed, try manual setup</string>
+    <string name="grant_overlay_permission">Please grant overlay permission first</string>
+    <string name="screenshot_permission_granted_simple">Screenshot permission granted</string>
+    <string name="permission_title_screenshot">Screenshot Permission</string>
+    <string name="permission_message_screenshot">Enable screen capture to analyze screenshots.\n\nTap OK, then select \"Start now\" in the popup.</string>
+    <string name="grant_permission_label">Allow</string>
+    <string name="overlay_permission_title">Overlay Permission Required</string>
+    <string name="overlay_permission_message">ReadAssist needs overlay access to show floating button. Grant permission in settings.</string>
+    <string name="go_to_settings">Go to Settings</string>
+    <string name="authorize">🔓 Authorize</string>
+    <string name="authorization_failed">❌ Authorization failed: %s</string>
+    <string name="reauthorize">Reauthorize</string>
+    <string name="grant_screenshot_permission_btn">Grant Screenshot Permission</string>
+    <string name="grant_accessibility_permission_btn">Grant Accessibility Permission</string>
+    <string name="message_and_session_stats" formatted="false">Messages: %d | Sessions: %d</string>
+    <string name="ai_label">AI:</string>
+    <string name="ai_assistant_short">AI</string>
+    
+    <!-- Back Button -->
+    <string name="back_to_main">Back to Main</string>
+    
+    <!-- History Page Title -->
+    <string name="history_title">Chat History</string>
+    
+    <!-- Hide Archived Sessions -->
+    <string name="hide_archived_sessions">Hide Archived</string>
+    
+    <!-- Toast Messages (North American English) -->
+    <string name="preparing_screenshot_analysis">Preparing screenshot analysis, please wait...</string>
+    <string name="text_imported_ready_to_edit">Text imported, ready to edit and send</string>
+    <string name="ai_platform_configured_success">✅ %s configured successfully</string>
+    <string name="api_key_format_incorrect">❌ API Key format is incorrect</string>
+    <string name="please_enter_api_key_simple">Please enter API Key</string>
+    <string name="cannot_open_browser_simple">Cannot open browser</string>
+    <string name="copied_to_clipboard">Copied to clipboard</string>
+    <string name="screenshot_saved_click_to_analyze">Screenshot saved, tap floating window to analyze manually</string>
+    <string name="resetting_permission_status">Resetting permission status...</string>
+    <string name="permission_timeout_auto_reset">Permission request timed out, auto-resetting...</string>
+    <string name="screenshot_permission_reset_retry">Screenshot permission reset, please try again</string>
+    <string name="reset_error_restart_app">Reset error occurred, please restart the app</string>
+    <string name="reset_failed_restart_app">Reset failed, please restart the app</string>
+    <string name="screenshot_service_error_restart">Screenshot service error, please restart the app</string>
+    <string name="copied_selected_text">Copied selected text</string>
+    <string name="retry_later">Try Later</string>
+    <string name="all_permissions_granted">All permissions granted</string>
+    <string name="missing_permissions">Missing permissions: %s</string>
+    
+    <!-- Screenshot permission activity related -->
+    <string name="screenshot_permission_title">Screenshot Permission</string>
+    <string name="screenshot_permission_initial_message">ReadAssist needs screenshot permission to analyze screen content.\n\nTap the button below to open the system permission dialog, then select \"Start now\".</string>
+    <string name="user_cancelled_permission_request">User cancelled permission request</string>
+    <string name="opening_system_permission_dialog">Opening system permission dialog...\n\nPlease select \"Start now\" in the system popup.</string>
+    <string name="failed_to_start_permission_dialog">Failed to start permission dialog, please try again\n\nError: %s</string>
+    <string name="screenshot_permission_request_failed">Screenshot permission request failed\n\nError: %s</string>
+    <string name="screenshot_permission_granted_title">Screenshot Permission Granted</string>
+    <string name="screenshot_permission_granted_message">Screenshot permission granted successfully. You can now use the screenshot feature.</string>
+    <string name="screenshot_permission_denied_title">Screenshot Permission Denied</string>
+    <string name="screenshot_permission_denied_message">You denied screenshot permission, so the screenshot feature is unavailable.\n\nIf you need to use the screenshot feature, please tap the button below to re-authorize.</string>
+    
+    <!-- Screenshot service related -->
+    <string name="screenshot_service_name">Screenshot Service</string>
+    <string name="screenshot_service_description">ReadAssist Screenshot Feature</string>
+    <string name="screenshot_service_title">ReadAssist Screenshot Service</string>
+    <string name="screenshot_service_preparing">Preparing to capture...</string>
+    <string name="screenshot_permission_revoked_by_system">Screenshot permission revoked by system, please re-authorize</string>
+    <string name="screenshot_permission_not_granted_simple">Screenshot permission not granted</string>
+    <string name="screenshot_permission_denied_simple">Screenshot permission denied, screenshot feature unavailable</string>
+    
+    <!-- Floating window service related -->
+    <string name="readassist_running">ReadAssist is running</string>
+    <string name="tap_to_manage_app">Tap to manage app</string>
+    
+    <!-- Screenshot manager related -->
+    <string name="need_screenshot_permission">Need to obtain screenshot permission</string>
+    <string name="screenshot_service_not_ready">Screenshot service not ready</string>
+    <string name="permission_request_timeout">Permission request timed out, please try again</string>
+    <string name="cannot_start_permission_request">Cannot start permission request, please try again or restart the app</string>
+    
+    <string name="invalid_session_id">Invalid session ID</string>
+    <string name="config_cleared_for_device">Configuration cleared for %s</string>
+    <string name="config_failed_or_cancelled">❌ Configuration failed or cancelled</string>
+    <string name="search_feature_coming_soon">Search feature coming soon</string>
+    <string name="export_failed">Export failed: %s</string>
+    <string name="save_file_failed">Failed to save file: %s</string>
+    <string name="session_deleted">Session deleted</string>
+    <string name="no_sessions_to_export">No sessions to export</string>
+    
+    <!-- Session Actions (North American English) -->
+    <string name="session_actions">Session Options</string>
+    <string name="archive_session">Archive</string>
+    <string name="unarchive_session">Unarchive</string>
+    <string name="export_session">Export Session</string>
+    <string name="delete_session">Delete Session</string>
+    <string name="session_archived">Session archived</string>
+    <string name="session_unarchived">Session unarchived</string>
+    <string name="delete_session_title">Delete Session</string>
+    <string name="delete_session_message">Are you sure you want to delete this session? This will permanently remove all related messages and cannot be undone.</string>
+    <string name="delete_button">Delete</string>
+    <string name="cancel_button">Cancel</string>
+    <string name="export_success">Export successful: %s</string>
+    
+    <!-- API Key Configuration (North American English) -->
+    <string name="api_key_configured">Configured: %s</string>
+    <string name="api_key_not_configured">%s API Key not configured</string>
+    <string name="configure_api_key_title">Configure API Key</string>
+    <string name="configure_platform_title">Configure %s</string>
+    <string name="api_signup_url_label">Get your API Key at: %s</string>
+    <string name="open_signup_page">Get Key</string>
+    <string name="confirm">Continue</string>
+    
+    <!-- AI Configuration Guide Dialog (North American English) -->
+    <string name="ai_config_required_title">AI Service Setup Required</string>
+    <string name="ai_config_required_message">Please configure your API Key before using the AI assistant.\n\nChoose an option:\n• Complete setup in main app\n• Quick setup in chat window</string>
+    <string name="quick_setup">Quick Setup</string>
+    <string name="open_main_app">Open Main App</string>
+    <string name="device_configured">Configured</string>
+    <string name="device_not_configured">Not Configured</string>
+    <string name="select_ai_platform_dialog_title">Select AI Platform</string>
+    <string name="input_api_key_title">Enter API Key</string>
+    
+    <!-- Directory Authorization Dialog (North American English) -->
+    <string name="ireader_directory_auth_title">📱 iReader Screenshot Folder Access</string>
+    <string name="ireader_directory_auth_message">To save and monitor screenshot files, we need access to the following directory:\n\n📁 %s\n\nThis is your device\'s screenshot folder. Tap "Grant Access" then select the corresponding folder in the file picker.</string>
+    <string name="supernote_directory_auth_title">🗂️ Supernote Screenshot Folder Access</string>
+    <string name="supernote_directory_auth_message">To save and monitor screenshot files, we need access to the following directory:\n\n📁 /storage/emulated/0/SCREENSHOT\n\nThis is the Supernote system screenshot directory. Tap "Grant Access" then select the SCREENSHOT folder in the file picker.</string>
+    <string name="grant_access_button">🔓 Grant Access</string>
+    <string name="cancel_button_x">❌ Cancel</string>
+    
+    <!-- Reset Settings Dialog (North American English) -->
+    <string name="reset_settings_title">Reset Settings</string>
+    <string name="reset_settings_message">Are you sure you want to reset all settings to default values? This will clear all AI configurations and chat history.</string>
+    
+    <!-- Clear API Key Dialog (North American English) -->
+    <string name="clear_api_key_title">Clear API Key</string>
+    <string name="clear_api_key_message">Are you sure you want to clear the %s API Key?</string>
+    <string name="api_key_cleared_message">%s API Key has been cleared</string>
+    
+    <!-- Other Messages (North American English) -->
+    <string name="prompt_template_empty_error">Prompt template cannot be empty</string>
+    <string name="prompt_template_placeholder_error">Prompt template must include [TEXT] placeholder</string>
+    <string name="prompt_template_saved">Prompt template saved</string>
+    <string name="settings_reset_complete">Settings have been reset</string>
+    
+    <!-- Device Detection Messages -->
+    <string name="ireader_device_detected">📱 iReader device detected, recommend configuring screenshot directory for better experience</string>
+    
+    <!-- Permission-related dialogs and Toast messages -->
+    <string name="permission_reauth_required_title">Screenshot Permission Required</string>
+    <string name="permission_reauth_required_message">Screenshot permission has expired or been revoked.\n\nTap \"Grant Access\" to re-authorize, and the system will show a permission dialog.\n\nPlease select \"Start now\" in the popup.</string>
+    <string name="authorize_now">Grant Access</string>
+    <string name="permission_timeout_title">Permission Request Timeout</string>
+    <string name="permission_timeout_message">Screenshot permission request has been pending for over 60 seconds.\n\nPossible causes:\n• System dialog didn\'t appear properly\n• Permission request was blocked\n• Device is running slowly\n\nRecommended actions:\n1. Tap \"Force Reset\"\n2. Try screenshot feature again</string>
+    <string name="force_reset">Force Reset</string>
+    <string name="screenshot_service_error_title">Screenshot Service Error</string>
+    <string name="screenshot_service_error_message">Screenshot service encountered an issue:\n\n• Permission may have expired\n• Service connection interrupted\n• Device performance limitations\n\nRecommended actions:\n1. Re-grant screenshot permission\n2. Restart the app\n3. Check device memory</string>
+    
+    <!-- History-related -->
+    <string name="export_options_title">Export Options</string>
+    <string name="export_all_history">Export All History</string>
+    <string name="export_active_sessions">Export Active Sessions</string>
+    <string name="export_archived_sessions">Export Archived Sessions</string>
+    
+    <!-- Session details-related -->
+    <string name="unknown_book">Unknown Book</string>
+    <string name="session_detail">Session Details</string>
+    <string name="message_bookmarked">Message bookmarked</string>
+    <string name="message_unbookmarked">Bookmark removed</string>
+    <string name="export_success_path">Export successful: %s</string>
+    
+    <!-- Device configuration-related -->
+    <string name="device_info_title">📱 Device Information:</string>
+    <string name="manufacturer_label">Manufacturer: %s</string>
+    <string name="model_label">Model: %s</string>
+    <string name="detected_device_type">Detected device type: %s</string>
+    <string name="usage_instructions">💡 Usage Instructions:</string>
+    <string name="usage_description">• Configure screenshot directory permissions for auto-popup\n• App will automatically open chat window when you take screenshots\n• Recommended to configure permissions for your current device\n• Other device configurations are optional</string>
+    <string name="current_device_label"> (Current Device)</string>
+    <string name="device_path_label">Path: %s</string>
+    <string name="configure_permission_btn">Configure Permissions</string>
+    
+    <!-- Permission Labels -->
+    <string name="overlay_permission_label">Overlay Permission</string>
+    <string name="accessibility_permission_label">Accessibility Permission</string>
+    <string name="storage_permission_label">Storage Permission</string>
+    
+    <!-- Menu Items -->
+    <string name="search">Search</string>
+    
+    <!-- Device Type Labels -->
+    <string name="device_ireader">iReader</string>
+    <string name="device_supernote">Supernote</string>
+    <string name="device_system">System</string>
+    <string name="device_unknown">Unknown</string>
+    
+    <!-- Status Information -->
+    <string name="no_latest_screenshot">No recent screenshot</string>
+    <string name="get_failed">Failed to get</string>
+    <string name="none">None</string>
+    <string name="selected_text_label">Selected Text</string>
+    <string name="system_error">System Error</string>
+
+    <string name="analyzing_image_message">🤖 Analyzing the screenshot and your question...</string>
+
+</resources> 
