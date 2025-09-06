@@ -850,38 +850,20 @@ class FloatingWindowServiceNew : Service(),
         Log.e(TAG, "原始输入框内容: $message")
         // 读取勾选项状态
         val sendScreenshot = chatWindowManager.isSendScreenshotChecked()
-        val sendClipboard = chatWindowManager.isSendClipboardChecked()
-        Log.e(TAG, "勾选项状态 - 发送截图: $sendScreenshot, 发送剪贴板: $sendClipboard")
-        
-        // 读取剪贴板内容
-        val clipboardContent = if (sendClipboard) getTodayClipboardContent() else null
-        Log.e(TAG, "剪贴板内容: $clipboardContent")
+        Log.e(TAG, "勾选项状态 - 发送截图: $sendScreenshot")
         
         // 检查是否有有效内容
         val hasUserInput = !message.isNullOrBlank()
-        val hasClipboardContent = !clipboardContent.isNullOrBlank()
         val hasScreenshot = sendScreenshot && pendingScreenshotBitmap != null && !pendingScreenshotBitmap!!.isRecycled
         
         // 如果都没有内容，显示错误并返回
-        if (!hasUserInput && !hasClipboardContent && !hasScreenshot) {
-            Log.e(TAG, "❌ 没有任何内容可发送 (无输入、无剪贴板、无截图)")
+        if (!hasUserInput && !hasScreenshot) {
+            Log.e(TAG, "❌ 没有任何内容可发送 (无输入、无截图)")
             return
         }
         
-        // 组合最终要发送的文本内容
-        val sb = StringBuilder()
-        if (!message.isNullOrBlank()) sb.append(message)
-        if (!clipboardContent.isNullOrBlank()) {
-            if (sb.isNotEmpty()) sb.append("\n")
-            sb.append("[剪贴板内容] ").append(clipboardContent)
-        }
-        
-        // 如果没有用户输入但有截图，添加默认文本
-        if (sb.isEmpty() && hasScreenshot) {
-                            sb.append(getString(R.string.analyze_screenshot_prompt))
-        }
-        
-        val finalText = sb.toString()
+        // 使用用户输入的内容作为最终文本（剪贴板内容已经包含在输入框中）
+        val finalText = message
         Log.e(TAG, "最终要发送的文本内容: " + finalText.replace("\n", "\\n"))
         
         // 最终文本为空时不发送
@@ -1240,7 +1222,7 @@ class FloatingWindowServiceNew : Service(),
                     // 显示聊天窗口
                     chatWindowManager.showChatWindow()
                     
-                    // 设置输入框提示
+                    // 设置输入框提示（不自动导入内容）
                     val selectedText = textSelectionManager.getLastDetectedText()
                     val hasSelectedText = selectedText.isNotEmpty() && selectedText.length > 10
                     
@@ -1250,8 +1232,8 @@ class FloatingWindowServiceNew : Service(),
                         getString(R.string.analyze_screenshot_prompt)
                     }
                     
-                    // 导入提示文本到输入框
-                    chatWindowManager.importTextToInputField(promptText)
+                    // 只设置提示文本，不导入到输入框内容
+                    chatWindowManager.setInputHint(promptText)
                     
                     // 自动勾选"发送截图"选项
                     chatWindowManager.setSendScreenshotChecked(true)
@@ -1830,16 +1812,14 @@ class FloatingWindowServiceNew : Service(),
 
     private fun updateInputHintByCheckState() {
         val sendScreenshot = chatWindowManager.isSendScreenshotChecked()
-        val sendClipboard = chatWindowManager.isSendClipboardChecked()
-        val hint = when {
-            sendScreenshot && sendClipboard -> getString(R.string.analyze_image_and_text_prompt)
-            sendScreenshot -> getString(R.string.analyze_screenshot_prompt)
-            sendClipboard -> getString(R.string.analyze_text_prompt)
-            else -> getString(R.string.input_hint_long)
+        val hint = if (sendScreenshot) {
+            getString(R.string.analyze_screenshot_prompt)
+        } else {
+            getString(R.string.input_hint_long)
         }
         
-        // 使用新方法同时更新输入框内容和提示文本
-        chatWindowManager.updateInputTextByCheckState(hint)
+        // 只设置提示文本，不自动导入内容
+        chatWindowManager.setInputHint(hint)
     }
 
     /**

@@ -395,6 +395,29 @@ class ChatWindowManager(
                 }
             }
             
+            // 扩大发送按钮的触控区域
+            sendButton?.let { button ->
+                button.post {
+                    val parent = button.parent as? android.view.ViewGroup
+                    parent?.let { parentView ->
+                        val rect = android.graphics.Rect()
+                        button.getHitRect(rect)
+                        
+                        // 扩大触控区域：上下左右各增加16dp
+                        val touchSlop = android.view.ViewConfiguration.get(context).scaledTouchSlop
+                        val extraTouchArea = (16 * context.resources.displayMetrics.density).toInt()
+                        
+                        rect.left -= extraTouchArea
+                        rect.top -= extraTouchArea
+                        rect.right += extraTouchArea
+                        rect.bottom += extraTouchArea
+                        
+                        parentView.touchDelegate = android.view.TouchDelegate(rect, button)
+                        Log.d(TAG, "发送按钮触控区域已扩大: $rect")
+                    }
+                }
+            }
+            
             newChatButton?.setOnClickListener {
                 callbacks.onNewChatButtonClick()
             }
@@ -402,6 +425,50 @@ class ChatWindowManager(
             // 关闭按钮
             view.findViewById<Button>(R.id.closeButton)?.setOnClickListener {
                 hideChatWindow()
+            }
+            
+            // 扩大新对话按钮的触控区域
+            newChatButton?.let { button ->
+                button.post {
+                    val parent = button.parent as? android.view.ViewGroup
+                    parent?.let { parentView ->
+                        val rect = android.graphics.Rect()
+                        button.getHitRect(rect)
+                        
+                        // 扩大触控区域：上下左右各增加12dp
+                        val extraTouchArea = (12 * context.resources.displayMetrics.density).toInt()
+                        
+                        rect.left -= extraTouchArea
+                        rect.top -= extraTouchArea
+                        rect.right += extraTouchArea
+                        rect.bottom += extraTouchArea
+                        
+                        parentView.touchDelegate = android.view.TouchDelegate(rect, button)
+                        Log.d(TAG, "新对话按钮触控区域已扩大: $rect")
+                    }
+                }
+            }
+            
+            // 扩大关闭按钮的触控区域
+            view.findViewById<Button>(R.id.closeButton)?.let { button ->
+                button.post {
+                    val parent = button.parent as? android.view.ViewGroup
+                    parent?.let { parentView ->
+                        val rect = android.graphics.Rect()
+                        button.getHitRect(rect)
+                        
+                        // 扩大触控区域：上下左右各增加12dp
+                        val extraTouchArea = (12 * context.resources.displayMetrics.density).toInt()
+                        
+                        rect.left -= extraTouchArea
+                        rect.top -= extraTouchArea
+                        rect.right += extraTouchArea
+                        rect.bottom += extraTouchArea
+                        
+                        parentView.touchDelegate = android.view.TouchDelegate(rect, button)
+                        Log.d(TAG, "关闭按钮触控区域已扩大: $rect")
+                    }
+                }
             }
             
             // 初始化AI配置UI
@@ -423,6 +490,15 @@ class ChatWindowManager(
             checkSendClipboard?.setOnCheckedChangeListener { _, isChecked ->
                 // 触发勾选状态变化回调
                 Log.e(TAG, "[日志追踪] 发送剪贴板勾选框状态变化: $isChecked")
+                
+                // 如果勾选了剪贴板，导入剪贴板内容到输入框
+                if (isChecked) {
+                    importClipboardContentToInput()
+                } else {
+                    // 如果取消勾选，清空输入框中的剪贴板内容
+                    clearClipboardContentFromInput()
+                }
+                
                 val listener = checkStateChangedListener
                 if (listener != null) {
                     listener.onCheckStateChanged()
@@ -546,6 +622,58 @@ class ChatWindowManager(
             editText.setSelection(editText.text?.length ?: 0)
             Log.e(TAG, "[日志追踪] 输入框内容设置完成，当前内容: ${editText.text}")
         }
+    }
+    
+    /**
+     * 导入剪贴板内容到输入框（仅在用户勾选时调用）
+     */
+    private fun importClipboardContentToInput() {
+        Log.e(TAG, "[日志追踪] 用户勾选剪贴板，开始导入剪贴板内容")
+        
+        // 获取剪贴板内容
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        val clip = clipboard.primaryClip
+        if (clip != null && clip.itemCount > 0) {
+            val clipboardText = clip.getItemAt(0).coerceToText(context).toString()
+            if (clipboardText.isNotBlank()) {
+                Log.e(TAG, "[日志追踪] 剪贴板内容: ${clipboardText.take(50)}...")
+                
+                // 获取当前输入框内容
+                val currentText = inputEditText?.text?.toString() ?: ""
+                
+                // 如果输入框为空，直接设置剪贴板内容
+                if (currentText.isEmpty()) {
+                    inputEditText?.setText(clipboardText)
+                    Log.e(TAG, "[日志追踪] 输入框为空，直接设置剪贴板内容")
+                } else {
+                    // 如果输入框有内容，在末尾添加剪贴板内容
+                    val newText = if (currentText.endsWith(" ") || currentText.endsWith("\n")) {
+                        currentText + clipboardText
+                    } else {
+                        "$currentText\n$clipboardText"
+                    }
+                    inputEditText?.setText(newText)
+                    Log.e(TAG, "[日志追踪] 输入框有内容，追加剪贴板内容")
+                }
+                
+                // 将光标移到文本末尾
+                inputEditText?.setSelection(inputEditText?.text?.length ?: 0)
+            } else {
+                Log.e(TAG, "[日志追踪] 剪贴板内容为空，不导入")
+            }
+        } else {
+            Log.e(TAG, "[日志追踪] 剪贴板为空，不导入")
+        }
+    }
+    
+    /**
+     * 清空输入框中的剪贴板内容（仅在用户取消勾选时调用）
+     */
+    private fun clearClipboardContentFromInput() {
+        Log.e(TAG, "[日志追踪] 用户取消勾选剪贴板，清空输入框内容")
+        
+        // 简单清空输入框内容
+        inputEditText?.text?.clear()
     }
     
     /**
