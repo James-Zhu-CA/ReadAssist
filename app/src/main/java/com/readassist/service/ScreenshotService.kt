@@ -270,11 +270,11 @@ class ScreenshotService : Service() {
     fun captureScreen() {
         Log.d(TAG, "=== captureScreen() PixelCopy方案开始 ===")
         
-        // 检查MediaProjection状态
-        if (mediaProjection == null) {
-            Log.e(TAG, "❌ MediaProjection为空，无法截屏")
+        // 确保MediaProjection可用，如果需要则重新创建
+        if (!ensureMediaProjectionReady()) {
+            Log.e(TAG, "❌ 无法确保MediaProjection可用")
             screenshotCallback?.onScreenshotFailed(getString(R.string.screenshot_permission_not_granted_simple))
-                return
+            return
         }
         
         serviceScope.launch {
@@ -301,6 +301,41 @@ class ScreenshotService : Service() {
         }
         
         Log.d(TAG, "=== captureScreen() PixelCopy方案结束 ===")
+    }
+    
+    /**
+     * 确保MediaProjection可用，如果需要则重新创建
+     */
+    private fun ensureMediaProjectionReady(): Boolean {
+        if (mediaProjection != null) {
+            Log.d(TAG, "MediaProjection已存在，无需重新创建")
+            return true
+        }
+        
+        Log.d(TAG, "MediaProjection为空，尝试重新创建...")
+        val preferenceManager = PreferenceManager(this)
+        val resultCode = preferenceManager.getScreenshotResultCode()
+        val resultDataUri = preferenceManager.getScreenshotResultDataUri()
+        
+        if (resultCode == -1 || resultDataUri == null) {
+            Log.e(TAG, "❌ 缺少权限数据，无法重新创建MediaProjection")
+            return false
+        }
+        
+        try {
+            val resultData = Intent.parseUri(resultDataUri, 0)
+            startScreenCapture(resultCode, resultData)
+            
+            // 等待一小段时间确保创建完成
+            Thread.sleep(100)
+            
+            val success = mediaProjection != null
+            Log.d(TAG, if (success) "✅ MediaProjection重新创建成功" else "❌ MediaProjection重新创建失败")
+            return success
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ 重新创建MediaProjection失败", e)
+            return false
+        }
     }
     
     /**
@@ -663,21 +698,39 @@ class ScreenshotService : Service() {
     
     /**
      * 检查MediaProjection是否有效
-     * 简化验证逻辑，避免误判
+     * 修复：MediaProjection在截屏后会被系统自动停止，这是正常行为
+     * 只要有保存的权限数据，就认为权限有效，可以重新创建MediaProjection
      */
     fun isMediaProjectionValid(): Boolean {
-        val isValid = mediaProjection != null
-        Log.d(TAG, "MediaProjection有效性检查: $isValid")
+        val hasMediaProjection = mediaProjection != null
+        Log.d(TAG, "MediaProjection状态检查: 当前实例存在=$hasMediaProjection")
         
-        // 简化验证：只检查MediaProjection是否存在
-        // 避免复杂的测试操作可能导致的误判
-            if (isValid) {
-            Log.d(TAG, "✅ MediaProjection存在，权限有效")
-                } else {
-            Log.d(TAG, "❌ MediaProjection为空，权限无效")
+        // 如果MediaProjection为空，这可能是正常的（截屏后被系统停止）
+        // 关键是检查我们是否有权限数据来重新创建它
+        if (!hasMediaProjection) {
+            Log.d(TAG, "🔄 MediaProjection为空，这是截屏后的正常状态")
+            // 不立即返回false，而是检查是否可以重新创建
+            return canRecreateMediaProjection()
         }
         
-        return isValid
+        Log.d(TAG, "✅ MediaProjection存在且有效")
+        return true
+    }
+    
+    /**
+     * 检查是否可以重新创建MediaProjection
+     * 基于保存的权限数据判断
+     */
+    private fun canRecreateMediaProjection(): Boolean {
+        val preferenceManager = PreferenceManager(this)
+        val hasPermission = preferenceManager.isScreenshotPermissionGranted()
+        val resultCode = preferenceManager.getScreenshotResultCode()
+        val resultDataUri = preferenceManager.getScreenshotResultDataUri()
+        
+        val canRecreate = hasPermission && resultCode != -1 && resultDataUri != null
+        Log.d(TAG, "重新创建MediaProjection可能性: $canRecreate (权限=$hasPermission, resultCode=$resultCode, dataUri存在=${resultDataUri != null})")
+        
+        return canRecreate
     }
     
     /**

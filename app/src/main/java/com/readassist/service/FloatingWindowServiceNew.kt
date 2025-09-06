@@ -27,6 +27,7 @@ import android.content.ServiceConnection
 import android.content.ContentUris
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.graphics.ImageDecoder
 import android.graphics.Rect
 import android.net.Uri
@@ -59,6 +60,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicReference
 import com.readassist.utils.DeviceUtils
+import com.readassist.utils.DeviceType
 import android.widget.Toast
 import com.readassist.utils.PreferenceManager
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
@@ -431,9 +433,13 @@ class FloatingWindowServiceNew : Service(),
         
         // 检查悬浮窗权限
         if (!Settings.canDrawOverlays(this)) {
-            Log.e(TAG, "No overlay permission, stopping service")
-            stopSelf()
-            return START_NOT_STICKY
+            Log.e(TAG, "No overlay permission, but continuing service for screenshot functionality")
+            // 不停止服务，因为用户可能只需要截屏功能，不需要悬浮窗
+            // 只是不显示悬浮按钮，但保持服务运行以支持截屏
+        } else {
+            Log.d(TAG, "悬浮窗权限已授予，可以显示悬浮按钮")
+            // 只有在有悬浮窗权限时才创建悬浮按钮
+            floatingButtonManager.createButton()
         }
         
         // 检查截屏监控设置
@@ -1281,9 +1287,13 @@ class FloatingWindowServiceNew : Service(),
     /**
      * 解码截屏图片
      * 优先使用SAF访问，确保权限兼容性
+     * 针对Supernote设备增加特殊处理
      */
     private suspend fun decodeScreenshotWithRetry(uri: Uri, maxRetries: Int = 2): Bitmap? {
-        repeat(maxRetries) { attempt ->
+        val isSupernote = DeviceUtils.getDeviceType() == DeviceType.SUPERNOTE
+        val actualMaxRetries = if (isSupernote) maxRetries + 2 else maxRetries // Supernote设备增加重试次数
+        
+        repeat(actualMaxRetries) { attempt ->
             try {
                 Log.d(TAG, "尝试解码截屏图片 (第${attempt + 1}次): $uri")
                 
@@ -1312,6 +1322,12 @@ class FloatingWindowServiceNew : Service(),
                 
                 if (bitmap != null && bitmap.width > 0 && bitmap.height > 0) {
                     Log.d(TAG, "✅ 第${attempt + 1}次尝试成功解码: ${bitmap.width}x${bitmap.height}")
+                    
+                    // 对于Supernote设备，暂时禁用质量验证，因为可能误判有效截屏
+                    // TODO: 后续可以根据实际使用情况优化验证逻辑
+                    if (isSupernote) {
+                        Log.d(TAG, "🔴 Supernote设备截屏，跳过质量验证以避免误判")
+                    }
                     return bitmap
                 } else {
                     Log.w(TAG, "第${attempt + 1}次尝试解码失败，图片可能未完全写入")
@@ -1319,24 +1335,65 @@ class FloatingWindowServiceNew : Service(),
                 
             } catch (e: Exception) {
                 Log.w(TAG, "第${attempt + 1}次尝试解码异常: ${e.message}")
+                
+                // 对于Supernote设备，记录更详细的错误信息
+                if (isSupernote) {
+                    Log.e(TAG, "🔴 Supernote设备解码异常详情", e)
+                }
             }
             
             // 如果不是最后一次尝试，等待短时间再重试
-            if (attempt < maxRetries - 1) {
-                Log.d(TAG, "等待200ms后重试...")
-                delay(200)
+            if (attempt < actualMaxRetries - 1) {
+                val delayTime = if (isSupernote) 200L + (attempt * 100L) else 100L // Supernote设备延长等待时间
+                Log.d(TAG, "等待 ${delayTime}ms 后重试...")
+                delay(delayTime)
             }
         }
         
-        Log.e(TAG, "❌ 经过${maxRetries}次尝试仍无法解码图片")
+        Log.e(TAG, "❌ 所有重试尝试都失败了")
         return null
     }
     
-
+    /**
+     * 验证Supernote截屏是否有效
+     * 修复：放宽验证条件，避免误判有效截屏
+     */
+    private fun isValidSupernoteScreenshot(bitmap: Bitmap): Boolean {
+        try {
+            // 检查图片尺寸是否合理（Supernote通常是1920x2560或类似分辨率）
+            if (bitmap.width < 50 || bitmap.height < 50) {
+                Log.w(TAG, "🔴 图片尺寸过小: ${bitmap.width}x${bitmap.height}")
+                return false
+            }
+            
+            // 更宽松的验证：只检查是否为完全空白（全黑或全白）
+            // 对于Supernote设备，即使是单色背景也可能是有效内容
+            val centerPixel = bitmap.getPixel(bitmap.width / 2, bitmap.height / 2)
+            val corner1 = bitmap.getPixel(10, 10)
+            val corner2 = bitmap.getPixel(bitmap.width - 10, 10)
+            val corner3 = bitmap.getPixel(10, bitmap.height - 10)
+            val corner4 = bitmap.getPixel(bitmap.width - 10, bitmap.height - 10)
+            
+            // 只有当所有采样点都是相同颜色且为纯黑或纯白时，才认为是无效截屏
+            val allPixels = listOf(centerPixel, corner1, corner2, corner3, corner4)
+            val isAllSameColor = allPixels.all { it == centerPixel }
+            val isPureBlackOrWhite = centerPixel == Color.BLACK || centerPixel == Color.WHITE
+            
+            if (isAllSameColor && isPureBlackOrWhite) {
+                Log.w(TAG, "🔴 疑似无效截屏（所有采样点都是相同颜色: ${String.format("#%08X", centerPixel)}）")
+                return false
+            }
+            
+            Log.d(TAG, "✅ Supernote截屏质量验证通过")
+            return true
+        } catch (e: Exception) {
+            Log.w(TAG, "验证Supernote截屏时发生异常", e)
+            return true // 如果验证失败，假设图片有效
+        }
+    }
     
     /**
-     * 通过SAF访问文件
-     * 使用Storage Access Framework确保权限兼容性
+     * 从文件路径通过SAF解码图片
      */
     private fun decodeFromFilePathViaSAF(filePath: String): Bitmap? {
         return try {
@@ -1387,8 +1444,41 @@ class FloatingWindowServiceNew : Service(),
     
     override fun onScreenshotFailed(error: String) {
         Log.e(TAG, "❌ 截屏失败: $error")
-        // 处理截屏失败
-        Toast.makeText(this, getString(R.string.screenshot_failed_message, error), Toast.LENGTH_SHORT).show()
+        
+        // 恢复UI状态
+        floatingButtonManager.restoreDefaultState()
+        
+        // 根据错误类型提供不同的处理方式
+        val errorMessage = when {
+            error.contains("无法解码") -> {
+                Log.e(TAG, "🔴 Supernote设备截屏解码失败，可能是设备兼容性问题")
+                "截屏解码失败，这可能是设备兼容性问题。建议重试或重启应用。"
+            }
+            error.contains("权限") -> {
+                Log.e(TAG, "🔐 截屏权限问题")
+                "需要截屏权限才能继续。请点击重新授权。"
+            }
+            error.contains("超时") -> {
+                Log.e(TAG, "⏰ 截屏超时")
+                "截屏超时，请检查设备性能或重试。"
+            }
+            else -> {
+                Log.e(TAG, "❓ 其他截屏错误: $error")
+                "截屏失败：$error"
+            }
+        }
+        
+        // 显示错误消息并提供操作建议
+        chatWindowManager.showChatWindow()
+        chatWindowManager.addSystemMessage(errorMessage)
+        
+        // 对于Supernote设备的特殊处理
+        if (DeviceUtils.getDeviceType() == DeviceType.SUPERNOTE && error.contains("无法解码")) {
+            chatWindowManager.addSystemMessage("💡 Supernote设备建议：\n1. 尝试重新点击悬浮按钮\n2. 检查是否有足够的存储空间\n3. 重启应用后重试")
+        }
+        
+        // 显示Toast提示（简短版本）
+        Toast.makeText(this, "截屏失败，请查看对话窗口了解详情", Toast.LENGTH_SHORT).show()
     }
 
     override fun onScreenshotCancelled() {

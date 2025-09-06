@@ -1,0 +1,24 @@
+=== 应用状态 ===
+ReadAssist PID: 11050
+应用是否安装: package:com.readassist
+
+=== 辅助功能服务状态 ===
+com.readassist/com.readassist.service.TextAccessibilityService
+
+=== 截屏目录检查 ===
+标准截屏目录:
+-rw------- 1 u0_a90 u0_a90  862956 2025-09-06 10:30 20250906_103052.png
+-rw------- 1 u0_a90 u0_a90  479072 2025-09-06 10:31 20250906_103132.png
+-rw------- 1 u0_a90 u0_a90  846610 2025-09-06 10:57 20250906_105658.png
+-rw------- 1 u0_a90 u0_a90  482258 2025-09-06 10:59 20250906_105923.png
+-rw------- 1 u0_a90 u0_a90 1545080 2025-06-23 19:15 Screenshot_20250623_191522.png
+
+iReader截屏目录:
+
+Supernote应用私有目录:
+-rw-rw---- 1 u0_a148 ext_data_rw 388248 2025-06-23 18:22 screenshot_1750717341301.png
+-rw-rw---- 1 u0_a148 ext_data_rw 429597 2025-06-23 18:24 screenshot_1750717457289.png
+-rw-rw---- 1 u0_a148 ext_data_rw 429597 2025-06-23 18:25 screenshot_1750717515240.png
+-rw-rw---- 1 u0_a148 ext_data_rw 429597 2025-06-23 18:26 screenshot_1750717601567.png
+-rw-rw---- 1 u0_a148 ext_data_rw 429597 2025-06-23 18:27 screenshot_1750717662639.png
+

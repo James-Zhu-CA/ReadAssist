@@ -34,7 +34,7 @@ class ChatRepository(
             val contextMessages = chatDao.getRecentMessagesForContext(sessionId, MAX_CONTEXT_MESSAGES)
             val context = contextMessages.map { 
                 ChatContext(it.userMessage, it.aiResponse) 
-            }.reversed()
+            }.asReversed() // 使用 asReversed() 替代 reversed() 以提高兼容性
             
             // 调用 Gemini API
             val apiResult = geminiRepository.sendMessage(userMessage, context)

@@ -1,0 +1,6 @@
+=== 设备信息 ===
+型号: Supernote Nomad
+制造商: Supernote
+品牌: Supernote
+Android版本: 11
+
