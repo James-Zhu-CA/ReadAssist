@@ -972,7 +972,8 @@ class ChatWindowManager(
         if (clipboardContent.isNullOrBlank()) {
             tvClipboardContent?.text = context.getString(R.string.none)
             checkSendClipboard?.isEnabled = false
-            checkSendClipboard?.isChecked = false
+            // 不要强制重置勾选状态，让自动检测逻辑来决定
+            // checkSendClipboard?.isChecked = false
         } else {
             tvClipboardContent?.text = clipboardContent
             checkSendClipboard?.isEnabled = true

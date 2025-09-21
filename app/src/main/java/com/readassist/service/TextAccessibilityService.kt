@@ -64,6 +64,14 @@ class TextAccessibilityService : AccessibilityService() {
             "com.readassist",
             "com.readassist.debug"
         )
+
+        // 复制相关关键词（中英混合，尽量覆盖常见文案/Toast/按钮）
+        private val COPY_KEYWORDS = listOf(
+            "已复制", "复制到剪贴板", "已复制到剪贴板", "复制成功", "复制", "拷贝", "已拷贝",
+            "文本已复制", "内容已复制", "已复制文本", "复制完成", "复制完毕", "复制操作完成",
+            "copied", "copied to clipboard", "text copied", "copy successful", "copy", "content copied",
+            "text copied to clipboard", "copy completed", "copy finished", "copy operation completed"
+        )
     }
     
     private lateinit var preferenceManager: PreferenceManager
@@ -80,6 +88,30 @@ class TextAccessibilityService : AccessibilityService() {
     private val deviceType by lazy { DeviceUtils.getDeviceType() }
     
     private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
+
+    // 本地节流：避免短时间内重复触发提示
+    private var lastCopySignalTime: Long = 0L
+    private var lastCopySignalPackage: String = ""
+    
+    // 智能复制检测：跟踪用户交互序列
+    private var recentHoverEvents = mutableListOf<Long>()
+    private var lastWindowContentChangeTime: Long = 0L
+    private val MAX_HOVER_EVENTS = 3
+    private val HOVER_WINDOW_MS = 5000L // 5秒内的hover事件
+    
+    // 增强检测：跟踪点击事件和菜单状态
+    private var recentClickEvents = mutableListOf<Long>()
+    private var lastMenuDetectionTime: Long = 0L
+    private var lastDetectedMenuContent = ""
+    private val MAX_CLICK_EVENTS = 5
+    private val CLICK_WINDOW_MS = 3000L // 3秒内的点击事件
+    
+    // 剪贴板检查防抖机制 - 智能防抖，以最后一次HOVER_EXIT为准
+    private val clipboardHandler = Handler(Looper.getMainLooper())
+    private var clipboardCheckRunnable: Runnable? = null
+    private var lastHoverExitTime = 0L
+    private val HOVER_EXIT_DEBOUNCE_DELAY = 500L // 500ms延迟，以最后一次HOVER_EXIT为准
+    private var lastHoverEventType = -1 // 记录最后一个hover事件类型
     
     // 公开原始属性供调试
     val currentAppPackageRaw: String
@@ -95,6 +127,10 @@ class TextAccessibilityService : AccessibilityService() {
                 "com.readassist.REQUEST_SELECTED_TEXT" -> {
                     Log.d(TAG, "📥 收到获取选中文本请求")
                     handleSelectedTextRequest()
+                }
+                "com.readassist.DEBUG_CAPTURE_UI_TREE" -> {
+                    Log.d(TAG, "🐞 收到调试采集UI树请求")
+                    captureAndLogUiTreeSnapshot()
                 }
             }
         }
@@ -224,8 +260,6 @@ class TextAccessibilityService : AccessibilityService() {
         preferenceManager = PreferenceManager(this)
         clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         
-        // 监听剪贴板变化
-        setupClipboardListener()
 
         // 注册截屏动作广播接收器
         val filter = IntentFilter().apply {
@@ -266,6 +300,8 @@ class TextAccessibilityService : AccessibilityService() {
         // 注册文本请求广播接收器
         val requestFilter = IntentFilter("com.readassist.REQUEST_SELECTED_TEXT")
         LocalBroadcastManager.getInstance(this).registerReceiver(textRequestReceiver, requestFilter)
+        // 额外注册调试广播（使用普通广播以便service能收到）
+        registerReceiver(textRequestReceiver, IntentFilter("com.readassist.DEBUG_CAPTURE_UI_TREE"))
         
         Log.i(TAG, "✅ TextAccessibilityService onCreate() 完成")
     }
@@ -308,6 +344,11 @@ class TextAccessibilityService : AccessibilityService() {
         } catch (e: Exception) {
             Log.e(TAG, "Error unregistering text request receiver", e)
         }
+        try {
+            unregisterReceiver(textRequestReceiver)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error unregistering debug receiver", e)
+        }
         
         // 注销截图观察者
         unregisterScreenshotObserver()
@@ -317,6 +358,92 @@ class TextAccessibilityService : AccessibilityService() {
         isServiceConnected = false
         
         serviceScope.cancel()
+    }
+
+    /**
+     * 采集当前窗口节点树快照（调试用），打印包含的文本/描述/id，便于针对特定App（如Supernote）做复制按钮特征匹配
+     */
+    private fun captureAndLogUiTreeSnapshot() {
+        val sb = StringBuilder()
+        sb.append("🐞 UI树采集开始\n")
+        
+        // 采集主活动窗口
+        val root = rootInActiveWindow
+        if (root != null) {
+            try {
+                sb.append("📱 主活动窗口:\n")
+                dumpNode(root, sb, 0, maxDepth = 6, maxNodes = 300)
+            } catch (e: Exception) {
+                Log.e(TAG, "采集主活动窗口UI树异常: ${e.message}", e)
+            } finally {
+                root.recycle()
+            }
+        } else {
+            sb.append("❌ 无主活动窗口\n")
+        }
+        
+        // 采集所有窗口层（包括弹窗、悬浮窗等）
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                val windows = windows
+                if (windows != null && windows.isNotEmpty()) {
+                    sb.append("\n🔍 所有窗口层 (共${windows.size}个):\n")
+                    for (i in windows.indices) {
+                        val window = windows[i]
+                        val windowRoot = window.root
+                        if (windowRoot != null) {
+                            try {
+                                val windowType = when (window.type) {
+                                    AccessibilityWindowInfo.TYPE_APPLICATION -> "应用窗口"
+                                    AccessibilityWindowInfo.TYPE_SYSTEM -> "系统窗口"
+                                    AccessibilityWindowInfo.TYPE_INPUT_METHOD -> "输入法窗口"
+                                    AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY -> "无障碍覆盖层"
+                                    else -> "其他窗口(${window.type})"
+                                }
+                                sb.append("\n📱 窗口${i+1} ($windowType):\n")
+                                dumpNode(windowRoot, sb, 0, maxDepth = 6, maxNodes = 200)
+                            } catch (e: Exception) {
+                                Log.e(TAG, "采集窗口${i+1} UI树异常: ${e.message}", e)
+                                sb.append("❌ 窗口${i+1}采集异常: ${e.message}\n")
+                            } finally {
+                                windowRoot.recycle()
+                            }
+                        } else {
+                            sb.append("❌ 窗口${i+1}无根节点\n")
+                        }
+                    }
+                } else {
+                    sb.append("❌ 无其他窗口层\n")
+                }
+            } else {
+                sb.append("❌ Android版本过低，无法获取所有窗口层\n")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "采集所有窗口层异常: ${e.message}", e)
+            sb.append("❌ 采集所有窗口层异常: ${e.message}\n")
+        }
+        
+        sb.append("\n🐞 UI树采集结束")
+        Log.d(TAG, sb.toString())
+    }
+
+    private fun dumpNode(node: AccessibilityNodeInfo, sb: StringBuilder, depth: Int, maxDepth: Int, maxNodes: Int, counter: IntArray = intArrayOf(0)) {
+        if (depth > maxDepth) return
+        if (counter[0]++ > maxNodes) return
+        val indent = "  ".repeat(depth)
+        val cls = node.className?.toString() ?: ""
+        val txt = node.text?.toString() ?: ""
+        val desc = node.contentDescription?.toString() ?: ""
+        val id = node.viewIdResourceName ?: ""
+        sb.append("$indent- cls=$cls id=$id text=${txt.take(40)} desc=${desc.take(40)}\n")
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            try {
+                dumpNode(child, sb, depth + 1, maxDepth, maxNodes, counter)
+            } finally {
+                child.recycle()
+            }
+        }
     }
     
     override fun onInterrupt() {
@@ -388,8 +515,25 @@ class TextAccessibilityService : AccessibilityService() {
                             Log.e(TAG, "❌ 截屏失败")
                         }
                     }
+
+                    // 复制信号检测（通知/Toast 文案）
+                    val eventTextCombined = (event.text?.joinToString(" ") { it.toString() } ?: "")
+                    val candidate = listOfNotNull(title, text, eventTextCombined)
+                        .joinToString(" ") { it }
+                    val srcPkg = event.packageName?.toString() ?: ""
+                    if (containsCopyKeyword(candidate)) {
+                        Log.d(TAG, "📋 检测到复制相关通知/Toast，来源: $srcPkg，文案: ${candidate.take(80)}")
+                        maybeTriggerClipboardPrompt("notification_toast", srcPkg)
+                    }
                 } else {
                     Log.e(TAG, "❌ 通知对象为空")
+                    // 某些Toast不会附带Notification，仅在event.text中
+                    val toastText = event.text?.joinToString(" ") { it.toString() } ?: ""
+                    val srcPkg = event.packageName?.toString() ?: ""
+                    if (toastText.isNotBlank() && containsCopyKeyword(toastText)) {
+                        Log.d(TAG, "📋 从Toast文本检测到复制，来源: $srcPkg，文案: ${toastText.take(80)}")
+                        maybeTriggerClipboardPrompt("toast_text", srcPkg)
+                    }
                 }
             }
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
@@ -413,20 +557,250 @@ class TextAccessibilityService : AccessibilityService() {
                     Log.d(TAG, "Window state changed: $eventPackageName")
                 }
             }
-            AccessibilityEvent.TYPE_VIEW_CLICKED,
-            AccessibilityEvent.TYPE_VIEW_LONG_CLICKED,
+            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
+                // 增强窗口内容变化检测：遍历所有窗口层
+                val srcPkg = event.packageName?.toString() ?: ""
+                if (srcPkg.contains("supernote") || srcPkg.contains("ratta") || SUPPORTED_PACKAGES.contains(srcPkg)) {
+                    Log.d(TAG, "📱 收到窗口内容变化事件，来源: $srcPkg")
+                    
+                    // 记录窗口内容变化时间，用于智能复制检测
+                    lastWindowContentChangeTime = System.currentTimeMillis()
+                    
+                    // 方法1：检查主活动窗口
+                    val root = rootInActiveWindow
+                    if (root != null) {
+                        try {
+                            if (treeContainsCopyKeyword(root)) {
+                                Log.d(TAG, "📋 在主活动窗口检测到复制相关菜单，来源: $srcPkg")
+                                maybeTriggerClipboardPrompt("window_menu_main", srcPkg)
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "扫描主活动窗口节点时发生错误: ${e.message}", e)
+                        } finally {
+                            root.recycle()
+                        }
+                    }
+                    
+                    // 方法2：检查所有窗口层（包括弹窗、悬浮窗等）
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                            val windows = windows
+                            if (windows != null) {
+                                Log.d(TAG, "🔍 检查所有窗口层，共 ${windows.size} 个窗口")
+                                for (i in windows.indices) {
+                                    val window = windows[i]
+                                    val windowRoot = window.root
+                                    if (windowRoot != null) {
+                                        try {
+                                            val windowType = when (window.type) {
+                                                AccessibilityWindowInfo.TYPE_APPLICATION -> "应用窗口"
+                                                AccessibilityWindowInfo.TYPE_SYSTEM -> "系统窗口"
+                                                AccessibilityWindowInfo.TYPE_INPUT_METHOD -> "输入法窗口"
+                                                AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY -> "无障碍覆盖层"
+                                                else -> "其他窗口(${window.type})"
+                                            }
+                                            Log.d(TAG, "🔍 检查窗口类型: $windowType")
+                                            
+                                            if (treeContainsCopyKeyword(windowRoot)) {
+                                                Log.d(TAG, "📋 在$windowType 检测到复制相关菜单，来源: $srcPkg")
+                                                maybeTriggerClipboardPrompt("window_menu_$windowType", srcPkg)
+                                            }
+                                        } catch (e: Exception) {
+                                            Log.e(TAG, "扫描窗口层 $i 时发生错误: ${e.message}", e)
+                                        } finally {
+                                            windowRoot.recycle()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "遍历所有窗口时发生错误: ${e.message}", e)
+                    }
+                }
+            }
+            AccessibilityEvent.TYPE_ANNOUNCEMENT -> {
+                // 监听Toast/Announcement事件中的"已复制/Copied"文案
+                val srcPkg = event.packageName?.toString() ?: ""
+                val announcementText = event.text?.joinToString(" ") { it.toString() } ?: ""
+                
+                Log.d(TAG, "📢 收到公告事件，来源: $srcPkg，内容: ${announcementText.take(100)}")
+                
+                if (announcementText.isNotBlank() && containsCopyKeyword(announcementText)) {
+                    Log.d(TAG, "📋 从公告事件检测到复制相关文案，来源: $srcPkg，内容: ${announcementText.take(80)}")
+                    maybeTriggerClipboardPrompt("announcement_toast", srcPkg)
+                }
+            }
+            AccessibilityEvent.TYPE_VIEW_CLICKED -> {
+                // 记录点击事件，用于增强复制检测
+                val currentTime = System.currentTimeMillis()
+                recentClickEvents.add(currentTime)
+                
+                // 清理过期的点击事件记录
+                recentClickEvents.removeAll { currentTime - it > CLICK_WINDOW_MS }
+                
+                // 保持最多MAX_CLICK_EVENTS个记录
+                if (recentClickEvents.size > MAX_CLICK_EVENTS) {
+                    recentClickEvents = recentClickEvents.takeLast(MAX_CLICK_EVENTS).toMutableList()
+                }
+                
+                // 详细记录点击事件信息
+                val srcPkg = event.packageName?.toString() ?: ""
+                val className = event.className?.toString() ?: ""
+                val contentDescription = event.contentDescription?.toString() ?: ""
+                val text = event.text?.joinToString(" ") ?: ""
+                val viewId = event.source?.viewIdResourceName ?: ""
+                val action = event.action
+                val eventTime = event.eventTime
+                
+                Log.d(TAG, "🖱️ 点击事件详情: 来源=$srcPkg, 类=$className, ID=$viewId, 描述=$contentDescription, 文本=$text, action=$action, eventTime=$eventTime")
+                
+                // 如果是Supernote应用，特别记录
+                if (srcPkg.contains("supernote") || srcPkg.contains("ratta")) {
+                    Log.d(TAG, "🔴 Supernote点击事件: VIEW_CLICKED (记录用于智能检测)")
+                    Log.d(TAG, "🔍 点击事件完整信息: ${event.toString()}")
+                } else {
+                    Log.d(TAG, "🖱️ 其他应用点击事件: $srcPkg")
+                }
+            }
+            AccessibilityEvent.TYPE_VIEW_LONG_CLICKED -> {
+                // 记录长按点击事件
+                val srcPkg = event.packageName?.toString() ?: ""
+                val className = event.className?.toString() ?: ""
+                val contentDescription = event.contentDescription?.toString() ?: ""
+                val text = event.text?.joinToString(" ") ?: ""
+                val viewId = event.source?.viewIdResourceName ?: ""
+                
+                Log.d(TAG, "🖱️ 长按点击事件: 来源=$srcPkg, 类=$className, ID=$viewId, 描述=$contentDescription, 文本=$text")
+                
+                if (srcPkg.contains("supernote") || srcPkg.contains("ratta")) {
+                    Log.d(TAG, "🔴 Supernote长按事件: VIEW_LONG_CLICKED")
+                }
+            }
             AccessibilityEvent.TYPE_VIEW_SELECTED,
             AccessibilityEvent.TYPE_VIEW_FOCUSED,
             AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED,
-            AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED,
-            AccessibilityEvent.TYPE_VIEW_HOVER_ENTER,
-            AccessibilityEvent.TYPE_VIEW_HOVER_EXIT,
+            AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED -> {
+                // 处理其他事件类型
+            }
+            AccessibilityEvent.TYPE_VIEW_HOVER_ENTER -> {
+                // 记录hover事件，用于智能复制检测
+                val currentTime = System.currentTimeMillis()
+                recentHoverEvents.add(currentTime)
+                lastHoverEventType = AccessibilityEvent.TYPE_VIEW_HOVER_ENTER
+                
+                // 清理过期的hover事件记录
+                recentHoverEvents.removeAll { currentTime - it > HOVER_WINDOW_MS }
+                
+                // 保持最多MAX_HOVER_EVENTS个记录
+                if (recentHoverEvents.size > MAX_HOVER_EVENTS) {
+                    recentHoverEvents = recentHoverEvents.takeLast(MAX_HOVER_EVENTS).toMutableList()
+                }
+                
+                // 详细记录hover事件信息
+                val srcPkg = event.packageName?.toString() ?: ""
+                val className = event.className?.toString() ?: ""
+                val contentDescription = event.contentDescription?.toString() ?: ""
+                val text = event.text?.joinToString(" ") ?: ""
+                val viewId = event.source?.viewIdResourceName ?: ""
+                
+                Log.d(TAG, "🔴 HOVER_ENTER详情: 来源=$srcPkg, 类=$className, ID=$viewId, 描述=$contentDescription, 文本=$text")
+                
+                // 如果是Supernote应用，记录hover前的完整状态
+                if (srcPkg.contains("supernote") || srcPkg.contains("ratta")) {
+                    Log.d(TAG, "🔴 Supernote HOVER_ENTER - 记录hover前状态")
+                    captureHoverContext("HOVER_ENTER")
+                }
+                
+                Log.d(TAG, "🔴 Supernote其他事件: VIEW_HOVER_ENTER (仅记录，不触发检测)")
+            }
+            AccessibilityEvent.TYPE_VIEW_HOVER_EXIT -> {
+                // 记录hover事件
+                val currentTime = System.currentTimeMillis()
+                recentHoverEvents.add(currentTime)
+                lastHoverEventType = AccessibilityEvent.TYPE_VIEW_HOVER_EXIT
+                
+                // 清理过期的hover事件记录
+                recentHoverEvents.removeAll { currentTime - it > HOVER_WINDOW_MS }
+                
+                // 保持最多MAX_HOVER_EVENTS个记录
+                if (recentHoverEvents.size > MAX_HOVER_EVENTS) {
+                    recentHoverEvents = recentHoverEvents.takeLast(MAX_HOVER_EVENTS).toMutableList()
+                }
+                
+                // 详细记录hover exit事件信息
+                val srcPkg = event.packageName?.toString() ?: ""
+                val className = event.className?.toString() ?: ""
+                val contentDescription = event.contentDescription?.toString() ?: ""
+                val text = event.text?.joinToString(" ") ?: ""
+                val viewId = event.source?.viewIdResourceName ?: ""
+                
+                Log.d(TAG, "🔴 HOVER_EXIT详情: 来源=$srcPkg, 类=$className, ID=$viewId, 描述=$contentDescription, 文本=$text")
+                
+                // 如果是Supernote应用，使用智能防抖机制处理剪贴板检查
+                if (srcPkg.contains("supernote") || srcPkg.contains("ratta")) {
+                    Log.d(TAG, "🔴 Supernote HOVER_EXIT - 智能防抖处理剪贴板检查")
+                    
+                    // 记录最新的HOVER_EXIT时间
+                    lastHoverExitTime = currentTime
+                    
+                    // 取消之前的延迟任务（如果存在）
+                    clipboardCheckRunnable?.let { runnable ->
+                        clipboardHandler.removeCallbacks(runnable)
+                        Log.d(TAG, "🔄 取消之前的剪贴板检查任务")
+                    }
+                    
+                    // 创建新的延迟任务
+                    clipboardCheckRunnable = Runnable {
+                        // 再次检查时间，确保这是最后一次HOVER_EXIT事件
+                        if (System.currentTimeMillis() - lastHoverExitTime >= HOVER_EXIT_DEBOUNCE_DELAY - 50) {
+                            Log.d(TAG, "🔴 执行延迟后的剪贴板检查 (最后一次HOVER_EXIT)")
+                            
+                            try {
+                                val intent = Intent("com.readassist.CHECK_CLIPBOARD_FROM_HOVER").apply {
+                                    putExtra("source", "hover_exit_debounced")
+                                    putExtra("package", srcPkg)
+                                    putExtra("timestamp", lastHoverExitTime)
+                                    putExtra("delay_ms", HOVER_EXIT_DEBOUNCE_DELAY)
+                                }
+                                sendBroadcast(intent)
+                                Log.d(TAG, "🔴 延迟后的剪贴板检查广播已发送")
+                                
+                            } catch (e: Exception) {
+                                Log.e(TAG, "发送延迟剪贴板检查广播失败: ${e.message}")
+                            }
+                        } else {
+                            Log.d(TAG, "🔄 检测到更新的HOVER_EXIT事件，跳过此次检查")
+                        }
+                    }
+                    
+                    // 延迟执行剪贴板检查
+                    clipboardHandler.postDelayed(clipboardCheckRunnable!!, HOVER_EXIT_DEBOUNCE_DELAY)
+                    Log.d(TAG, "🕐 已安排${HOVER_EXIT_DEBOUNCE_DELAY}ms后执行剪贴板检查")
+                }
+            }
             AccessibilityEvent.TYPE_TOUCH_EXPLORATION_GESTURE_START,
             AccessibilityEvent.TYPE_TOUCH_EXPLORATION_GESTURE_END,
             AccessibilityEvent.TYPE_GESTURE_DETECTION_START,
             AccessibilityEvent.TYPE_GESTURE_DETECTION_END,
-            AccessibilityEvent.TYPE_TOUCH_INTERACTION_START,
-            AccessibilityEvent.TYPE_TOUCH_INTERACTION_END,
+            AccessibilityEvent.TYPE_TOUCH_INTERACTION_START -> {
+                // 记录触摸交互开始事件
+                val srcPkg = event.packageName?.toString() ?: ""
+                Log.d(TAG, "🔴 触摸交互开始: $srcPkg")
+                
+                if (srcPkg.contains("supernote") || srcPkg.contains("ratta")) {
+                    Log.d(TAG, "🔴 Supernote触摸交互开始: TOUCH_INTERACTION_START")
+                }
+            }
+            AccessibilityEvent.TYPE_TOUCH_INTERACTION_END -> {
+                // 记录触摸交互结束事件
+                val srcPkg = event.packageName?.toString() ?: ""
+                Log.d(TAG, "🔴 触摸交互结束: $srcPkg")
+                
+                if (srcPkg.contains("supernote") || srcPkg.contains("ratta")) {
+                    Log.d(TAG, "🔴 Supernote触摸交互结束: TOUCH_INTERACTION_END")
+                }
+            }
             AccessibilityEvent.TYPE_VIEW_CONTEXT_CLICKED,
             AccessibilityEvent.TYPE_ASSIST_READING_CONTEXT,
             0x00000080,
@@ -452,6 +826,35 @@ class TextAccessibilityService : AccessibilityService() {
                 } else {
                     Log.d(TAG, "🔍 其他事件 (仅记录，不主动提取文本): ${getEventTypeName(event.eventType)} from $eventPackageName")
                 }
+
+                // 针对点击/长按/上下文点击等事件，尝试识别“复制”按钮/菜单
+                if (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED ||
+                    event.eventType == AccessibilityEvent.TYPE_VIEW_LONG_CLICKED ||
+                    event.eventType == AccessibilityEvent.TYPE_VIEW_CONTEXT_CLICKED) {
+
+                    val srcPkg = event.packageName?.toString() ?: ""
+                    var combined = event.text?.joinToString(" ") { it.toString() } ?: ""
+
+                    // 尝试从源节点提取更多可识别信息
+                    val node = event.source
+                    if (node != null) {
+                        try {
+                            val nodeText = node.text?.toString() ?: ""
+                            val nodeDesc = node.contentDescription?.toString() ?: ""
+                            val nodeId = node.viewIdResourceName ?: ""
+                            combined = listOf(combined, nodeText, nodeDesc, nodeId)
+                                .filter { it.isNotBlank() }
+                                .joinToString(" ")
+                        } finally {
+                            node.recycle()
+                        }
+                    }
+
+                    if (combined.isNotBlank() && containsCopyKeyword(combined)) {
+                        Log.d(TAG, "📋 点击事件命中复制关键词，来源: $srcPkg，信息: ${combined.take(80)}")
+                        maybeTriggerClipboardPrompt("view_clicked", srcPkg)
+                    }
+                }
             }
             else -> {
                 if (event.packageName?.contains("supernote") == true || event.packageName?.contains("ratta") == true) {
@@ -460,6 +863,350 @@ class TextAccessibilityService : AccessibilityService() {
                     Log.d(TAG, "🔍 其他事件 (仅记录，不主动提取文本): ${getEventTypeName(event.eventType)} from $eventPackageName")
                 }
             }
+        }
+    }
+
+    /**
+     * 字符串是否包含复制关键词
+     */
+    private fun containsCopyKeyword(text: String?): Boolean {
+        if (text.isNullOrBlank()) return false
+        val lower = text.lowercase()
+        return COPY_KEYWORDS.any { kw ->
+            // 中文不区分大小写，英文已lower
+            lower.contains(kw.lowercase())
+        }
+    }
+
+    /**
+     * 遍历节点树，检查是否包含复制相关关键词
+     */
+    private fun treeContainsCopyKeyword(node: AccessibilityNodeInfo): Boolean {
+        try {
+            val texts = mutableListOf<String>()
+            collectNodeTexts(node, texts)
+            if (texts.isNotEmpty()) {
+                val joined = texts.joinToString(" ")
+                
+                // 通用复制关键词检测
+                if (containsCopyKeyword(joined)) return true
+                
+                // Supernote专用检测规则
+                if (containsSupernoteCopySignal(joined, texts)) return true
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "遍历节点树异常: ${e.message}")
+        }
+        return false
+    }
+    
+    /**
+     * Supernote专用复制信号检测 - 简化版本
+     */
+    private fun containsSupernoteCopySignal(joined: String, texts: List<String>): Boolean {
+        // 检测明确的复制相关文案
+        val supernoteCopySignals = listOf(
+            "复制", "拷贝", "copy", "copied",
+            "已复制", "复制成功", "复制完成",
+            "文本已复制", "内容已复制", "复制到剪贴板"
+        )
+        
+        // 检查是否有明确的复制信号
+        for (signal in supernoteCopySignals) {
+            if (joined.contains(signal, ignoreCase = true)) {
+                Log.d(TAG, "🔴 检测到Supernote复制信号: $signal")
+                return true
+            }
+        }
+        
+        // 注意：selectText检测已移除，因为UI关闭工具栏时selectText会消失
+        // 注意：窗口变化检测已移除，不再需要作为触发条件
+        // 现在只依赖HOVER_EXIT事件直接触发剪贴板检查
+        
+        return false
+    }
+    
+    /**
+     * 捕获hover上下文信息
+     */
+    private fun captureHoverContext(context: String) {
+        try {
+            Log.d(TAG, "🔍 开始捕获hover上下文: $context")
+            
+            // 记录当前时间戳
+            val timestamp = System.currentTimeMillis()
+            Log.d(TAG, "🔍 时间戳: $timestamp")
+            
+            // 记录最近的点击事件
+            Log.d(TAG, "🔍 最近点击事件数量: ${recentClickEvents.size}")
+            recentClickEvents.forEachIndexed { index, time ->
+                val timeDiff = timestamp - time
+                Log.d(TAG, "🔍 点击事件[$index]: ${time}, 时间差: ${timeDiff}ms")
+            }
+            
+            // 记录最近的hover事件
+            Log.d(TAG, "🔍 最近hover事件数量: ${recentHoverEvents.size}")
+            recentHoverEvents.forEachIndexed { index, time ->
+                val timeDiff = timestamp - time
+                Log.d(TAG, "🔍 Hover事件[$index]: ${time}, 时间差: ${timeDiff}ms")
+            }
+            
+            // 记录窗口内容变化时间
+            val windowTimeDiff = timestamp - lastWindowContentChangeTime
+            Log.d(TAG, "🔍 最近窗口变化时间: ${lastWindowContentChangeTime}, 时间差: ${windowTimeDiff}ms")
+            
+            // 记录菜单检测时间
+            val menuTimeDiff = timestamp - lastMenuDetectionTime
+            Log.d(TAG, "🔍 最近菜单检测时间: ${lastMenuDetectionTime}, 时间差: ${menuTimeDiff}ms")
+            
+            // 捕获当前窗口状态
+            val root = rootInActiveWindow
+            if (root != null) {
+                try {
+                    Log.d(TAG, "🔍 当前主窗口状态:")
+                    Log.d(TAG, "🔍 窗口包名: ${root.packageName}")
+                    Log.d(TAG, "🔍 窗口类名: ${root.className}")
+                    Log.d(TAG, "🔍 窗口文本: ${root.text}")
+                    Log.d(TAG, "🔍 窗口描述: ${root.contentDescription}")
+                    Log.d(TAG, "🔍 窗口ID: ${root.viewIdResourceName}")
+                    Log.d(TAG, "🔍 子节点数量: ${root.childCount}")
+                    
+                    // 记录前几个子节点的信息
+                    for (i in 0 until minOf(5, root.childCount)) {
+                        val child = root.getChild(i)
+                        if (child != null) {
+                            try {
+                                Log.d(TAG, "🔍 子节点[$i]: 类=${child.className}, 文本=${child.text}, 描述=${child.contentDescription}, ID=${child.viewIdResourceName}")
+                            } finally {
+                                child.recycle()
+                            }
+                        }
+                    }
+                } finally {
+                    root.recycle()
+                }
+            }
+            
+            // 捕获所有窗口层状态
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                val windows = windows
+                if (windows != null) {
+                    Log.d(TAG, "🔍 所有窗口层状态 (共${windows.size}个):")
+                    for (i in windows.indices) {
+                        val window = windows[i]
+                        val windowRoot = window.root
+                        if (windowRoot != null) {
+                            try {
+                                val windowType = when (window.type) {
+                                    AccessibilityWindowInfo.TYPE_APPLICATION -> "应用窗口"
+                                    AccessibilityWindowInfo.TYPE_SYSTEM -> "系统窗口"
+                                    AccessibilityWindowInfo.TYPE_INPUT_METHOD -> "输入法窗口"
+                                    AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY -> "无障碍覆盖层"
+                                    else -> "其他窗口(${window.type})"
+                                }
+                                Log.d(TAG, "🔍 窗口层[$i] ($windowType): 包名=${windowRoot.packageName}, 类名=${windowRoot.className}")
+                                Log.d(TAG, "🔍 窗口层[$i] 子节点数量: ${windowRoot.childCount}")
+                            } finally {
+                                windowRoot.recycle()
+                            }
+                        }
+                    }
+                }
+            }
+            
+            Log.d(TAG, "🔍 hover上下文捕获完成: $context")
+        } catch (e: Exception) {
+            Log.e(TAG, "捕获hover上下文时发生错误: ${e.message}", e)
+        }
+    }
+    
+    /**
+     * 分析当前菜单内容，查找复制相关信号
+     */
+    private fun analyzeCurrentMenuContent() {
+        try {
+            Log.d(TAG, "🔍 开始分析当前菜单内容...")
+            
+            // 检查主活动窗口
+            val root = rootInActiveWindow
+            if (root != null) {
+                val menuTexts = mutableListOf<String>()
+                collectMenuTexts(root, menuTexts)
+                
+                if (menuTexts.isNotEmpty()) {
+                    Log.d(TAG, "🔍 主窗口菜单内容: ${menuTexts.joinToString(", ")}")
+                } else {
+                    Log.d(TAG, "🔍 主窗口无菜单内容")
+                }
+                root.recycle()
+            }
+            
+            // 检查所有窗口层
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                val windows = windows
+                if (windows != null) {
+                    Log.d(TAG, "🔍 分析所有窗口层的菜单内容，共 ${windows.size} 个窗口")
+                    for (i in windows.indices) {
+                        val window = windows[i]
+                        val windowRoot = window.root
+                        if (windowRoot != null) {
+                            try {
+                                val windowType = when (window.type) {
+                                    AccessibilityWindowInfo.TYPE_APPLICATION -> "应用窗口"
+                                    AccessibilityWindowInfo.TYPE_SYSTEM -> "系统窗口"
+                                    AccessibilityWindowInfo.TYPE_INPUT_METHOD -> "输入法窗口"
+                                    AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY -> "无障碍覆盖层"
+                                    else -> "其他窗口(${window.type})"
+                                }
+                                
+                                val menuTexts = mutableListOf<String>()
+                                collectMenuTexts(windowRoot, menuTexts)
+                                
+                                if (menuTexts.isNotEmpty()) {
+                                    Log.d(TAG, "🔍 $windowType 菜单内容: ${menuTexts.joinToString(", ")}")
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "分析窗口层 $i 菜单时发生错误: ${e.message}", e)
+                            } finally {
+                                windowRoot.recycle()
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "分析菜单内容时发生错误: ${e.message}", e)
+        }
+    }
+    
+    /**
+     * 收集菜单相关的文本内容
+     */
+    private fun collectMenuTexts(node: AccessibilityNodeInfo, out: MutableList<String>) {
+        try {
+            // 收集节点文本
+            node.text?.toString()?.let { text ->
+                if (text.isNotBlank()) {
+                    out.add(text)
+                }
+            }
+            
+            // 收集内容描述
+            node.contentDescription?.toString()?.let { desc ->
+                if (desc.isNotBlank()) {
+                    out.add(desc)
+                }
+            }
+            
+            // 收集资源ID（可能包含menu、button等关键词）
+            node.viewIdResourceName?.let { id ->
+                if (id.contains("menu", ignoreCase = true) || 
+                    id.contains("button", ignoreCase = true) ||
+                    id.contains("action", ignoreCase = true)) {
+                    out.add("ID:$id")
+                }
+            }
+            
+            // 递归收集子节点
+            for (i in 0 until node.childCount) {
+                val child = node.getChild(i)
+                if (child != null) {
+                    try {
+                        collectMenuTexts(child, out)
+                    } finally {
+                        child.recycle()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "收集菜单文本时发生错误: ${e.message}", e)
+        }
+    }
+    
+    /**
+     * 分析菜单内容，查找复制相关信号
+     */
+    private fun analyzeMenuContentForCopySignals(joined: String, texts: List<String>): Boolean {
+        // 记录菜单检测时间
+        lastMenuDetectionTime = System.currentTimeMillis()
+        lastDetectedMenuContent = joined
+        
+        // 查找可能的复制菜单项
+        val copyMenuSignals = listOf(
+            "复制", "拷贝", "copy", "copied",
+            "复制到剪贴板", "复制文本", "复制内容",
+            "menu", "menuItem", "action", "button"
+        )
+        
+        // 检查是否有复制相关的菜单项
+        for (signal in copyMenuSignals) {
+            if (joined.contains(signal, ignoreCase = true)) {
+                Log.d(TAG, "🔴 在菜单内容中检测到复制信号: $signal")
+                Log.d(TAG, "🔍 菜单内容摘要: ${joined.take(200)}")
+                return true
+            }
+        }
+        
+        // 如果没有明确的复制信号，记录菜单内容供调试
+        Log.d(TAG, "🔍 菜单内容未发现复制信号，内容: ${joined.take(100)}")
+        Log.d(TAG, "🔍 菜单文本列表: ${texts.take(10)}")
+        
+        return false
+    }
+
+    private fun collectNodeTexts(node: AccessibilityNodeInfo, out: MutableList<String>) {
+        node.text?.toString()?.let { out.add(it) }
+        node.contentDescription?.toString()?.let { out.add(it) }
+        node.viewIdResourceName?.let { out.add(it) }
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            try {
+                collectNodeTexts(child, out)
+            } finally {
+                child.recycle()
+            }
+        }
+    }
+
+    /**
+     * 触发剪贴板提示（不读取剪贴板，仅广播提示由前台桥接读取）
+     */
+    private fun maybeTriggerClipboardPrompt(reason: String, sourcePackage: String) {
+        // 源包名校验
+        val src = if (sourcePackage.isNotBlank()) sourcePackage else currentAppPackage
+        if (src.isBlank()) return
+
+        // 仅处理白名单应用，且忽略自身
+        if (!SUPPORTED_PACKAGES.contains(src)) {
+            Log.d(TAG, "📋 源应用不在支持列表中，忽略: $src, reason=$reason")
+            return
+        }
+        if (src == "com.readassist" || src == "com.readassist.debug") {
+            Log.d(TAG, "📋 忽略来自本应用的复制信号")
+            return
+        }
+
+        // 简单节流：同一应用2秒内只触发一次
+        val now = System.currentTimeMillis()
+        if (src == lastCopySignalPackage && now - lastCopySignalTime < 2000) {
+            Log.d(TAG, "⏱️ 复制信号节流触发，忽略本次，src=$src, reason=$reason")
+            return
+        }
+        lastCopySignalPackage = src
+        lastCopySignalTime = now
+
+        // 发送与原有流程一致的广播
+        try {
+            val intent = Intent("com.readassist.CLIPBOARD_CHANGED").apply {
+                putExtra("source_app", src)
+                putExtra("book_name", currentBookName)
+                putExtra("timestamp", now)
+                putExtra("reason", reason)
+            }
+            sendBroadcast(intent)
+            Log.d(TAG, "📋 已广播复制信号（不读取内容），src=$src, reason=$reason")
+        } catch (e: Exception) {
+            Log.e(TAG, "发送复制信号广播失败: ${e.message}", e)
         }
     }
     
@@ -548,76 +1295,7 @@ class TextAccessibilityService : AccessibilityService() {
         Log.d(TAG, "📱 应用信息已更新 - 当前应用: '$currentAppPackage', 当前书籍: '$currentBookName'")
     }
     
-    /**
-     * 设置剪贴板监听器
-     */
-    private fun setupClipboardListener() {
-        clipboardManager.addPrimaryClipChangedListener {
-            mainHandler.post {
-                handleClipboardChange()
-            }
-        }
-    }
     
-    /**
-     * 处理剪贴板变化
-     */
-    private fun handleClipboardChange() {
-        Log.d(TAG, "🔔 剪贴板变化事件触发")
-        try {
-            val clipData = clipboardManager.primaryClip
-            Log.d(TAG, "📋 剪贴板数据: ${clipData != null}, 项目数: ${clipData?.itemCount ?: 0}")
-            
-            if (clipData != null && clipData.itemCount > 0) {
-                val text = clipData.getItemAt(0).text?.toString()
-                Log.d(TAG, "📋📋📋 剪贴板文本: ${text?.take(100) ?: "null"}")
-                Log.d(TAG, "📋 上次文本: ${lastClipboardText.take(50)}")
-                Log.d(TAG, "📋 当前应用: $currentAppPackage")
-                
-                // 特殊检查：如果包含目标文本，立即处理
-                if (!text.isNullOrBlank() && (
-                    text.contains("They need emotional bonds too", ignoreCase = true) ||
-                    text.contains("emotional bonds", ignoreCase = true) ||
-                    text.contains("bonds too", ignoreCase = true))) {
-                    Log.d(TAG, "🚨🚨🚨 剪贴板发现目标文本!")
-                    Log.d(TAG, "🚨🚨🚨 目标文本完整内容: $text")
-                    
-                    lastClipboardText = text
-                    lastProcessedText = text
-                    
-                    // 立即作为选中文本处理
-                    Log.d(TAG, "🎯🎯🎯 立即处理目标文本")
-                    notifyTextSelected(text, false, currentAppPackage, currentBookName)
-                    return
-                }
-                
-                // Clipboard change handling
-                if (text != null && text.isNotEmpty()) {
-                    // Check for clipboard changes
-                    if (text != lastClipboardText) {
-                        lastClipboardText = text
-                        
-                        Log.d(TAG, "📋 检测到剪贴板变化: ${text.take(50)}...")
-                        
-                        // 避免处理ReadAssist自己的剪贴板内容
-                        if (currentAppPackage != "com.readassist" && currentAppPackage != "com.readassist.debug") {
-                            lastProcessedText = text // 避免重复处理
-                            // Update the call to use the new parameters
-                            notifyTextSelected(text, false, currentAppPackage, currentBookName)
-                        } else {
-                            Log.d(TAG, "🚫 忽略来自ReadAssist应用的剪贴板变化")
-                        }
-                    }
-                } else {
-                    Log.d(TAG, "📋 剪贴板文本为空")
-                }
-            } else {
-                Log.d(TAG, "❌ 剪贴板数据为空")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error handling clipboard change", e)
-        }
-    }
     
     /**
      * 通知检测到文本
@@ -670,11 +1348,42 @@ class TextAccessibilityService : AccessibilityService() {
      */
     private fun startFloatingWindowService() {
         try {
+            Log.d(TAG, "🔴 尝试启动FloatingWindowServiceNew")
             val intent = Intent(this, FloatingWindowServiceNew::class.java)
             startService(intent)
-            Log.d(TAG, "FloatingWindowServiceNew started")
+            Log.d(TAG, "🔴 FloatingWindowServiceNew启动请求已发送")
+            
+            // 延迟检查服务是否真的启动成功
+            Handler(Looper.getMainLooper()).postDelayed({
+                checkFloatingWindowServiceStatus()
+            }, 2000)
+            
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to start FloatingWindowServiceNew", e)
+            Log.e(TAG, "🔴 启动FloatingWindowServiceNew失败: ${e.message}", e)
+        }
+    }
+    
+    /**
+     * 检查悬浮窗服务状态
+     */
+    private fun checkFloatingWindowServiceStatus() {
+        try {
+            val sharedPrefs = getSharedPreferences("service_prefs", Context.MODE_PRIVATE)
+            val isRunning = sharedPrefs.getBoolean("is_floating_service_running", false)
+            
+            Log.d(TAG, "🔴 检查FloatingWindowServiceNew状态: isRunning=$isRunning")
+            
+            if (!isRunning) {
+                Log.e(TAG, "🔴 FloatingWindowServiceNew未正常运行，尝试重新启动")
+                // 尝试重新启动
+                Handler(Looper.getMainLooper()).postDelayed({
+                    startFloatingWindowService()
+                }, 1000)
+            } else {
+                Log.d(TAG, "🔴 FloatingWindowServiceNew运行正常")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "🔴 检查FloatingWindowServiceNew状态时发生异常: ${e.message}", e)
         }
     }
     

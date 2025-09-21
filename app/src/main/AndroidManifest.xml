@@ -141,5 +141,14 @@
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
 
+        <!-- 剪贴板桥接Activity -->
+        <activity
+            android:name=".ui.ClipboardBridgeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Transparent.NoActionBar"
+            android:excludeFromRecents="true"
+            android:finishOnTaskLaunch="true"
+            android:noHistory="true" />
+
     </application>
 </manifest> 

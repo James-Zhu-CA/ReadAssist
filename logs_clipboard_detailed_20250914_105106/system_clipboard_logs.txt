@@ -1,0 +1,3 @@
+09-14 10:45:06.685   408   666 E ClipboardService: Denying clipboard access to com.readassist, application is not in focus nor is it a system service for user 0
+09-14 10:45:06.685   408   666 E ClipboardService: Denying clipboard access to com.microsoft.emmx, application is not in focus nor is it a system service for user 0
+09-14 10:45:06.685   408   666 E ClipboardService: Denying clipboard access to com.apkpure.aegon, application is not in focus nor is it a system service for user 0

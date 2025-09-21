@@ -1,0 +1,50 @@
+09-14 03:36:17.667 23709 23790 W System.err: Caused by: android.system.ErrnoException: open failed: EACCES (Permission denied)
+09-14 03:36:17.668 23709 23790 W System.err: java.lang.NullPointerException: Attempt to invoke virtual method 'void java.io.BufferedReader.close()' on a null object reference
+09-14 04:21:07.613 22085 22085 W System.err: java.lang.IllegalStateException: Not allowed to start service Intent { cmp=com.apkpure.aegon/.popups.quickV2.service.QuickNotificationService }: app is in background uid UidRecord{f05349d u0a95 CEM  bg:+8h58m4s724ms idle change:cached procs:1 seq(0,0,0)}
+09-14 04:23:27.710 22085  2444 E ignored : java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.Object android.content.Context.getSystemService(java.lang.String)' on a null object reference
+09-14 05:21:08.108 22085 22085 W System.err: java.lang.IllegalStateException: Not allowed to start service Intent { cmp=com.apkpure.aegon/.popups.quickV2.service.QuickNotificationService }: app is in background uid UidRecord{f05349d u0a95 CEM  bg:+9h58m5s218ms idle change:cached procs:1 seq(0,0,0)}
+09-14 05:22:32.393  5498  5498 D ANRWatchdog:  Failed while trying resolve watch anr filter file, not exists
+09-14 05:22:32.885  5498  5517 W ContextImpl: Failed to ensure /data/user/0/com.microsoft.emmx/files: mkdir failed: ENOENT (No such file or directory)
+09-14 05:22:32.908  5498  5522 W ContextImpl: Failed to ensure /data/user/0/com.microsoft.emmx/files: mkdir failed: ENOENT (No such file or directory)
+09-14 05:22:32.940  5498  5519 W ContextImpl: Failed to ensure /data/user/0/com.microsoft.emmx/files: mkdir failed: ENOENT (No such file or directory)
+09-14 05:22:33.324  5498  5528 W ContextImpl: Failed to ensure /data/user/0/com.microsoft.emmx/files: mkdir failed: ENOENT (No such file or directory)
+09-14 05:22:33.332  5498  5528 W System.err: java.io.IOException: No such file or directory
+09-14 05:23:28.203 22085  5587 E ignored : java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.Object android.content.Context.getSystemService(java.lang.String)' on a null object reference
+09-14 06:21:08.599 22085 22085 W System.err: java.lang.IllegalStateException: Not allowed to start service Intent { cmp=com.apkpure.aegon/.popups.quickV2.service.QuickNotificationService }: app is in background uid UidRecord{f05349d u0a95 CEM  bg:+10h58m5s709ms idle change:cached procs:1 seq(0,0,0)}
+09-14 06:23:28.695 22085  8786 E ignored : java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.Object android.content.Context.getSystemService(java.lang.String)' on a null object reference
+09-14 07:21:09.060 22085 22085 W System.err: java.lang.IllegalStateException: Not allowed to start service Intent { cmp=com.apkpure.aegon/.popups.quickV2.service.QuickNotificationService }: app is in background uid UidRecord{f05349d u0a95 CEM  bg:+11h58m6s171ms idle change:cached procs:1 seq(0,0,0)}
+09-14 07:23:29.292 22085 11649 E ignored : java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.Object android.content.Context.getSystemService(java.lang.String)' on a null object reference
+09-14 08:21:09.599 22085 22085 W System.err: java.lang.IllegalStateException: Not allowed to start service Intent { cmp=com.apkpure.aegon/.popups.quickV2.service.QuickNotificationService }: app is in background uid UidRecord{f05349d u0a95 CEM  bg:+12h58m6s710ms idle change:cached procs:1 seq(0,0,0)}
+09-14 08:23:29.889 22085 14503 E ignored : java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.Object android.content.Context.getSystemService(java.lang.String)' on a null object reference
+09-14 08:59:31.756 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 08:59:31.760 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 08:59:54.592 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 08:59:54.595 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:00:52.142 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:00:52.144 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:01:04.936 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:01:04.938 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:01:25.219 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:01:25.223 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:05:58.421 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:05:58.426 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:08:05.806 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:08:05.814 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:10:19.748 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:10:19.754 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:11:18.317 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:11:18.324 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:14:52.774 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:14:52.778 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:20:36.297 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:20:36.302 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:21:10.083 22085 22085 W System.err: java.lang.IllegalStateException: Not allowed to start service Intent { cmp=com.apkpure.aegon/.popups.quickV2.service.QuickNotificationService }: app is in background uid UidRecord{f05349d u0a95 CEM  bg:+13h58m7s194ms idle change:cached procs:1 seq(0,0,0)}
+09-14 09:23:30.484 22085 17356 E ignored : java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.Object android.content.Context.getSystemService(java.lang.String)' on a null object reference
+09-14 09:24:57.828 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:24:57.834 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:25:06.941 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:25:06.947 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:39:13.682 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:39:13.683 23709 23830 I MulticastReceiver: Could not read datagram: Could not parse headers: java.lang.ArrayIndexOutOfBoundsException: length=1; index=2
+09-14 09:39:26.258  3036  3121 W System.err: android.content.pm.PackageManager$NameNotFoundException: com.tencent.android.qqdownloader
+09-14 09:39:26.259  3036  3121 W System.err: android.content.pm.PackageManager$NameNotFoundException: com.tencent.android.qqdownloader

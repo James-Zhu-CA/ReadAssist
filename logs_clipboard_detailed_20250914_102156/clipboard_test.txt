@@ -1,0 +1,2 @@
+Broadcasting: Intent { act=android.intent.action.CLIPBOARD_CHANGED flg=0x400000 }
+Broadcast completed: result=0

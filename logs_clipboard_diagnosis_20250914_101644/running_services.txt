@@ -1,0 +1,83 @@
+  * ServiceRecord{9d78f22 u0 com.readassist/.service.TextAccessibilityService}
+    intent={cmp=com.readassist/.service.TextAccessibilityService}
+    packageName=com.readassist
+    processName=com.readassist
+    baseDir=/data/app/~~gpD5fu40WcfrPxbyyU1L6A==/com.readassist-czl5R321e5IMF7rJzMPRFQ==/base.apk
+    dataDir=/data/user/0/com.readassist
+    app=ProcessRecord{5edc740 7058:com.readassist/u0a152}
+      intent={cmp=com.readassist/.service.TextAccessibilityService}
+          ConnectionRecord{a7954ed u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@490b704}
+      ConnectionRecord{a7954ed u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@490b704}
+  * ServiceRecord{7addb59 u0 com.readassist/.service.FloatingWindowServiceNew}
+    intent={cmp=com.readassist/.service.FloatingWindowServiceNew}
+    packageName=com.readassist
+    processName=com.readassist
+    baseDir=/data/app/~~gpD5fu40WcfrPxbyyU1L6A==/com.readassist-czl5R321e5IMF7rJzMPRFQ==/base.apk
+    dataDir=/data/user/0/com.readassist
+    app=ProcessRecord{5edc740 7058:com.readassist/u0a152}
+    recentCallingPackage=com.readassist
+  * ServiceRecord{787cdcd u0 com.readassist/.service.ScreenshotService}
+    intent={cmp=com.readassist/.service.ScreenshotService}
+    packageName=com.readassist
+    processName=com.readassist
+    baseDir=/data/app/~~gpD5fu40WcfrPxbyyU1L6A==/com.readassist-czl5R321e5IMF7rJzMPRFQ==/base.apk
+    dataDir=/data/user/0/com.readassist
+    app=ProcessRecord{5edc740 7058:com.readassist/u0a152}
+    recentCallingPackage=com.readassist
+      intent={cmp=com.readassist/.service.ScreenshotService}
+      * Client AppBindRecord{ad49d1b ProcessRecord{5edc740 7058:com.readassist/u0a152}}
+          ConnectionRecord{5cf70cd u0 CR com.readassist/.service.ScreenshotService:@e005664}
+      ConnectionRecord{5cf70cd u0 CR com.readassist/.service.ScreenshotService:@e005664}
+  * ConnectionRecord{5fe0d10 u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@407dd3}
+    binding=AppBindRecord{3923942 com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{b88b9a0 u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@6ec2a3}
+    binding=AppBindRecord{5991e3c com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{172587b u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@b0780a}
+    binding=AppBindRecord{2625d2c com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{ca28784 u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@1614997}
+    binding=AppBindRecord{dc22f58 com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{e6be9d1 u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@2b6c0f8}
+    binding=AppBindRecord{33a618e com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{2cbdc5a u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@3363405}
+    binding=AppBindRecord{c1131e6 com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{a7954ed u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@490b704}
+    binding=AppBindRecord{64233d2 com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{411f8dd u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@4b6b4b4}
+    binding=AppBindRecord{aea5b82 com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{15753f1 u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@522ff98}
+    binding=AppBindRecord{d6126ef com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{4cb753c u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@5b6fb2f}
+    binding=AppBindRecord{c221645 com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{a2571e1 u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@6601f48}
+    binding=AppBindRecord{fc14086 com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{122add7 u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@7199956}
+    binding=AppBindRecord{a3e99bc com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{9908d27 u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@74123e6}
+    binding=AppBindRecord{e75108f com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{1c47516 u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@75b0a31}
+    binding=AppBindRecord{95b490e com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{8e94d5e u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@7767699}
+    binding=AppBindRecord{cfd83ec com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{6b32de9 u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@7aea670}
+    binding=AppBindRecord{4880566 com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{4a52cd9 u0 CR FGSA CAPS DEAD com.readassist/.service.TextAccessibilityService:@89e8b20}
+    binding=AppBindRecord{ffe7073 com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{de0fb6a u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@89f2555}
+    binding=AppBindRecord{f9e4d51 com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{55d51cc u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@8cb2fff}
+    binding=AppBindRecord{ae4c838 com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{68e415e u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@986ba99}
+    binding=AppBindRecord{4a4af51 com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{2180bac u0 CR FGSA CAPS DEAD com.readassist/.service.TextAccessibilityService:@9f7255f}
+    binding=AppBindRecord{15dd119 com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{6519e86 u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@a063361}
+    binding=AppBindRecord{5b180f5 com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{dd00b34 u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@a68ce07}
+    binding=AppBindRecord{946c98b com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{bb2ebed u0 CR FGSA CAPS DEAD com.readassist/.service.TextAccessibilityService:@ce64a04}
+    binding=AppBindRecord{2474eb8 com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{61255b4 u0 CR FGSA CAPS com.readassist/.service.TextAccessibilityService:@d73b287}
+    binding=AppBindRecord{c3f4eca com.readassist/.service.TextAccessibilityService:system}
+  * ConnectionRecord{5cf70cd u0 CR com.readassist/.service.ScreenshotService:@e005664}
+    binding=AppBindRecord{ad49d1b com.readassist/.service.ScreenshotService:com.readassist}
+  #0: com.readassist

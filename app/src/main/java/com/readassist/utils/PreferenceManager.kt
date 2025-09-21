@@ -410,6 +410,48 @@ class PreferenceManager(private val context: Context) {
         return normalPrefs.getString(KEY_APP_LANGUAGE, "system") ?: "system"
     }
     
+    /**
+     * 获取Supernote设备截屏开关状态
+     */
+    fun getSupernoteScreenshotEnabled(): Boolean {
+        return getBoolean("supernote_screenshot_enabled", false)
+    }
+    
+    /**
+     * 设置Supernote设备截屏开关状态
+     */
+    fun setSupernoteScreenshotEnabled(enabled: Boolean) {
+        setBoolean("supernote_screenshot_enabled", enabled)
+    }
+    
+    /**
+     * 获取上次剪贴板内容的哈希值（用于检测内容变化）
+     */
+    fun getLastClipboardHash(): String {
+        return getString("last_clipboard_hash", "")
+    }
+    
+    /**
+     * 设置上次剪贴板内容的哈希值
+     */
+    fun setLastClipboardHash(hash: String) {
+        setString("last_clipboard_hash", hash)
+    }
+    
+    /**
+     * 获取上次截屏文件的时间戳（用于检测是否有新截屏）
+     */
+    fun getLastScreenshotTimestamp(): Long {
+        return getLong("last_screenshot_timestamp", 0L)
+    }
+    
+    /**
+     * 设置上次截屏文件的时间戳
+     */
+    fun setLastScreenshotTimestamp(timestamp: Long) {
+        setLong("last_screenshot_timestamp", timestamp)
+    }
+    
     // === 清理方法 ===
     
     fun clearAllPreferences() {
@@ -429,5 +471,19 @@ class PreferenceManager(private val context: Context) {
      */
     fun setBoolean(key: String, value: Boolean) {
         normalPrefs.edit().putBoolean(key, value).apply()
+    }
+
+    /**
+     * 获取长整型值
+     */
+    fun getLong(key: String, defaultValue: Long = 0L): Long {
+        return normalPrefs.getLong(key, defaultValue)
+    }
+
+    /**
+     * 设置长整型值
+     */
+    fun setLong(key: String, value: Long) {
+        normalPrefs.edit().putLong(key, value).apply()
     }
 } 

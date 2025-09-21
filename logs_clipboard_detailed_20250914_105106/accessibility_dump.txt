@@ -1,0 +1,14 @@
+
+currentUserId=0
+User state[
+     attributes:{id=0, touchExplorationEnabled=false, serviceHandlesDoubleTap=false, requestMultiFingerGestures=false, requestTwoFingerPassthrough=false, displayMagnificationEnabled=false, autoclickEnabled=false, nonInteractiveUiTimeout=0, interactiveUiTimeout=0, installedServiceCount=2}
+     shortcut key:{}
+     button:{com.readassist/com.readassist.service.TextAccessibilityService}
+     button target:{null}
+     Bound services:{Service[label=ReadAssist, feedbackType[FEEDBACK_GENERIC], capabilities=1, eventTypes=TYPES_ALL_MASK, notificationTimeout=100, requestA11yBtn=false]}
+     Enabled services:{{com.readassist/com.readassist.service.TextAccessibilityService}}
+     Binding services:{}
+     Crashed services:{}]
+Display[0] : 
+Window[AccessibilityWindowInfo[title=null, displayId=0, id=759, type=TYPE_SYSTEM, layer=1, region=SkRegion((1836,1239,1920,1323)), bounds=Rect(1836, 1239 - 1920, 1323), focused=false, active=false, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]],
+Window[AccessibilityWindowInfo[title=文档, displayId=0, id=753, type=TYPE_APPLICATION, layer=0, region=SkRegion((0,0,1920,2560)), bounds=Rect(0, 0 - 1920, 2560), focused=true, active=true, pictureInPicture=false, hasParent=false, isAnchored=false, hasChildren=false]]

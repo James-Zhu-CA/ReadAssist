@@ -1,0 +1,44 @@
+    User 0: ceDataInode=49675 installed=true hidden=false suspended=false distractionFlags=0 stopped=false notLaunched=false enabled=0 instant=false virtual=false
+      gids=[3003]
+      runtime permissions:
+        android.permission.READ_EXTERNAL_STORAGE: granted=true, flags=[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED|RESTRICTION_INSTALLER_EXEMPT]
+        android.permission.WRITE_EXTERNAL_STORAGE: granted=true, flags=[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED|RESTRICTION_INSTALLER_EXEMPT]
+        android.permission.RECORD_AUDIO: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+
+Queries:
+  system apps queryable: false
+  queries via package name:
+  queries via intent:
+    [com.ratta.supernote.background,com.android.inputmethod.keyboard,com.htfyun.mmitest,com.ratta.supernote.note,com.ratta.supernote.screencast,com.android.settings,com.ratta.search,com.ratta.supernote.launcher,com.ratta.supernote.knowledge,com.engineer.corelogger,com.android.dynsystem,com.ratta.supernote.paint,com.ratta.supernote.browser,com.ratta.supernote.setupwizard,com.ratta.supernote.supernotefactorytest,com.android.localtransport,com.android.keychain,com.android.location.fused,com.ratta.supernote.email,com.android.inputdevices,com.ratta.supernote.calendar,com.ratta.supernote.task,com.ratta.supernote.inbox,com.ratta.settings,com.android.providers.settings,com.ratta.drawpath,com.supernote.document,com.ratta.supernote.unlock,android]:
+      com.readassist
+    com.moonshot.kimichat:
+      com.readassist
+    com.apkpure.aegon:
+      com.readassist
+  queryable via interaction:
+    User 0:
+      [com.ratta.supernote.background,com.android.inputmethod.keyboard,com.htfyun.mmitest,com.ratta.supernote.note,com.ratta.supernote.screencast,com.android.settings,com.ratta.search,com.ratta.supernote.launcher,com.ratta.supernote.knowledge,com.engineer.corelogger,com.android.dynsystem,com.ratta.supernote.paint,com.ratta.supernote.browser,com.ratta.supernote.setupwizard,com.ratta.supernote.supernotefactorytest,com.android.localtransport,com.android.keychain,com.android.location.fused,com.ratta.supernote.email,com.android.inputdevices,com.ratta.supernote.calendar,com.ratta.supernote.task,com.ratta.supernote.inbox,com.ratta.settings,com.android.providers.settings,com.ratta.drawpath,com.supernote.document,com.ratta.supernote.unlock,android]:
+        com.readassist
+      com.android.systemui:
+        com.readassist
+      com.readassist:
+        [com.ratta.supernote.background,com.android.inputmethod.keyboard,com.htfyun.mmitest,com.ratta.supernote.note,com.ratta.supernote.screencast,com.android.settings,com.ratta.search,com.ratta.supernote.launcher,com.ratta.supernote.knowledge,com.engineer.corelogger,com.android.dynsystem,com.ratta.supernote.paint,com.ratta.supernote.browser,com.ratta.supernote.setupwizard,com.ratta.supernote.supernotefactorytest,com.android.localtransport,com.android.keychain,com.android.location.fused,com.ratta.supernote.email,com.android.inputdevices,com.ratta.supernote.calendar,com.ratta.supernote.task,com.ratta.supernote.inbox,com.ratta.settings,com.android.providers.settings,com.ratta.drawpath,com.supernote.document,com.ratta.supernote.unlock,android]
+
+Package Changes:
+  Sequence number=101
+  User 0:
+    seq=27, package=com.microsoft.emmx
+    seq=59, package=com.ratta.supernote.knowledge
+    seq=74, package=com.readassist.debug
+    seq=100, package=com.readassist
+
+
+Dexopt state:
+  [com.readassist]
+    path: /data/app/~~7peLK3k5LygpHS1hmZqARQ==/com.readassist-boKA3u_u3XUvbu-Ljvm6vw==/base.apk
+      arm64: [status=speed-profile] [reason=install]
+
+
+Compiler stats:
+  [com.readassist]
+     base.apk - 3478

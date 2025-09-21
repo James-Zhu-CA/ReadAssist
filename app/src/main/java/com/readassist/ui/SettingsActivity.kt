@@ -56,6 +56,9 @@ class SettingsActivity : BaseActivity() {
         // 设置语言选择器
         setupLanguageSpinner()
         
+        // 设置Supernote专用设置
+        setupSupernoteSettings()
+        
         // 加载当前设置
         loadCurrentSettings()
     }
@@ -312,6 +315,21 @@ class SettingsActivity : BaseActivity() {
     }
     
     /**
+     * 设置Supernote专用设置
+     */
+    private fun setupSupernoteSettings() {
+        // 只有Supernote设备才显示相关设置
+        if (com.readassist.utils.DeviceUtils.isSupernoteDevice()) {
+            binding.layoutSupernoteSettings.visibility = View.VISIBLE
+            
+            // 加载当前设置状态
+            binding.switchSupernoteScreenshot.isChecked = app.preferenceManager.getSupernoteScreenshotEnabled()
+        } else {
+            binding.layoutSupernoteSettings.visibility = View.GONE
+        }
+    }
+    
+    /**
      * 设置监听器
      */
     private fun setupListeners() {
@@ -329,6 +347,12 @@ class SettingsActivity : BaseActivity() {
         binding.switchAutoAnalyze.setOnCheckedChangeListener { _, isChecked ->
             app.preferenceManager.setAutoAnalyzeEnabled(isChecked)
             showMessage(getString(R.string.auto_analyze_status, if (isChecked) getString(R.string.enabled) else getString(R.string.disabled)))
+        }
+        
+        // Supernote截屏开关
+        binding.switchSupernoteScreenshot?.setOnCheckedChangeListener { _, isChecked ->
+            app.preferenceManager.setSupernoteScreenshotEnabled(isChecked)
+            showMessage("Supernote截屏功能已${if (isChecked) "启用" else "禁用"}")
         }
         
         // 配置API Key

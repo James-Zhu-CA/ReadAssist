@@ -18,6 +18,9 @@
     <string name="accessibility_permission_required">Enable text access for content reading</string>
     <string name="grant_permission">Allow</string>
     <string name="permission_denied">Permission Denied</string>
+    
+    <!-- Clipboard Prompt -->
+    <string name="clipboard_reading_failed">Unable to read clipboard content</string>
     <string name="permissions_granted">Ready to go</string>
     
     <!-- Settings Page -->
@@ -341,6 +344,11 @@
     <string name="screenshot_service_not_ready">Screenshot service not ready</string>
     <string name="permission_request_timeout">Permission request timed out, please try again</string>
     <string name="cannot_start_permission_request">Cannot start permission request, please try again or restart the app</string>
+    
+    <!-- Supernote device specific settings -->
+    <string name="supernote_settings_title">Supernote Device Settings</string>
+    <string name="supernote_screenshot_title">Enable Screenshot Feature</string>
+    <string name="supernote_screenshot_summary">When enabled, tapping the floating button will take a screenshot first then show popup; when disabled, popup shows directly</string>
     
     <string name="invalid_session_id">Invalid session ID</string>
     <string name="config_cleared_for_device">Configuration cleared for %s</string>

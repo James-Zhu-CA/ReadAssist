@@ -250,8 +250,16 @@ class FloatingButtonManager(
                         // 检测双击
                         val currentTime = System.currentTimeMillis()
                         if (currentTime - lastTapTime < 300) {
-                            // 双击行为（可选）
+                            // 双击：触发一次节点快照采集广播
                             lastTapTime = 0
+                            try {
+                                val intent = android.content.Intent("com.readassist.DEBUG_CAPTURE_UI_TREE")
+                                intent.setPackage(context.packageName)
+                                context.sendBroadcast(intent)
+                                Log.e(TAG, "DEBUG_CAPTURE_UI_TREE broadcast sent")
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Failed to send DEBUG_CAPTURE_UI_TREE", e)
+                            }
                         } else {
                             // 单击
                             lastTapTime = currentTime

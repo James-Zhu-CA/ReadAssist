@@ -1,0 +1,54 @@
+09-13 18:29:20.762  3968  3968 D ReadAssistApplication: 🚀 Application onCreate started
+09-13 18:29:20.907  3968  3968 D ReadAssistApplication: 🎉 Application onCreate completed successfully
+09-13 18:29:21.015  3968  3968 E ReadAssist_BaseActivity: 🔧 MainActivity onCreate started
+09-13 18:29:21.091  3968  3968 E ReadAssist_BaseActivity: ✅ MainActivity onCreate language reapplication completed
+09-13 18:29:21.091  3968  3968 E MainActivity: === MainActivity onCreate 语言调试 ===
+09-13 18:29:21.923  3968  3968 I TextAccessibilityService: 🚀 TextAccessibilityService onCreate() 开始
+09-13 18:29:21.932  3968  3968 I TextAccessibilityService: ✅ TextAccessibilityService onCreate() 完成
+09-13 18:29:22.081  3968  3968 I TextAccessibilityService: 🔗 Accessibility service connected - 服务已连接
+09-13 18:29:22.093  3968  3968 I TextAccessibilityService: ✅ onServiceConnected() 完成，开始监听事件
+09-13 18:29:22.127  3968  3968 E FloatingWindowServiceNew: onCreate called
+09-13 18:43:36.862  4839  4839 D ReadAssistApplication: 🚀 Application onCreate started
+09-13 18:43:36.965  4839  4839 D ReadAssistApplication: 🎉 Application onCreate completed successfully
+09-13 18:43:37.098  4839  4839 E ReadAssist_BaseActivity: 🔧 MainActivity onCreate started
+09-13 18:43:37.190  4839  4839 E ReadAssist_BaseActivity: ✅ MainActivity onCreate language reapplication completed
+09-13 18:43:37.190  4839  4839 E MainActivity: === MainActivity onCreate 语言调试 ===
+09-13 18:43:38.028  4839  4839 I TextAccessibilityService: 🚀 TextAccessibilityService onCreate() 开始
+09-13 18:43:38.038  4839  4839 I TextAccessibilityService: ✅ TextAccessibilityService onCreate() 完成
+09-13 18:43:38.184  4839  4839 I TextAccessibilityService: 🔗 Accessibility service connected - 服务已连接
+09-13 18:43:38.196  4839  4839 I TextAccessibilityService: ✅ onServiceConnected() 完成，开始监听事件
+09-13 18:43:38.231  4839  4839 E FloatingWindowServiceNew: onCreate called
+09-13 18:55:51.866  5586  5586 D ReadAssistApplication: 🚀 Application onCreate started
+09-13 18:55:51.962  5586  5586 D ReadAssistApplication: 🎉 Application onCreate completed successfully
+09-13 18:55:51.981  5586  5586 I TextAccessibilityService: 🚀 TextAccessibilityService onCreate() 开始
+09-13 18:55:51.990  5586  5586 I TextAccessibilityService: ✅ TextAccessibilityService onCreate() 完成
+09-13 18:55:52.011  5586  5586 I TextAccessibilityService: 🔗 Accessibility service connected - 服务已连接
+09-13 18:55:52.027  5586  5586 I TextAccessibilityService: ✅ onServiceConnected() 完成，开始监听事件
+09-13 18:55:52.035  5586  5586 E FloatingWindowServiceNew: onCreate called
+09-13 18:56:13.375  5586  5586 E ReadAssist_BaseActivity: 🔧 MainActivity onCreate started
+09-13 18:56:13.405  5586  5586 E ReadAssist_BaseActivity: ✅ MainActivity onCreate language reapplication completed
+09-13 18:56:13.405  5586  5586 E MainActivity: === MainActivity onCreate 语言调试 ===
+09-13 19:21:14.775  7058  7058 D ReadAssistApplication: 🚀 Application onCreate started
+09-13 19:21:14.817  7058  7058 D ReadAssistApplication: 🎉 Application onCreate completed successfully
+09-13 19:21:14.864  7058  7058 E ReadAssist_BaseActivity: 🔧 MainActivity onCreate started
+09-13 19:21:14.887  7058  7058 E ReadAssist_BaseActivity: ✅ MainActivity onCreate language reapplication completed
+09-13 19:21:14.887  7058  7058 E MainActivity: === MainActivity onCreate 语言调试 ===
+09-13 19:22:25.196  1493  1493 I PinyinIME: onCreateInputView.
+09-13 19:22:25.249  1493  1493 I PinyinIME: onCreateCandidatesView.
+09-13 19:22:31.580 25541 25541 D SettingsActivity: Starting onCreate
+09-13 19:22:36.901 25541 25541 D SettingsActivity: Starting onCreate
+09-13 19:22:40.741  7058  7058 I TextAccessibilityService: 🚀 TextAccessibilityService onCreate() 开始
+09-13 19:22:40.752  7058  7058 I TextAccessibilityService: ✅ TextAccessibilityService onCreate() 完成
+09-13 19:22:40.820  7058  7058 I TextAccessibilityService: 🔗 Accessibility service connected - 服务已连接
+09-13 19:22:40.839  7058  7058 I TextAccessibilityService: ✅ onServiceConnected() 完成，开始监听事件
+09-13 19:22:40.843  7058  7058 E FloatingWindowServiceNew: onCreate called
+09-13 19:22:40.917  7058  7058 E FloatingButtonManager: 	at com.readassist.service.FloatingWindowServiceNew.onCreate(FloatingWindowServiceNew.kt:293)
+09-13 19:22:47.134 25541 25541 D SettingsActivity: Starting onCreate
+09-13 19:22:50.438 25541 25541 D SettingsActivity: Starting onCreate
+09-13 19:23:27.980  7058  7058 E ActivityThread: 	at com.readassist.service.FloatingWindowServiceNew.onCreate(FloatingWindowServiceNew.kt:293)
+09-13 19:23:29.076  7058  7058 E FloatingWindowServiceNew: onCreate called
+09-13 19:23:43.715  7058  7058 D FloatingWindowServiceNew: 🚀 调用AI服务分析图片...
+09-13 19:23:43.716  7058  7812 E AiCommunicationManager: 🚀🚀🚀 AI通信管理器: sendImageMessage 收到请求 🚀🚀🚀
+09-13 19:23:43.734  7058  7812 D AiCommunicationManager: 🚀 开始发送图片到AI分析...
+09-13 19:23:44.066  7058  7812 D GeminiRepository: 🚀 执行API请求...
+09-13 19:23:44.067  7058  7812 D GeminiRepository: 🚀 尝试API请求，第1次

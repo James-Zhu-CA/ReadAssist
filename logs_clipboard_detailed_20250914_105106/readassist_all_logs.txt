@@ -1,0 +1,206 @@
+09-14 10:44:37.251   408   447 I ActivityManager: Force stopping com.readassist appid=10152 user=-1: installPackageLI
+09-14 10:44:37.252   408   447 I ActivityManager: Killing 20352:com.readassist/u0a152 (adj 100): stop com.readassist due to installPackageLI
+09-14 10:44:37.254   408   464 I PackageManager: Update package com.readassist code path from /data/app/~~gpD5fu40WcfrPxbyyU1L6A==/com.readassist-czl5R321e5IMF7rJzMPRFQ== to /data/app/~~7peLK3k5LygpHS1hmZqARQ==/com.readassist-boKA3u_u3XUvbu-Ljvm6vw==; Retain data and using new
+09-14 10:44:37.254   408   464 I PackageManager: Update package com.readassist resource path from /data/app/~~gpD5fu40WcfrPxbyyU1L6A==/com.readassist-czl5R321e5IMF7rJzMPRFQ== to /data/app/~~7peLK3k5LygpHS1hmZqARQ==/com.readassist-boKA3u_u3XUvbu-Ljvm6vw==; Retain data and using new
+09-14 10:44:37.256   408   447 W ActivityTaskManager: Force removing ActivityRecord{dfabf9a u0 com.readassist/.ui.MainActivity t1396 f}}: app died, no saved state
+09-14 10:44:37.354   408   486 W InputDispatcher: channel 'faade4a com.readassist (server)' ~ Consumer closed input channel or an error occurred.  events=0x9
+09-14 10:44:37.354   408   486 E InputDispatcher: channel 'faade4a com.readassist (server)' ~ Channel is unrecoverably broken and will be disposed!
+09-14 10:44:37.392   408   464 I PackageDexOptimizer: Running dexopt (dexoptNeeded=1) on: /data/app/~~7peLK3k5LygpHS1hmZqARQ==/com.readassist-boKA3u_u3XUvbu-Ljvm6vw==/base.apk pkg=com.readassist isa=arm64 dexoptFlags=boot_complete,profile_guided,public,enable_hidden_api_checks targetFilter=speed-profile oatDir=/data/app/~~7peLK3k5LygpHS1hmZqARQ==/com.readassist-boKA3u_u3XUvbu-Ljvm6vw==/oat classLoaderContext=PCL[]{}
+09-14 10:44:37.395   163   163 E CompositionEngine: ANativeWindow::dequeueBuffer failed for display [ReadAssist-Screenshot] with error: -32
+09-14 10:44:37.395   163   163 W CompositionEngine: Dequeuing buffer for display [ReadAssist-Screenshot] failed, bailing out of client composition for this frame
+09-14 10:44:37.397   408 28019 I VirtualDisplayAdapter: Virtual display device released because application token died: com.readassist
+09-14 10:44:37.399   408   441 I DisplayManagerService: Display device removed: DisplayDeviceInfo{"ReadAssist-Screenshot": uniqueId="virtual:com.readassist,10152,ReadAssist-Screenshot,0", 1920 x 2560, modeId 43, defaultModeId 43, supportedModes [{id=43, width=1920, height=2560, fps=60.0}], colorMode 0, supportedColorModes [0], HdrCapabilities null, allmSupported false, gameContentTypeSupported false, density 300, 300.0 x 300.0 dpi, appVsyncOff 0, presDeadline 16666666, touch NONE, rotation 0, type VIRTUAL, deviceProductInfo null, state ON, owner com.readassist (uid 10152), FLAG_PRIVATE, FLAG_PRESENTATION}
+09-14 10:44:37.399   408  3028 I WindowManager: WIN DEATH: Window{faade4a u0 com.readassist}
+09-14 10:44:37.399   408 28019 V InputDispatcher: Window handle Window{faade4a u0 com.readassist} has no registered input channel
+09-14 10:44:37.399   408  3028 W InputDispatcher: Attempted to unregister already unregistered input channel 'faade4a com.readassist (server)'
+09-14 10:44:37.400   163   163 E CompositionEngine: ANativeWindow::dequeueBuffer failed for display [ReadAssist-Screenshot] with error: -32
+09-14 10:44:37.400   163   163 W CompositionEngine: Dequeuing buffer for display [ReadAssist-Screenshot] failed, bailing out of client composition for this frame
+09-14 10:44:37.401   314 21157 V installd: DexInv: --- BEGIN '/data/app/~~7peLK3k5LygpHS1hmZqARQ==/com.readassist-boKA3u_u3XUvbu-Ljvm6vw==/base.apk' ---
+09-14 10:44:37.472 21657 21657 I dex2oat32: /apex/com.android.art/bin/dex2oat32 --input-vdex-fd=-1 --output-vdex-fd=9 --updatable-bcp-packages-file=/system/etc/updatable-bcp-packages.txt --resolve-startup-const-strings=true --max-image-block-size=524288 --compiler-filter=speed-profile -j4 --profile-file-fd=11 --classpath-dir=/data/app/~~7peLK3k5LygpHS1hmZqARQ==/com.readassist-boKA3u_u3XUvbu-Ljvm6vw== --class-loader-context=PCL[]{} --generate-mini-debug-info --compact-dex-level=none --compilation-reason=install
+09-14 10:44:40.870   314 21157 V installd: DexInv: --- END '/data/app/~~7peLK3k5LygpHS1hmZqARQ==/com.readassist-boKA3u_u3XUvbu-Ljvm6vw==/base.apk' (success) ---
+09-14 10:44:40.888   408   464 I ActivityManager: Force stopping com.readassist appid=10152 user=0: pkg removed
+09-14 10:44:40.900  1154  1154 I MediaProvider: Invalidating LocalCallingIdentity cache for package com.readassist. Reason: package android.intent.action.PACKAGE_REMOVED
+09-14 10:44:40.912  1154  1154 I MediaProvider: Invalidating LocalCallingIdentity cache for package com.readassist. Reason: package android.intent.action.PACKAGE_ADDED
+09-14 10:44:40.913  1342  1342 D ThirdPartyApplicationServer: onReceive: packages -> [com.readassist]
+09-14 10:44:40.913  1342  1342 E ThirdPartyApplicationServer: onReceive: ACTION_PACKAGE_REMOVED packageName:package:com.readassist
+09-14 10:44:40.913  1342  1342 D ThirdPartyApplicationServer: onReceive: packageName -> com.readassist
+09-14 10:44:40.913   408   447 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_REMOVED dat=package:com.readassist flg=0x4000010 (has extras) } to com.apkpure.aegon/.app.event.SystemPackageEvent$Receiver
+09-14 10:44:40.914   408   447 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_REMOVED dat=package:com.readassist flg=0x4000010 (has extras) } to com.apkpure.aegon/com.san.core.receiver.AppPkgReceiver
+09-14 10:44:40.914   408   447 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_REMOVED dat=package:com.readassist flg=0x4000010 (has extras) } to com.estrongs.android.pop/.app.InstallMonitorReceiver
+09-14 10:44:40.914   408   447 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:com.readassist flg=0x4000010 (has extras) } to com.apkpure.aegon/.app.event.SystemPackageEvent$Receiver
+09-14 10:44:40.914   408   447 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:com.readassist flg=0x4000010 (has extras) } to com.android.packageinstaller/.PackageInstalledReceiver
+09-14 10:44:40.915   408   447 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:com.readassist flg=0x4000010 (has extras) } to com.apkpure.aegon/com.san.core.receiver.AppPkgReceiver
+09-14 10:44:40.915   408   447 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:com.readassist flg=0x4000010 (has extras) } to com.estrongs.android.pop/.app.InstallMonitorReceiver
+09-14 10:44:40.945   408   447 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_REPLACED dat=package:com.readassist flg=0x4000010 (has extras) } to com.apkpure.aegon/.app.event.SystemPackageEvent$Receiver
+09-14 10:44:41.014  1342 21679 I okhttp.OkHttpClient: {"equipmentNumber":"SN100C10004792","name":"","packageName":"com.readassist","type":"2","version":"1.8.1","versionNo":"10"}
+09-14 10:44:41.067   408  2535 I ActivityTaskManager: START u0 {flg=0x10000000 cmp=com.readassist/.ui.MainActivity} from uid 2000
+09-14 10:44:41.069   408  2535 W WindowManager: isValidLaunchStack() called with##stack.mCreatedByOrganizer: stack = [Task{35d1e66 #3 visible=false type=undefined mode=split-screen-primary translucent=true ?? U=0 StackId=3 sz=0}], r = [ActivityRecord{d687e0c u0 com.readassist/.ui.MainActivity], windowingMode = [0]
+09-14 10:44:41.069   408  2535 W WindowManager: isValidLaunchStack() called with##stack.mCreatedByOrganizer: stack = [Task{6cd35a7 #4 visible=false type=undefined mode=split-screen-secondary translucent=true ?? U=0 StackId=4 sz=0}], r = [ActivityRecord{d687e0c u0 com.readassist/.ui.MainActivity t-1}], windowingMode = [0]
+09-14 10:44:41.078   163   175 W Layer   : newLayer:5434#ActivityRecord{d687e0c u0 com.readassist/.ui.MainActivity t1399}#0,winType=0
+09-14 10:44:41.100  1342  1342 D ThirdPartyUtils: listInstalledPackage: packageInfo.packageName -> com.readassist
+09-14 10:44:41.115  1342  1342 D ThirdPartyUtils: insert packageName:com.readassist
+09-14 10:44:41.121   408   448 I ActivityManager: Start proc 21685:com.readassist/u0a152 for pre-top-activity {com.readassist/com.readassist.ui.MainActivity}
+09-14 10:44:41.156 21685 21685 E com.readassist: Not starting debugger since process cannot load the jdwp agent.
+09-14 10:44:41.173  1342  1342 D ThirdPartyApplicationsManager: packageInfo.packageName:com.readassist
+09-14 10:44:41.175   408  2333 D ActivityTaskManager: resumeTopActivityLocked: Restarting ActivityRecord{d687e0c u0 com.readassist/.ui.MainActivity t1399}
+09-14 10:44:41.179  3036  5686 D GMX-GestureService: packageName:com.readassist   className:com.readassist.ui.MainActivity
+09-14 10:44:41.179  3036  5686 D GMX-GestureService: boardcast app changed packageName:com.readassist
+09-14 10:44:41.179  3036  5686 D GMX-GestureService: boardcast app changed className:com.readassist.ui.MainActivity
+09-14 10:44:41.179  3036  5686 D GMX-GestureService: packageName=com.readassist/className=com.readassist.ui.MainActivity
+09-14 10:44:41.258  1342  1342 D ThirdPartyApplicationServer: onReceive: packages -> [com.readassist]
+09-14 10:44:41.266  1342  1342 E ThirdPartyApplicationServer: onReceive: ACTION_PACKAGE_ADDED packageName:com.readassist
+09-14 10:44:41.267  1342  1342 E ThirdPartyApplicationServer: package:com.readassist is not white third app
+09-14 10:44:41.268  1342  1342 D ThirdPartyApplicationServer: onReceive: packages -> [com.readassist]
+09-14 10:44:41.268  1342  1342 E ThirdPartyApplicationServer: onReceive: ACTION_PACKAGE_REPLACED packageName:com.readassist
+09-14 10:44:41.269  1342  1342 E ThirdPartyApplicationServer: package:com.readassist is not white third app
+09-14 10:44:41.285  3036  5686 D GMX-GestureService: currentTopPackage:com.readassist
+09-14 10:44:41.348 21685 21685 D ReadAssistApplication: 📱 Application attachBaseContext completed
+09-14 10:44:41.366 21685 21685 D ReadAssistApplication: 🚀 Application onCreate started
+09-14 10:44:41.376 21685 21685 D ReadAssistApplication: ✅ PreferenceManager initialized
+09-14 10:44:41.379 21685 21685 D ReadAssistApplication: 🌐 Current language setting: system
+09-14 10:44:41.379 21685 21685 D ReadAssistApplication: 🌐 Application default locale set to: zh_CN
+09-14 10:44:41.396 21685 21685 D ReadAssistApplication: ✅ Database initialized
+09-14 10:44:41.450 21685 21685 D ReadAssistApplication: ✅ Repositories initialized
+09-14 10:44:41.450 21685 21685 D ReadAssistApplication: 🎉 Application onCreate completed successfully
+09-14 10:44:41.496 21685 21685 E ReadAssist_BaseActivity: 🔧 MainActivity attachBaseContext started
+09-14 10:44:41.496 21685 21685 E ReadAssist_BaseActivity: 🔍 SharedPreferences file: readassist_prefs
+09-14 10:44:41.496 21685 21685 E ReadAssist_BaseActivity: 🔍 Context: ContextImpl
+09-14 10:44:41.496 21685 21685 E ReadAssist_BaseActivity: 🔍 Looking for key: app_language
+09-14 10:44:41.496 21685 21685 E ReadAssist_BaseActivity: 🔍 Read language from preferences: 'system'
+09-14 10:44:41.496 21685 21685 E ReadAssist_BaseActivity: 🔍 All preferences:
+09-14 10:44:41.497 21685 21685 E ReadAssist_BaseActivity:    supernote_saf_uri = content://com.android.externalstorage.documents/tree/primary%3ASCREENSHOT
+09-14 10:44:41.497 21685 21685 E ReadAssist_BaseActivity:    current_book_name = 阅读笔记
+09-14 10:44:41.497 21685 21685 E ReadAssist_BaseActivity:    screenshot_result_code = -1
+09-14 10:44:41.497 21685 21685 E ReadAssist_BaseActivity:    accessibility_enabled = true
+09-14 10:44:41.497 21685 21685 E ReadAssist_BaseActivity:    current_app_package = com.readassist
+09-14 10:44:41.497 21685 21685 E ReadAssist_BaseActivity:    ai_setup_completed = true
+09-14 10:44:41.497 21685 21685 E ReadAssist_BaseActivity:    screenshot_permission_granted = true
+09-14 10:44:41.497 21685 21685 E ReadAssist_BaseActivity:    screenshot_result_data = 
+09-14 10:44:41.497 21685 21685 E ReadAssist_BaseActivity:    current_ai_platform = GEMINI
+09-14 10:44:41.497 21685 21685 E ReadAssist_BaseActivity:    current_ai_model = gemini-2.5-flash
+09-14 10:44:41.497 21685 21685 E ReadAssist_BaseActivity:    is_first_launch = false
+09-14 10:44:41.497 21685 21685 E ReadAssist_BaseActivity: ✅ Valid language code: 'system'
+09-14 10:44:41.497 21685 21685 E ReadAssist_BaseActivity: 🔍 MainActivity language setting: 'system'
+09-14 10:44:41.497 21685 21685 E ReadAssist_BaseActivity: 🌍 MainActivity using system locale: zh_CN
+09-14 10:44:41.497 21685 21685 E ReadAssist_BaseActivity: 🌐 MainActivity final locale: zh_CN (zh_CN)
+09-14 10:44:41.512 21685 21685 E ReadAssist_BaseActivity: ✅ MainActivity attachBaseContext completed successfully
+09-14 10:44:41.527 21685 21685 E ReadAssist_BaseActivity: 🔧 MainActivity onCreate started
+09-14 10:44:41.528 21685 21685 E ReadAssist_BaseActivity: 🔍 SharedPreferences file: readassist_prefs
+09-14 10:44:41.528 21685 21685 E ReadAssist_BaseActivity: 🔍 Context: MainActivity
+09-14 10:44:41.528 21685 21685 E ReadAssist_BaseActivity: 🔍 Looking for key: app_language
+09-14 10:44:41.528 21685 21685 E ReadAssist_BaseActivity: 🔍 Read language from preferences: 'system'
+09-14 10:44:41.528 21685 21685 E ReadAssist_BaseActivity: 🔍 All preferences:
+09-14 10:44:41.528 21685 21685 E ReadAssist_BaseActivity:    supernote_saf_uri = content://com.android.externalstorage.documents/tree/primary%3ASCREENSHOT
+09-14 10:44:41.528 21685 21685 E ReadAssist_BaseActivity:    current_book_name = 阅读笔记
+09-14 10:44:41.528 21685 21685 E ReadAssist_BaseActivity:    screenshot_result_code = -1
+09-14 10:44:41.528 21685 21685 E ReadAssist_BaseActivity:    accessibility_enabled = true
+09-14 10:44:41.528 21685 21685 E ReadAssist_BaseActivity:    current_app_package = com.readassist
+09-14 10:44:41.528 21685 21685 E ReadAssist_BaseActivity:    ai_setup_completed = true
+09-14 10:44:41.528 21685 21685 E ReadAssist_BaseActivity:    screenshot_permission_granted = true
+09-14 10:44:41.528 21685 21685 E ReadAssist_BaseActivity:    screenshot_result_data = 
+09-14 10:44:41.528 21685 21685 E ReadAssist_BaseActivity:    current_ai_platform = GEMINI
+09-14 10:44:41.528 21685 21685 E ReadAssist_BaseActivity:    current_ai_model = gemini-2.5-flash
+09-14 10:44:41.528 21685 21685 E ReadAssist_BaseActivity:    is_first_launch = false
+09-14 10:44:41.528 21685 21685 E ReadAssist_BaseActivity: ✅ Valid language code: 'system'
+09-14 10:44:41.528 21685 21685 E ReadAssist_BaseActivity: 🔄 Force reapplying language: 'system'
+09-14 10:44:41.557 21685 21685 E ReadAssist_BaseActivity: ✅ MainActivity onCreate language reapplication completed
+09-14 10:44:41.733 21685 21685 D PermissionUtils: Checking Accessibility: Looking for 'com.readassist/com.readassist.service.TextAccessibilityService'
+09-14 10:44:41.733 21685 21685 D PermissionUtils: Enabled Services: com.readassist/com.readassist.service.TextAccessibilityService
+09-14 10:44:41.753 21685 21685 D PermissionUtils: Checking if service com.readassist.service.TextAccessibilityService is running.
+09-14 10:44:41.754 21685 21685 D PermissionUtils: Service com.readassist.service.TextAccessibilityService IS running.
+09-14 10:44:41.919 21685 21685 D PermissionUtils: Checking Accessibility: Looking for 'com.readassist/com.readassist.service.TextAccessibilityService'
+09-14 10:44:41.919 21685 21685 D PermissionUtils: Enabled Services: com.readassist/com.readassist.service.TextAccessibilityService
+09-14 10:44:41.940 21685 21685 D PermissionUtils: Checking Accessibility: Looking for 'com.readassist/com.readassist.service.TextAccessibilityService'
+09-14 10:44:41.940 21685 21685 D PermissionUtils: Enabled Services: com.readassist/com.readassist.service.TextAccessibilityService
+09-14 10:44:41.941 21685 21685 D PermissionUtils: Checking Accessibility: Looking for 'com.readassist/com.readassist.service.TextAccessibilityService'
+09-14 10:44:41.941 21685 21685 D PermissionUtils: Enabled Services: com.readassist/com.readassist.service.TextAccessibilityService
+09-14 10:44:41.953 21685 21685 D PermissionUtils: Checking Accessibility: Looking for 'com.readassist/com.readassist.service.TextAccessibilityService'
+09-14 10:44:41.953 21685 21685 D PermissionUtils: Enabled Services: com.readassist/com.readassist.service.TextAccessibilityService
+09-14 10:44:41.954 21685 21685 D PermissionUtils: Checking Accessibility: Looking for 'com.readassist/com.readassist.service.TextAccessibilityService'
+09-14 10:44:41.954 21685 21685 D PermissionUtils: Enabled Services: com.readassist/com.readassist.service.TextAccessibilityService
+09-14 10:44:41.973   408   666 W WindowManager: addWindow win:Window{764d8a2 u0 com.readassist/com.readassist.ui.MainActivity}
+09-14 10:44:41.975   163   176 W Layer   : newLayer:5435#764d8a2 com.readassist/com.readassist.ui.MainActivity#0,winType=0
+09-14 10:44:42.025   163   176 W Layer   : newLayer:5438#com.readassist/com.readassist.ui.MainActivity#0,winType=1
+09-14 10:44:42.030 21685 21685 W RenderThread: type=1400 audit(0.0:2681): avc: denied { write } for name="property_service" dev="tmpfs" ino=10750 scontext=u:r:untrusted_app:s0:c152,c256,c512,c768 tcontext=u:object_r:property_socket:s0 tclass=sock_file permissive=0 app=com.readassist
+09-14 10:44:42.088   202   202 D gralloc4: got new private_handle_t instance @0xb400007c5ff71530 for buffer '5438#com.readassist/com.readassist.ui.MainActivity#0'. share_fd : 7, share_attr_fd : 8, flags : 0x4, width : 1920, height : 2560, req_format : 0x1, producer_usage : 0x40000000000b00, consumer_usage : 0x40000000000b00, internal_format : 0x0, stride : 0, byte_stride : 0, internalWidth : 0, internalHeight : 0, alloc_format : 0x100000001, size : 19968000, layer_count : 1, backing_store_size : 19968000, allocating_pid : 202, ref_count : 1, yuv_info : 0
+09-14 10:44:42.093   202   202 D gralloc4: got new private_handle_t instance @0xb400007c5ff72a90 for buffer '5438#com.readassist/com.readassist.ui.MainActivity#0'. share_fd : 7, share_attr_fd : 8, flags : 0x4, width : 1920, height : 2560, req_format : 0x1, producer_usage : 0x40000000000b00, consumer_usage : 0x40000000000b00, internal_format : 0x0, stride : 0, byte_stride : 0, internalWidth : 0, internalHeight : 0, alloc_format : 0x100000001, size : 19968000, layer_count : 1, backing_store_size : 19968000, allocating_pid : 202, ref_count : 1, yuv_info : 0
+09-14 10:44:42.097   202   202 D gralloc4: got new private_handle_t instance @0xb400007c5ff71530 for buffer '5438#com.readassist/com.readassist.ui.MainActivity#0'. share_fd : 7, share_attr_fd : 8, flags : 0x4, width : 1920, height : 2560, req_format : 0x1, producer_usage : 0x40000000000b00, consumer_usage : 0x40000000000b00, internal_format : 0x0, stride : 0, byte_stride : 0, internalWidth : 0, internalHeight : 0, alloc_format : 0x100000001, size : 19968000, layer_count : 1, backing_store_size : 19968000, allocating_pid : 202, ref_count : 1, yuv_info : 0
+09-14 10:44:42.375   163   176 W Layer   : newLayer:5441#112653f ActivityRecordInputSink com.readassist/.ui.MainActivity#0,winType=0
+09-14 10:44:42.381   408   446 I ActivityTaskManager: Displayed com.readassist/.ui.MainActivity: +1s303ms
+09-14 10:44:42.504   408   472 W WindowManager: addWindow win:Window{3e6559b u0 com.readassist}
+09-14 10:44:42.505   163   936 W Layer   : newLayer:5443#3e6559b com.readassist#0,winType=0
+09-14 10:44:42.678   408 28988 V ActivityTaskManager: getPackageFerformanceMode--ComponentInfo{com.readassist/com.readassist.ui.MainActivity}----com.readassist
+09-14 10:44:42.741   408   408 D NotificationService: 0|com.readassist|1001|null|10152: granting content://settings/system/notification_sound
+09-14 10:44:42.742   408   408 D NotificationService: 0|com.readassist|1001|null|10152: granting content://settings/system/notification_sound
+09-14 10:44:42.768   734   734 D InterruptionStateProvider: No bubble up: not allowed to bubble: 0|com.readassist|1001|null|10152
+09-14 10:44:42.768   734   734 D InterruptionStateProvider: No heads up: unimportant notification: 0|com.readassist|1001|null|10152
+09-14 10:44:42.871   408   408 D NotificationService: 0|com.readassist|2001|null|10152: granting content://settings/system/notification_sound
+09-14 10:44:42.873   408   408 D NotificationService: 0|com.readassist|2001|null|10152: granting content://settings/system/notification_sound
+09-14 10:44:42.886   734   734 D InterruptionStateProvider: No bubble up: not allowed to bubble: 0|com.readassist|2001|null|10152
+09-14 10:44:42.887   734   734 D InterruptionStateProvider: No heads up: unimportant notification: 0|com.readassist|2001|null|10152
+09-14 10:44:42.910   734   734 D InterruptionStateProvider: No alerting: filtered notification: 0|android|0|com.android.server.wm.AlertWindowNotification - com.readassist|1000
+09-14 10:44:42.910   734   734 D InterruptionStateProvider: No alerting: filtered notification: 0|android|0|com.android.server.wm.AlertWindowNotification - com.readassist|1000
+09-14 10:44:43.372   734   734 D InterruptionStateProvider: No bubble up: not allowed to bubble: 0|com.readassist|2001|null|10152
+09-14 10:44:43.373   734   734 D InterruptionStateProvider: No heads up: unimportant notification: 0|com.readassist|2001|null|10152
+09-14 10:44:44.903   734   734 D InterruptionStateProvider: No bubble up: not allowed to bubble: 0|com.readassist|2001|null|10152
+09-14 10:44:44.904   734   734 D InterruptionStateProvider: No heads up: unimportant notification: 0|com.readassist|2001|null|10152
+09-14 10:44:47.533 21685 21685 D TEST-DIALOG: In Dialog, themeResId = 2131821171, com.readassist:style/ThemeOverlay.AppCompat.Dialog.Alert
+09-14 10:44:47.601   408  2333 W WindowManager: addWindow win:Window{5f2b8b3 u0 com.readassist/com.readassist.ui.MainActivity}
+09-14 10:44:47.602   163   936 W Layer   : newLayer:5450#5f2b8b3 com.readassist/com.readassist.ui.MainActivity#0,winType=0
+09-14 10:44:47.631   163   936 W Layer   : newLayer:5452#com.readassist/com.readassist.ui.MainActivity#0,winType=2
+09-14 10:44:47.639   202   202 D gralloc4: got new private_handle_t instance @0xb400007c5ff71530 for buffer '5452#com.readassist/com.readassist.ui.MainActivity#0'. share_fd : 7, share_attr_fd : 8, flags : 0x4, width : 1502, height : 669, req_format : 0x1, producer_usage : 0x40000000000b00, consumer_usage : 0x40000000000b00, internal_format : 0x0, stride : 0, byte_stride : 0, internalWidth : 0, internalHeight : 0, alloc_format : 0x1, size : 4024704, layer_count : 1, backing_store_size : 4024704, allocating_pid : 202, ref_count : 1, yuv_info : 0
+09-14 10:44:47.640   202   202 D gralloc4: got new private_handle_t instance @0xb400007c5ff72a90 for buffer '5452#com.readassist/com.readassist.ui.MainActivity#0'. share_fd : 7, share_attr_fd : 8, flags : 0x4, width : 1502, height : 669, req_format : 0x1, producer_usage : 0x40000000000b00, consumer_usage : 0x40000000000b00, internal_format : 0x0, stride : 0, byte_stride : 0, internalWidth : 0, internalHeight : 0, alloc_format : 0x1, size : 4024704, layer_count : 1, backing_store_size : 4024704, allocating_pid : 202, ref_count : 1, yuv_info : 0
+09-14 10:44:47.642   202   202 D gralloc4: got new private_handle_t instance @0xb400007c5ff71530 for buffer '5452#com.readassist/com.readassist.ui.MainActivity#0'. share_fd : 7, share_attr_fd : 8, flags : 0x4, width : 1502, height : 669, req_format : 0x1, producer_usage : 0x40000000000b00, consumer_usage : 0x40000000000b00, internal_format : 0x0, stride : 0, byte_stride : 0, internalWidth : 0, internalHeight : 0, alloc_format : 0x1, size : 4024704, layer_count : 1, backing_store_size : 4024704, allocating_pid : 202, ref_count : 1, yuv_info : 0
+09-14 10:44:47.702   163   394 W Layer   : newLayer:5453#Surface(name=5f2b8b3 com.readassist/com.readassist.ui.MainActivity)/@0xacd97a5 - animation-leash#0,winType=0
+09-14 10:44:47.759 21685 21741 D ProfileInstaller: Installing profile for com.readassist
+09-14 10:44:48.720   408 28988 W NotificationService: Toast already killed. pkg=com.readassist token=android.os.BinderProxy@ca277ff
+09-14 10:44:48.981   163  1475 E BufferQueueProducer: [5452#com.readassist/com.readassist.ui.MainActivity#0](id:a300000319,api:0,p:-1,c:163) disconnect: not connected (req=1)
+09-14 10:44:48.984   408   486 I InputDispatcher: Could not find connection for Window{5f2b8b3 u0 com.readassist/com.readassist.ui.MainActivity}
+09-14 10:44:48.984   163  1475 W Layer   : newLayer:5458#Surface(name=5f2b8b3 com.readassist/com.readassist.ui.MainActivity)/@0xacd97a5 - animation-leash#0,winType=0
+09-14 10:44:48.987   408   486 I InputDispatcher: Could not find connection for Window{5f2b8b3 u0 com.readassist/com.readassist.ui.MainActivity}
+09-14 10:44:48.987   408 28988 V InputDispatcher: Window handle Window{5f2b8b3 u0 com.readassist/com.readassist.ui.MainActivity} has no registered input channel
+09-14 10:44:48.994   408   486 I InputDispatcher: Not sending touch event to Window{764d8a2 u0 com.readassist/com.readassist.ui.MainActivity} because it is paused
+09-14 10:44:48.994   408   486 I InputDispatcher: Not sending touch event to Window{764d8a2 u0 com.readassist/com.readassist.ui.MainActivity} because it is paused
+09-14 10:44:48.994   408   486 I InputDispatcher: Not sending touch event to Window{764d8a2 u0 com.readassist/com.readassist.ui.MainActivity} because it is paused
+09-14 10:44:48.994   408   486 I InputDispatcher: Not sending touch event to Window{764d8a2 u0 com.readassist/com.readassist.ui.MainActivity} because it is paused
+09-14 10:44:48.995   408   486 I InputDispatcher: Not sending touch event to Window{764d8a2 u0 com.readassist/com.readassist.ui.MainActivity} because it is paused
+09-14 10:44:48.997   408   486 I InputDispatcher: Not sending touch event to Window{764d8a2 u0 com.readassist/com.readassist.ui.MainActivity} because it is paused
+09-14 10:44:49.001   408   486 I InputDispatcher: Not sending touch event to Window{764d8a2 u0 com.readassist/com.readassist.ui.MainActivity} because it is paused
+09-14 10:44:49.002   408 28988 V InputDispatcher: Window handle Window{5f2b8b3 u0 com.readassist/com.readassist.ui.MainActivity} has no registered input channel
+09-14 10:44:49.005   408   486 I InputDispatcher: Not sending touch event to Window{764d8a2 u0 com.readassist/com.readassist.ui.MainActivity} because it is paused
+09-14 10:44:49.005   408   486 I InputDispatcher: Not sending touch event to Window{764d8a2 u0 com.readassist/com.readassist.ui.MainActivity} because it is paused
+09-14 10:44:49.005   408   486 I InputDispatcher: Not sending touch event to Window{764d8a2 u0 com.readassist/com.readassist.ui.MainActivity} because it is paused
+09-14 10:44:49.008   408   486 I InputDispatcher: Not sending touch event to Window{764d8a2 u0 com.readassist/com.readassist.ui.MainActivity} because it is paused
+09-14 10:44:49.009   408   486 I InputDispatcher: Not sending touch event to Window{764d8a2 u0 com.readassist/com.readassist.ui.MainActivity} because it is paused
+09-14 10:44:49.010  3036 23134 D GMX-GestureService: boardcast app changed lastSelectPackage:com.readassist
+09-14 10:44:49.011   408   486 I InputDispatcher: Not sending touch event to Window{764d8a2 u0 com.readassist/com.readassist.ui.MainActivity} because it is paused
+09-14 10:44:49.021   408   486 I InputDispatcher: Not sending touch event to Window{764d8a2 u0 com.readassist/com.readassist.ui.MainActivity} because it is paused
+09-14 10:44:50.857   408   666 D ActivityTaskManager: resumeTopActivityLocked: Restarting ActivityRecord{d687e0c u0 com.readassist/.ui.MainActivity t1399}
+09-14 10:44:50.861  3036  5686 D GMX-GestureService: packageName:com.readassist   className:com.readassist.ui.MainActivity
+09-14 10:44:50.861  3036  5686 D GMX-GestureService: boardcast app changed packageName:com.readassist
+09-14 10:44:50.861  3036  5686 D GMX-GestureService: boardcast app changed className:com.readassist.ui.MainActivity
+09-14 10:44:50.861  3036  5686 D GMX-GestureService: packageName=com.readassist/className=com.readassist.ui.MainActivity
+09-14 10:44:50.923  3036  5686 D GMX-GestureService: currentTopPackage:com.readassist
+09-14 10:44:50.953 21685 21685 D PermissionUtils: Checking Accessibility: Looking for 'com.readassist/com.readassist.service.TextAccessibilityService'
+09-14 10:44:50.953 21685 21685 D PermissionUtils: Enabled Services: com.readassist/com.readassist.service.TextAccessibilityService
+09-14 10:44:50.955 21685 21685 D PermissionUtils: Checking Accessibility: Looking for 'com.readassist/com.readassist.service.TextAccessibilityService'
+09-14 10:44:50.955 21685 21685 D PermissionUtils: Enabled Services: com.readassist/com.readassist.service.TextAccessibilityService
+09-14 10:44:50.980 21685 21685 D PermissionUtils: Checking Accessibility: Looking for 'com.readassist/com.readassist.service.TextAccessibilityService'
+09-14 10:44:50.980 21685 21685 D PermissionUtils: Enabled Services: com.readassist/com.readassist.service.TextAccessibilityService
+09-14 10:44:50.983 21685 21685 D PermissionUtils: Checking Accessibility: Looking for 'com.readassist/com.readassist.service.TextAccessibilityService'
+09-14 10:44:50.983 21685 21685 D PermissionUtils: Enabled Services: com.readassist/com.readassist.service.TextAccessibilityService
+09-14 10:44:51.008   408  2333 I DisplayManagerService: Display device added: DisplayDeviceInfo{"ReadAssist-Screenshot": uniqueId="virtual:com.readassist,10152,ReadAssist-Screenshot,0", 1920 x 2560, modeId 44, defaultModeId 44, supportedModes [{id=44, width=1920, height=2560, fps=60.0}], colorMode 0, supportedColorModes [0], HdrCapabilities null, allmSupported false, gameContentTypeSupported false, density 300, 300.0 x 300.0 dpi, appVsyncOff 0, presDeadline 16666666, touch NONE, rotation 0, type VIRTUAL, deviceProductInfo null, state ON, owner com.readassist (uid 10152), FLAG_PRIVATE, FLAG_PRESENTATION}
+09-14 10:44:51.221   734   734 D InterruptionStateProvider: No alerting: filtered notification: 0|android|0|com.android.server.wm.AlertWindowNotification - com.readassist|1000
+09-14 10:44:51.221   734   734 D InterruptionStateProvider: No alerting: filtered notification: 0|android|0|com.android.server.wm.AlertWindowNotification - com.readassist|1000
+09-14 10:44:51.352   734   734 D InterruptionStateProvider: No bubble up: not allowed to bubble: 0|com.readassist|2001|null|10152
+09-14 10:44:51.354   734   734 D InterruptionStateProvider: No heads up: unimportant notification: 0|com.readassist|2001|null|10152
+09-14 10:44:53.011   408 28988 W NotificationService: Toast already killed. pkg=com.readassist token=android.os.BinderProxy@aecd768
+09-14 10:44:55.641  3036  3121 D ThirdPartyUtils: packageName:com.readassist has installed
+09-14 10:44:55.649  3036  3036 D AppManagerUtils: top class:com.readassist.ui.MainActivity
+09-14 10:44:55.649  3036  3036 D GMX-GestureService: top class name=com.readassist.ui.MainActivity
+09-14 10:44:55.649  3036  3036 D GMX-GestureService: packageName=/className=com.readassist.ui.MainActivity
+09-14 10:44:55.750   408   486 W InputDispatcher: Waiting because no window has focus but ActivityRecord{d687e0c u0 com.readassist/.ui.MainActivity t1399} may eventually add a window when it finishes starting up. Will wait for 15000ms
+09-14 10:44:57.718  3036 21991 D GMX-GestureService: boardcast app changed lastSelectPackage:com.readassist
+09-14 10:44:58.201   163   176 E BufferQueueProducer: [5438#com.readassist/com.readassist.ui.MainActivity#0](id:a300000316,api:0,p:-1,c:163) disconnect: not connected (req=1)
+09-14 10:44:58.201 21685 21685 D ViewRootImpl[MainActivity]: com.readassist/com.readassist.ui.MainActivity Change to Gone
+09-14 10:45:06.685   408   666 E ClipboardService: Denying clipboard access to com.readassist, application is not in focus nor is it a system service for user 0

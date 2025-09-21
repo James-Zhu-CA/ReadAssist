@@ -18,6 +18,7 @@ package com.readassist.service
 import android.app.ActivityManager
 import android.app.Service
 import android.app.usage.UsageStatsManager
+import android.content.ClipboardManager
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
@@ -70,6 +71,10 @@ import java.text.SimpleDateFormat
 import android.os.Environment
 import com.readassist.ui.DeviceSetupActivity
 import com.readassist.R
+import android.view.View
+import android.view.WindowManager
+import android.view.Gravity
+import android.os.Handler
 
 /**
  * 重构后的悬浮窗服务
@@ -242,6 +247,62 @@ class FloatingWindowServiceNew : Service(),
         }
     }
     
+    
+    // 前台服务直接剪贴板检测广播接收器
+    private val directClipboardReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                "com.readassist.SHOW_CHAT_WITH_CLIPBOARD" -> {
+                    val clipboardText = intent.getStringExtra("clipboard_text") ?: ""
+                    
+                    Log.d(TAG, "📋 接收到前台服务剪贴板检测: text='${clipboardText.take(50)}...'")
+                    
+                    if (clipboardText.isNotBlank()) {
+                        // 直接显示聊天窗口并填充文本，无需提示
+                        chatWindowManager.showChatWindow()
+                        chatWindowManager.importTextToInputField(clipboardText)
+                        
+                        Log.d(TAG, "📋 前台服务剪贴板内容已直接导入到聊天窗口")
+                    } else {
+                        Log.d(TAG, "📋 前台服务剪贴板内容为空")
+                    }
+                }
+            }
+        }
+    }
+    
+    // Hover触发的剪贴板检查广播接收器
+    private val hoverClipboardReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            Log.e(TAG, "🔴🔴🔴 hoverClipboardReceiver.onReceive() 被调用")
+            Log.e(TAG, "🔴 Intent action: ${intent?.action}")
+            Log.e(TAG, "🔴 Intent extras: ${intent?.extras}")
+            
+            when (intent?.action) {
+                "com.readassist.CHECK_CLIPBOARD_FROM_HOVER" -> {
+                    val source = intent.getStringExtra("source") ?: "unknown"
+                    val packageName = intent.getStringExtra("package") ?: "unknown"
+                    val timestamp = intent.getLongExtra("timestamp", 0L)
+                    
+                    Log.e(TAG, "🔴🔴🔴 接收到Hover剪贴板检查请求: source=$source, package=$packageName, timestamp=$timestamp")
+                    
+                    // 使用透明权限获取窗口方案
+                    Log.e(TAG, "🔴🔴🔴 使用透明权限获取窗口访问剪贴板")
+                    try {
+                        createTransparentPermissionWindow()
+                        Log.e(TAG, "🔴 透明权限获取窗口创建请求已发送")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "🔴 创建透明权限获取窗口时发生异常: ${e.message}", e)
+                    }
+                }
+                else -> {
+                    Log.e(TAG, "🔴 收到未知的广播action: ${intent?.action}")
+                }
+            }
+        }
+    }
+    
+    
     private var pendingScreenshot: Uri? = null
     private var pendingScreenshotBitmap: Bitmap? = null
     
@@ -249,6 +310,10 @@ class FloatingWindowServiceNew : Service(),
     
     // 新增：记录上一次截屏的文件路径
     private var lastScreenshotFile: File? = null
+    
+    // 透明权限获取窗口相关
+    private var transparentPermissionWindow: View? = null
+    private var windowManager: WindowManager? = null
     
     /**
      * 检查掌阅设备是否需要配置SAF权限
@@ -281,72 +346,154 @@ class FloatingWindowServiceNew : Service(),
     }
     
     override fun onCreate() {
-        super.onCreate()
-        Log.e("FloatingWindowServiceNew", "onCreate called")
-        Log.d(TAG, "FloatingWindowService created")
+        Log.e(TAG, "🔴🔴🔴 FloatingWindowServiceNew.onCreate() 开始执行")
+        Log.e(TAG, "🔴 服务创建时间: ${System.currentTimeMillis()}")
+        Log.e(TAG, "🔴 当前线程: ${Thread.currentThread().name}")
         
-        // 初始化核心组件
-        app = application as ReadAssistApplication
-        // 初始化preferenceManager
-        preferenceManager = PreferenceManager(applicationContext)
-        // 初始化各个管理器
-        initializeManagers()
-        
-        // 设置自己作为勾选状态监听器
-        chatWindowManager.setOnScreenshotMonitoringStateChangedListener(this)
-        
-        // 注册广播接收器
-        registerReceivers()
-        
-        // 创建通知渠道和前台服务通知
-        setupForegroundService()
-        
-        // 检查掌阅设备是否需要配置SAF权限
-        checkIReaderSetup()
-        
-        // 检查截屏权限状态，如果处于中间状态则重置
-        serviceScope.launch {
-            delay(500) // 从2000ms减少到500ms
-            Log.d(TAG, "执行启动后权限检查...")
+        try {
+            super.onCreate()
+            Log.e(TAG, "🔴 super.onCreate() 执行成功")
             
-            if (app.preferenceManager.isScreenshotPermissionGranted()) {
-                // 如果权限已授予，但截屏功能不可用，则尝试重置
-                if (!screenshotManager.isScreenshotServiceReady()) {
-                    Log.w(TAG, "检测到权限状态异常，执行重置")
-                    screenshotManager.forceResetPermission()
+            Log.d(TAG, "FloatingWindowService created")
+            Log.e(TAG, "🔴 开始初始化核心组件")
+        
+            // 初始化核心组件
+            Log.e(TAG, "🔴 开始初始化ReadAssistApplication")
+            app = application as ReadAssistApplication
+            Log.e(TAG, "🔴 ReadAssistApplication初始化成功")
+            
+            // 初始化preferenceManager
+            Log.e(TAG, "🔴 开始初始化PreferenceManager")
+            preferenceManager = PreferenceManager(applicationContext)
+            Log.e(TAG, "🔴 PreferenceManager初始化成功")
+            
+            // 初始化WindowManager
+            Log.e(TAG, "🔴 开始初始化WindowManager")
+            windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+            Log.e(TAG, "🔴 WindowManager初始化成功: $windowManager")
+            
+            // 初始化各个管理器
+            Log.e(TAG, "🔴 开始初始化各个管理器")
+            initializeManagers()
+            Log.e(TAG, "🔴 各个管理器初始化完成")
+        
+            // 设置自己作为勾选状态监听器
+            Log.e(TAG, "🔴 设置截屏监控状态监听器")
+            chatWindowManager.setOnScreenshotMonitoringStateChangedListener(this)
+            Log.e(TAG, "🔴 截屏监控状态监听器设置成功")
+            
+            // 注册广播接收器
+            Log.e(TAG, "🔴 开始注册广播接收器")
+            registerReceivers()
+            Log.e(TAG, "🔴 广播接收器注册完成")
+            
+            // 创建通知渠道和前台服务通知
+            Log.e(TAG, "🔴 开始设置前台服务")
+            setupForegroundService()
+            Log.e(TAG, "🔴 前台服务设置完成")
+            
+            // 检查掌阅设备是否需要配置SAF权限
+            Log.e(TAG, "🔴 检查掌阅设备配置")
+            checkIReaderSetup()
+            Log.e(TAG, "🔴 掌阅设备检查完成")
+        
+            // 检查截屏权限状态，如果处于中间状态则重置
+            Log.e(TAG, "🔴 启动截屏权限检查协程")
+            serviceScope.launch {
+                delay(500) // 从2000ms减少到500ms
+                Log.e(TAG, "🔴 执行启动后权限检查...")
+                
+                if (app.preferenceManager.isScreenshotPermissionGranted()) {
+                    // 如果权限已授予，但截屏功能不可用，则尝试重置
+                    if (!screenshotManager.isScreenshotServiceReady()) {
+                        Log.w(TAG, "🔴 检测到权限状态异常，执行重置")
+                        screenshotManager.forceResetPermission()
+                    }
                 }
+            }
+            
+            // 标记服务已启动
+            Log.e(TAG, "🔴 标记服务已启动")
+            getSharedPreferences("service_prefs", MODE_PRIVATE)
+                .edit().putBoolean("is_floating_service_running", true).apply()
+            Log.e(TAG, "🔴 服务启动标记已设置")
+            
+            Log.e(TAG, "🔴🔴🔴 FloatingWindowServiceNew.onCreate() 执行完成")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "🔴🔴🔴 FloatingWindowServiceNew.onCreate() 发生异常: ${e.message}", e)
+            Log.e(TAG, "🔴 异常堆栈: ${e.stackTraceToString()}")
+            throw e // 重新抛出异常，让系统知道服务启动失败
+        }
+    }
+    
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.e(TAG, "🔴🔴🔴 FloatingWindowServiceNew.onStartCommand() 被调用")
+        Log.e(TAG, "🔴 Intent: $intent")
+        Log.e(TAG, "🔴 Flags: $flags, StartId: $startId")
+        
+        // 检查悬浮窗权限
+        if (!Settings.canDrawOverlays(this)) {
+            Log.e(TAG, "🔴 没有悬浮窗权限，但继续运行服务以支持截屏功能")
+            // 不停止服务，因为用户可能只需要截屏功能，不需要悬浮窗
+            // 只是不显示悬浮按钮，但保持服务运行以支持截屏
+        } else {
+            Log.d(TAG, "🔴 悬浮窗权限已授予，可以显示悬浮按钮")
+            // 只有在有悬浮窗权限时才创建悬浮按钮
+            try {
+                floatingButtonManager.createButton()
+                Log.e(TAG, "🔴 悬浮按钮创建成功")
+            } catch (e: Exception) {
+                Log.e(TAG, "🔴 创建悬浮按钮时发生异常: ${e.message}", e)
             }
         }
         
-        // 标记服务已启动
-        getSharedPreferences("service_prefs", MODE_PRIVATE)
-            .edit().putBoolean("is_floating_service_running", true).apply()
+        // 检查截屏监控设置
+        try {
+            val autoPopup = preferenceManager.getBoolean("screenshot_auto_popup", true)
+            if (chatWindowManager != null) {
+                chatWindowManager.setScreenshotMonitoringEnabled(autoPopup)
+                Log.e(TAG, "🔴 截屏监控设置已应用: $autoPopup")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "🔴 应用截屏监控设置时发生异常: ${e.message}", e)
+        }
+        
+        // 确保服务不会因为内存不足而被系统杀死
+        return START_STICKY
     }
     
     /**
      * 初始化管理器
      */
     private fun initializeManagers() {
-        Log.e(TAG, "initializeManagers called")
+        Log.e(TAG, "🔴 initializeManagers() 开始执行")
+        Log.e(TAG, "🔴 初始化会话管理器")
         
         // 初始化会话管理器
         sessionManager = SessionManager(
             chatRepository = app.chatRepository
         )
+        Log.e(TAG, "🔴 会话管理器初始化成功")
         
         // 初始化文本选择管理器
+        Log.e(TAG, "🔴 初始化文本选择管理器")
         textSelectionManager = TextSelectionManager()
         textSelectionManager.setCallbacks(this)
+        Log.e(TAG, "🔴 文本选择管理器初始化成功")
         
         // 初始化截屏管理器
+        Log.e(TAG, "🔴 初始化截屏管理器")
         screenshotManager = ScreenshotManager(
             context = this,
             preferenceManager = preferenceManager,
             coroutineScope = serviceScope,
             callbacks = this
         )
+        Log.e(TAG, "🔴 截屏管理器初始化成功")
         
         // 初始化聊天窗口管理器
+        Log.e(TAG, "🔴 初始化聊天窗口管理器")
         chatWindowManager = ChatWindowManager(
             context = this,
             windowManager = getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager,
@@ -355,6 +502,7 @@ class FloatingWindowServiceNew : Service(),
             callbacks = this
         )
         chatWindowManager.setTextSelectionManager(textSelectionManager)
+        Log.e(TAG, "🔴 聊天窗口管理器初始化成功")
         
         // 初始化AI配置管理器
         aiConfigurationManager = AiConfigurationManager(
@@ -377,6 +525,8 @@ class FloatingWindowServiceNew : Service(),
             callbacks = this
         )
         floatingButtonManager.createButton()
+        
+        
         screenshotManager.initialize()
     }
     
@@ -384,7 +534,8 @@ class FloatingWindowServiceNew : Service(),
      * 注册广播接收器
      */
     private fun registerReceivers() {
-        Log.e("FloatingWindowServiceNew", "registerReceivers called")
+        Log.e(TAG, "🔴 registerReceivers() 开始执行")
+        Log.e(TAG, "🔴 注册文本检测广播接收器")
         val textFilter = IntentFilter().apply {
             addAction(TextAccessibilityService.ACTION_TEXT_DETECTED)
             addAction(TextAccessibilityService.ACTION_TEXT_SELECTED)
@@ -396,9 +547,28 @@ class FloatingWindowServiceNew : Service(),
             addAction("com.readassist.SCREENSHOT_PERMISSION_ERROR")
         }
         registerReceiver(textDetectedReceiver, textFilter)
+        Log.e(TAG, "🔴 文本检测广播接收器注册成功")
 
+        Log.e(TAG, "🔴 注册截屏广播接收器")
         val screenshotFilter = IntentFilter(TextAccessibilityService.ACTION_SCREENSHOT_TAKEN_VIA_ACCESSIBILITY)
         registerReceiver(screenshotTakenReceiver, screenshotFilter)
+        Log.e(TAG, "🔴 截屏广播接收器注册成功")
+        
+        
+        // 注册前台服务剪贴板检测广播接收器
+        Log.e(TAG, "🔴 注册直接剪贴板检测广播接收器")
+        val directClipboardFilter = IntentFilter("com.readassist.SHOW_CHAT_WITH_CLIPBOARD")
+        registerReceiver(directClipboardReceiver, directClipboardFilter)
+        Log.e(TAG, "🔴 直接剪贴板检测广播接收器注册成功")
+        
+        // 注册Hover触发的剪贴板检查广播接收器
+        Log.e(TAG, "🔴 注册Hover剪贴板检查广播接收器")
+        val hoverClipboardFilter = IntentFilter("com.readassist.CHECK_CLIPBOARD_FROM_HOVER")
+        registerReceiver(hoverClipboardReceiver, hoverClipboardFilter)
+        Log.e(TAG, "🔴 Hover剪贴板检查广播接收器注册成功")
+        
+        
+        Log.e(TAG, "🔴 registerReceivers() 执行完成")
     }
     
     /**
@@ -427,29 +597,6 @@ class FloatingWindowServiceNew : Service(),
         startForeground(1001, notification)
     }
     
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.e(TAG, "onStartCommand called")
-        Log.d(TAG, "FloatingWindowService started")
-        
-        // 检查悬浮窗权限
-        if (!Settings.canDrawOverlays(this)) {
-            Log.e(TAG, "No overlay permission, but continuing service for screenshot functionality")
-            // 不停止服务，因为用户可能只需要截屏功能，不需要悬浮窗
-            // 只是不显示悬浮按钮，但保持服务运行以支持截屏
-        } else {
-            Log.d(TAG, "悬浮窗权限已授予，可以显示悬浮按钮")
-            // 只有在有悬浮窗权限时才创建悬浮按钮
-            floatingButtonManager.createButton()
-        }
-        
-        // 检查截屏监控设置
-        val autoPopup = preferenceManager.getBoolean("screenshot_auto_popup", true)
-        if (chatWindowManager != null) {
-            chatWindowManager.setScreenshotMonitoringEnabled(autoPopup)
-        }
-        
-        return START_STICKY
-    }
     
     override fun onBind(intent: Intent?): IBinder? = null
     
@@ -462,6 +609,8 @@ class FloatingWindowServiceNew : Service(),
             // 注销广播接收器
             unregisterReceiver(textDetectedReceiver)
             unregisterReceiver(screenshotTakenReceiver)
+            unregisterReceiver(directClipboardReceiver)
+            unregisterReceiver(hoverClipboardReceiver)
             Log.e(TAG, "已注销所有广播接收器")
         } catch (e: Exception) {
             Log.e(TAG, "注销广播接收器失败", e)
@@ -471,6 +620,9 @@ class FloatingWindowServiceNew : Service(),
         screenshotManager?.cleanup()
         chatWindowManager?.hideChatWindow()
         floatingButtonManager?.removeButton()
+        
+        // 清理透明权限获取窗口
+        removeTransparentPermissionWindow()
         
         super.onDestroy()
         
@@ -662,12 +814,29 @@ class FloatingWindowServiceNew : Service(),
             // 掌阅设备：直接显示聊天窗口，不主动截屏
             Log.d(TAG, "掌阅设备：点击悬浮按钮，直接显示聊天窗口")
             chatWindowManager.showChatWindow()
+            // 检查剪贴板和截屏内容变化并自动勾选相应选项
+            updateClipboardUIWithAutoSelection()
             // 恢复按钮的默认状态，因为我们没有在等待截屏
             floatingButtonManager.restoreDefaultState()
-        } else {
-            // 非掌阅设备：保持原有逻辑，先截屏再显示窗口
-                            Log.e(TAG, "[统一流程] 即将执行 performScreenshotFirst()，使用统一弹窗机制")
+        } else if (DeviceUtils.isSupernoteDevice()) {
+            // Supernote设备：根据设置决定是否截屏
+            val screenshotEnabled = preferenceManager.getSupernoteScreenshotEnabled()
+            if (screenshotEnabled) {
+                Log.d(TAG, "Supernote设备：截屏功能已启用，执行截屏分析")
+                Log.e(TAG, "[统一流程] 即将执行 performScreenshotFirst()，使用统一弹窗机制")
                 performScreenshotFirst()
+            } else {
+                Log.d(TAG, "Supernote设备：截屏功能未启用，直接显示聊天窗口")
+                chatWindowManager.showChatWindow()
+                // 检查剪贴板和截屏内容变化并自动勾选相应选项
+                updateClipboardUIWithAutoSelection()
+                // 恢复按钮的默认状态，因为我们没有在等待截屏
+                floatingButtonManager.restoreDefaultState()
+            }
+        } else {
+            // 其他设备：保持原有逻辑，先截屏再显示窗口
+            Log.e(TAG, "[统一流程] 即将执行 performScreenshotFirst()，使用统一弹窗机制")
+            performScreenshotFirst()
         }
     }
     
@@ -1235,11 +1404,20 @@ class FloatingWindowServiceNew : Service(),
                     // 只设置提示文本，不导入到输入框内容
                     chatWindowManager.setInputHint(promptText)
                     
+                    // 保存截屏时间戳，用于检测截屏变化
+                    val screenshotTimestamp = if (uri.scheme == "file") {
+                        val file = File(uri.path!!)
+                        if (file.exists()) file.lastModified() else System.currentTimeMillis()
+                    } else {
+                        System.currentTimeMillis()
+                    }
+                    preferenceManager.setLastScreenshotTimestamp(screenshotTimestamp)
+                    
                     // 自动勾选"发送截图"选项
                     chatWindowManager.setSendScreenshotChecked(true)
                     
-                    // 检查剪贴板内容并更新UI
-                    updateClipboardUI()
+                    // 检查剪贴板内容并更新UI（包含自动勾选逻辑）
+                    updateClipboardUIWithAutoSelection()
                     
                     // 最后：使用文件的实际时间更新截屏信息（覆盖showChatWindow中的通用扫描结果）
                     if (uri.scheme == "file") {
@@ -1806,8 +1984,116 @@ class FloatingWindowServiceNew : Service(),
 
     // 更新剪贴板UI显示
     private fun updateClipboardUI() {
+        // 只更新UI显示内容，不进行自动勾选检测
         val displayContent = getClipboardContentForDisplay()
         chatWindowManager.updateClipboardInfo(displayContent)
+    }
+    
+    // 检查剪贴板和截屏内容变化并自动勾选（独立方法，只在需要时调用）
+    private fun updateClipboardUIWithAutoSelection() {
+        // 先检查剪贴板和截屏内容是否有变化，并根据情况自动勾选
+        checkAndUpdateSelectionState()
+        
+        // 再更新UI显示内容
+        val displayContent = getClipboardContentForDisplay()
+        chatWindowManager.updateClipboardInfo(displayContent)
+    }
+    
+    /**
+     * 检查剪贴板和截屏内容变化并自动勾选相应选项
+     */
+    private fun checkAndUpdateSelectionState() {
+        var hasNewClipboard = false
+        var hasNewScreenshot = false
+        
+        // 检查剪贴板内容变化
+        val currentClipboardContent = getTodayClipboardContent()
+        Log.d(TAG, "🔍 [调试] 当前剪贴板内容: '${currentClipboardContent?.take(50)}${if (currentClipboardContent?.length ?: 0 > 50) "..." else ""}'")
+        
+        if (currentClipboardContent != null) {
+            val currentHash = currentClipboardContent.hashCode().toString()
+            val lastHash = preferenceManager.getLastClipboardHash()
+            
+            Log.d(TAG, "🔍 [调试] 当前哈希值: $currentHash, 上次哈希值: $lastHash")
+            
+            if (currentHash != lastHash) {
+                Log.d(TAG, "✅ [调试] 剪贴板内容有变化，将自动勾选")
+                hasNewClipboard = true
+                // 保存新的哈希值
+                preferenceManager.setLastClipboardHash(currentHash)
+                Log.d(TAG, "🔍 [调试] 已保存新的哈希值: $currentHash")
+            } else {
+                Log.d(TAG, "ℹ️ [调试] 剪贴板内容无变化，不勾选")
+            }
+        } else {
+            Log.d(TAG, "⚠️ [调试] 剪贴板内容为空或获取失败")
+        }
+        
+        // 检查截屏内容变化
+        val currentScreenshotTimestamp = getCurrentScreenshotTimestamp()
+        if (currentScreenshotTimestamp > 0) {
+            val lastScreenshotTimestamp = preferenceManager.getLastScreenshotTimestamp()
+            
+            if (currentScreenshotTimestamp > lastScreenshotTimestamp) {
+                Log.d(TAG, "检测到新的截屏文件")
+                hasNewScreenshot = true
+                // 保存新的时间戳
+                preferenceManager.setLastScreenshotTimestamp(currentScreenshotTimestamp)
+            } else {
+                Log.d(TAG, "截屏文件无变化")
+            }
+        }
+        
+        // 根据检测结果自动勾选相应选项
+        Log.d(TAG, "🔧 [调试] 执行自动勾选操作 - 剪贴板: $hasNewClipboard")
+        
+        // 记录勾选前的状态
+        val beforeState = chatWindowManager.isSendClipboardChecked()
+        Log.d(TAG, "🔧 [调试] 勾选前状态: $beforeState")
+        
+        chatWindowManager.setSendClipboardChecked(hasNewClipboard)
+        
+        // 记录勾选后的状态
+        val afterState = chatWindowManager.isSendClipboardChecked()
+        Log.d(TAG, "🔧 [调试] 勾选后状态: $afterState")
+        
+        // 如果检测到新的截屏文件，也自动勾选截屏选项
+        if (hasNewScreenshot) {
+            Log.d(TAG, "🔧 [调试] 检测到新截屏，自动勾选截屏选项")
+            chatWindowManager.setSendScreenshotChecked(true)
+        }
+        
+        Log.d(TAG, "📊 [调试] 最终自动勾选状态 - 剪贴板: $hasNewClipboard, 截屏: $hasNewScreenshot")
+    }
+    
+    /**
+     * 获取当前截屏文件的时间戳
+     */
+    private fun getCurrentScreenshotTimestamp(): Long {
+        return try {
+            val dirs = getScreenshotDirectories()
+            var latestTimestamp = 0L
+            
+            for (dirPath in dirs) {
+                val dir = File(dirPath)
+                if (dir.exists() && dir.isDirectory) {
+                    val files = dir.listFiles { f -> 
+                        f.isFile && f.canRead() && 
+                        (f.name.endsWith(".png") || f.name.endsWith(".jpg")) &&
+                        (f.name.contains("screenshot") || f.name.contains("Screenshot"))
+                    }
+                    files?.forEach { file ->
+                        if (file.lastModified() > latestTimestamp) {
+                            latestTimestamp = file.lastModified()
+                        }
+                    }
+                }
+            }
+            latestTimestamp
+        } catch (e: Exception) {
+            Log.e(TAG, "获取截屏时间戳失败", e)
+            0L
+        }
     }
 
     private fun updateInputHintByCheckState() {
@@ -1902,5 +2188,129 @@ class FloatingWindowServiceNew : Service(),
         Log.e(TAG, "截屏监控状态变更: $enabled")
         // 保存设置到偏好
         preferenceManager.setBoolean("screenshot_auto_popup", enabled)
+    }
+
+    /**
+     * 创建透明权限获取窗口
+     * 用于获取剪贴板访问权限，用户完全感知不到
+     */
+    private fun createTransparentPermissionWindow() {
+        Log.d(TAG, "🔴 开始创建透明权限获取窗口")
+        
+        try {
+            // 如果已有透明窗口，先移除
+            removeTransparentPermissionWindow()
+            
+            // 创建完全透明的视图
+            transparentPermissionWindow = View(this).apply {
+                setBackgroundColor(android.R.color.transparent)
+                alpha = 0.0f // 完全透明
+            }
+            
+            // 设置窗口参数
+            val params = WindowManager.LayoutParams().apply {
+                type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                } else {
+                    WindowManager.LayoutParams.TYPE_PHONE
+                }
+                
+                flags = WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                        WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
+                
+                width = 1
+                height = 1
+                gravity = Gravity.TOP or Gravity.START
+                x = 0
+                y = 0
+            }
+            
+            // 添加透明窗口到系统
+            windowManager?.addView(transparentPermissionWindow, params)
+            Log.d(TAG, "🔴 透明权限获取窗口已创建")
+            
+            // 延迟访问剪贴板，给系统时间处理窗口创建
+            Handler(Looper.getMainLooper()).postDelayed({
+                accessClipboardWithTransparentWindow()
+            }, 200) // 从100ms增加到200ms，给复制操作更多时间
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "🔴 创建透明权限获取窗口失败: ${e.message}", e)
+            removeTransparentPermissionWindow()
+        }
+    }
+    
+    /**
+     * 使用透明窗口访问剪贴板
+     */
+    private fun accessClipboardWithTransparentWindow() {
+        Log.d(TAG, "🔴 透明窗口开始访问剪贴板")
+        
+        try {
+            val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+            if (clipboardManager == null) {
+                Log.e(TAG, "🔴 透明窗口剪贴板服务不可用！")
+                removeTransparentPermissionWindow()
+                return
+            }
+            
+            val clip = clipboardManager.primaryClip
+            Log.d(TAG, "🔴 透明窗口剪贴板对象: $clip")
+            
+            var clipboardText = ""
+            var success = false
+            
+            if (clip != null && clip.itemCount > 0) {
+                try {
+                    val item = clip.getItemAt(0)
+                    clipboardText = item.coerceToText(this).toString()
+                    success = clipboardText.isNotBlank()
+                    
+                    Log.d(TAG, "🔴 透明窗口剪贴板文本长度: ${clipboardText.length}")
+                    Log.d(TAG, "🔴 透明窗口剪贴板文本内容: '${clipboardText.take(100)}${if (clipboardText.length > 100) "..." else ""}'")
+                    
+                } catch (e: Exception) {
+                    Log.e(TAG, "🔴 透明窗口读取剪贴板内容时出错: ${e.message}", e)
+                }
+            } else {
+                Log.d(TAG, "🔴 透明窗口剪贴板为空或无内容")
+            }
+            
+            // 如果有剪贴板内容，启动聊天窗口
+            if (success && clipboardText.isNotBlank()) {
+                Log.d(TAG, "🔴 透明窗口检测到剪贴板内容，启动聊天窗口")
+                
+                chatWindowManager.showChatWindow()
+                chatWindowManager.importTextToInputField(clipboardText)
+                
+                Log.d(TAG, "🔴 透明窗口剪贴板内容已成功导入到聊天窗口")
+            } else {
+                Log.d(TAG, "🔴 透明窗口剪贴板无内容，不启动聊天窗口")
+            }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "🔴 透明窗口剪贴板访问失败: ${e.message}", e)
+        } finally {
+            // 立即移除透明窗口
+            removeTransparentPermissionWindow()
+        }
+    }
+    
+    /**
+     * 移除透明权限获取窗口
+     */
+    private fun removeTransparentPermissionWindow() {
+        try {
+            transparentPermissionWindow?.let { window ->
+                windowManager?.removeView(window)
+                Log.d(TAG, "🔴 透明权限获取窗口已移除")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "🔴 移除透明权限获取窗口失败: ${e.message}", e)
+        } finally {
+            transparentPermissionWindow = null
+        }
     }
 } 
